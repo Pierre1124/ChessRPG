@@ -6,6 +6,12 @@ Chess RPG 是一款把西洋棋、角色養成與卡牌效果結合在一起的�
 
 [下載 Chess RPG Windows Demo](https://drive.google.com/file/d/10wfg38B-mL6q0aPW0vJ-NunKaeH3ePWk/view?usp=drive_link)
 
+進入遊戲後可以先編輯牌組，目前可以任意增加減少可抽取到的數量，點擊第三次會出現星號，星號卡片會變成初始手牌。
+
+選取開啟房間會進入遊戲場景，並等待對手進入。
+對手選取加入房間，進入與開房者同一場遊戲。
+可以設定暗語，暗語相同的玩家會進入同一場遊戲。
+
 ## 遊戲規則
 
 ### 對戰基礎
