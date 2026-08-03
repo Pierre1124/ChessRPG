@@ -1,0 +1,19 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!1045 &1
+EditorBuildSettings:
+  m_ObjectHideFlags: 0
+  serializedVersion: 2
+  m_Scenes:
+  - enabled: 1
+    path: Assets/Scenes/StartScene.unity
+    guid: 839403e60221d964593353e3362e24b7
+  - enabled: 1
+    path: Assets/Scenes/ChessScene.unity
+    guid: 27c1563cba0bf804d8d578aa2e986d5d
+  - enabled: 0
+    path: Assets/Room/scenes/the last revelation.unity
+    guid: fffc368ce7c545240a157d1fa3ce0e97
+  m_configObjects:
+    com.unity.input.settings.actions: {fileID: -944628639613478452, guid: 052faaac586de48259a63d0c4782560b, type: 3}
+  m_UseUCBPForAssetBundles: 0
