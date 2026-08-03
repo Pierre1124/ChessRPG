@@ -2,6 +2,10 @@
 
 Chess RPG 是一款把西洋棋、角色養成與卡牌效果結合在一起的雙人回合制對戰遊戲。玩家仍在標準 8×8 棋盤上移動與吃子，但每枚棋子可以裝備轉職卡，事件卡能立即改變戰局，場地卡則會持續影響棋盤。除了將死之外，玩家也能透過戰鬥與卡牌效果把對手 HP 降到 0 取得勝利。
 
+## Demo 下載
+
+[下載 Chess RPG Windows Demo](https://drive.google.com/file/d/10wfg38B-mL6q0aPW0vJ-NunKaeH3ePWk/view?usp=drive_link)
+
 ## 遊戲規則
 
 ### 對戰基礎
