@@ -50,10 +50,10 @@ public class CameraController : MonoBehaviour
     {
         HandleRotation();
 
-        // 空白鍵回到當前棋手視角
+        // 空白鍵回到本地玩家所屬視角
         if (Keyboard.current.spaceKey.wasPressedThisFrame)
         {
-            ResetPerspective();
+            ApplyLocalPlayerPerspective();
         }
     }
 
@@ -147,22 +147,22 @@ public class CameraController : MonoBehaviour
     }
 
     //==============================
-    // 回到當前玩家視角
+    // 回到本地玩家所屬視角
     //==============================
-    void ResetPerspective()
+    public void ApplyLocalPlayerPerspective()
     {
-        LogicManager logic = FindFirstObjectByType<LogicManager>();
-
-        if (logic != null)
+        MultiplayerGameController multiplayer =
+            FindFirstObjectByType<MultiplayerGameController>();
+        if (
+            multiplayer != null &&
+            multiplayer.IsOnline &&
+            multiplayer.LocalSide == PlayerSide.Black
+        )
         {
-            if (logic.isWhiteTurn)
-            {
-                WhitePerspective();
-            }
-            else
-            {
-                BlackPerspective();
-            }
+            BlackPerspective();
+            return;
         }
+
+        WhitePerspective();
     }
 }

@@ -65,6 +65,12 @@ public class GameFlowUI : MonoBehaviour
         return owner.StartCoroutine(ui.PlayPhaseRoutine(message, onComplete));
     }
 
+    public static bool IsPhaseReady()
+    {
+        GameFlowUI ui = ResolveInstance();
+        return ui != null && ui.phaseChangeRoot != null;
+    }
+
     private static GameFlowUI ResolveInstance()
     {
         if (instance != null)

@@ -3672,12 +3672,11 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 7c06f82253700cf41a8e9697d1d93eb3, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  ShowTopMostFoldoutHeaderGroup: 1
   mode: 0
   localSide: 1
   hostSide: 1
   firstRemoteClientSide: 2
-  followNetworkManagerState: 1
+  followPhotonState: 1
   requiredPlayerCount: 2
   logCommands: 1
   gameSceneName: ChessScene
@@ -10327,6 +10326,7 @@ MonoBehaviour:
   usingCardTargetStartOffset: {x: 0, y: 160}
   usingCardFaceCameraInWorldSpace: 1
   usingCardInvertCameraFacing: 0
+  usingCardSortingOrder: 32000
   usingCardWorldFallbackSize: {x: 768, y: 1024}
   usingCardWorldFallbackScale: {x: 0.002, y: 0.002, z: 0.002}
   whiteViewOpponentHandRoot: {fileID: 1629723532}

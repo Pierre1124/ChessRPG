@@ -255,37 +255,6 @@ CanvasRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 15742334}
   m_CullTransparentMesh: 1
---- !u!1 &61539913
-GameObject:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  serializedVersion: 6
-  m_Component:
-  - component: {fileID: 61539914}
-  m_Layer: 0
-  m_Name: TEST
-  m_TagString: Untagged
-  m_Icon: {fileID: 0}
-  m_NavMeshLayer: 0
-  m_StaticEditorFlags: 0
-  m_IsActive: 1
---- !u!4 &61539914
-Transform:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 61539913}
-  serializedVersion: 2
-  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 9, y: 0, z: 2}
-  m_LocalScale: {x: 1, y: 1, z: 1}
-  m_ConstrainProportionsScale: 0
-  m_Children: []
-  m_Father: {fileID: 0}
-  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &118005896
 GameObject:
   m_ObjectHideFlags: 0
@@ -1467,7 +1436,7 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_text: "\u8F38\u5165\u9023\u7DDAIP"
+  m_text: "\u8F38\u5165\u6697\u8A9E"
   m_isRightToLeft: 0
   m_fontAsset: {fileID: 11400000, guid: 67393bfc3a860b042baa08f7fbeadd93, type: 2}
   m_sharedMaterial: {fileID: -4543751221255232905, guid: 67393bfc3a860b042baa08f7fbeadd93, type: 2}
@@ -6209,9 +6178,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: a1107db7ffbffdf4bb09653cd0813ba6, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  address: 127.0.0.1
-  port: 7777
-  serverListenAddress: 0.0.0.0
+  roomName: ChessRPG
+  maxPlayers: 2
   gameSceneName: ChessScene
   loadGameSceneAfterHostStarts: 1
 --- !u!4 &1944436858
@@ -7117,4 +7085,3 @@ SceneRoots:
   - {fileID: 1704828869}
   - {fileID: 1944436858}
   - {fileID: 881773546}
-  - {fileID: 61539914}

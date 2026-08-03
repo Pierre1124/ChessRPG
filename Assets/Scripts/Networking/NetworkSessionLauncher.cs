@@ -1,69 +1,54 @@
-using Unity.Netcode;
-using Unity.Netcode.Transports.UTP;
+using Photon.Pun;
+using Photon.Realtime;
 using UnityEngine;
-using UnityEngine.SceneManagement;
 
-public class NetworkSessionLauncher : MonoBehaviour
+public class NetworkSessionLauncher : MonoBehaviourPunCallbacks
 {
-    [Header("Direct Connect")]
-    [SerializeField] private string address = "127.0.0.1";
-    [SerializeField] private ushort port = 7777;
-    [SerializeField] private string serverListenAddress = "0.0.0.0";
+    [Header("Photon Room")]
+    [SerializeField] private string roomName = "ChessRPG";
+    [SerializeField, Min(2)] private byte maxPlayers = 2;
 
     [Header("Scene")]
     [SerializeField] private string gameSceneName = "ChessScene";
     [SerializeField] private bool loadGameSceneAfterHostStarts = true;
 
+    private bool wantsHost;
+    private bool wantsClient;
+
+    private void Awake()
+    {
+        PhotonNetwork.AutomaticallySyncScene = true;
+        PhotonNetwork.GameVersion = Application.version;
+    }
+
     public void StartHost()
     {
-        if (!PrepareTransport())
-        {
-            return;
-        }
-
-        if (NetworkManager.Singleton.StartHost())
-        {
-            Debug.Log("[NetworkGame] Host started.");
-            LoadGameSceneForHost();
-        }
-        else
-        {
-            Debug.LogError("[NetworkGame] Failed to start Host.");
-        }
+        wantsHost = true;
+        wantsClient = false;
+        ConnectOrJoinRoom();
     }
 
     public void StartClient()
     {
-        if (!PrepareTransport())
-        {
-            return;
-        }
-
-        if (NetworkManager.Singleton.StartClient())
-        {
-            Debug.Log("[NetworkGame] Client started.");
-        }
-        else
-        {
-            Debug.LogError("[NetworkGame] Failed to start Client.");
-        }
+        wantsHost = false;
+        wantsClient = true;
+        ConnectOrJoinRoom();
     }
 
     public void Shutdown()
     {
-        if (NetworkManager.Singleton == null)
+        if (PhotonNetwork.IsConnected)
         {
-            return;
+            PhotonNetwork.Disconnect();
         }
 
-        NetworkManager.Singleton.Shutdown();
-        Debug.Log("[NetworkGame] Network shutdown.");
+        Debug.Log("[NetworkGame] Photon shutdown.");
     }
 
     public void SetAddress(string newAddress)
     {
-        address = string.IsNullOrWhiteSpace(newAddress)
-            ? "127.0.0.1"
+        roomName = string.IsNullOrWhiteSpace(newAddress)
+            ? "ChessRPG"
             : newAddress.Trim();
     }
 
@@ -75,59 +60,103 @@ public class NetworkSessionLauncher : MonoBehaviour
         }
     }
 
-    private void LoadGameSceneForHost()
+    private void ConnectOrJoinRoom()
     {
-        if (
-            !loadGameSceneAfterHostStarts ||
-            string.IsNullOrWhiteSpace(gameSceneName)
-        )
+        if (string.IsNullOrWhiteSpace(roomName))
         {
+            roomName = "ChessRPG";
+        }
+
+        PhotonNetwork.AutomaticallySyncScene = true;
+
+        if (PhotonNetwork.IsConnectedAndReady)
+        {
+            JoinOrCreateConfiguredRoom();
             return;
         }
 
-        if (
-            NetworkManager.Singleton == null ||
-            NetworkManager.Singleton.SceneManager == null
-        )
+        if (PhotonNetwork.IsConnected)
+        {
+            Debug.Log("[NetworkGame] Photon is connecting. Waiting for ready state.");
+            return;
+        }
+
+        Debug.Log($"[NetworkGame] Connecting to Photon. Room={roomName}");
+        bool started = PhotonNetwork.ConnectUsingSettings();
+        if (!started)
         {
             Debug.LogError(
-                "[NetworkGame] Cannot load game scene without NetworkSceneManager."
+                "[NetworkGame] Photon ConnectUsingSettings failed. " +
+                "Check PhotonServerSettings AppIdRealtime."
             );
-            return;
         }
-
-        NetworkManager.Singleton.SceneManager.LoadScene(
-            gameSceneName,
-            LoadSceneMode.Single
-        );
-        Debug.Log($"[NetworkGame] Host loading scene: {gameSceneName}");
     }
 
-    private bool PrepareTransport()
+    public override void OnConnectedToMaster()
     {
-        if (NetworkManager.Singleton == null)
-        {
-            Debug.LogError(
-                "[NetworkGame] Scene requires a NetworkManager."
-            );
-            return false;
-        }
+        JoinOrCreateConfiguredRoom();
+    }
 
-        UnityTransport transport =
-            NetworkManager.Singleton.GetComponent<UnityTransport>();
-        if (transport == null)
-        {
-            Debug.LogError(
-                "[NetworkGame] NetworkManager requires UnityTransport."
-            );
-            return false;
-        }
-
-        transport.SetConnectionData(
-            address,
-            port,
-            serverListenAddress
+    public override void OnJoinedRoom()
+    {
+        Debug.Log(
+            $"[NetworkGame] Joined Photon room={PhotonNetwork.CurrentRoom.Name} | " +
+            $"Master={PhotonNetwork.IsMasterClient} | Players={PhotonNetwork.CurrentRoom.PlayerCount}"
         );
-        return true;
+
+        if (
+            wantsHost &&
+            PhotonNetwork.IsMasterClient &&
+            loadGameSceneAfterHostStarts &&
+            !string.IsNullOrWhiteSpace(gameSceneName)
+        )
+        {
+            PhotonNetwork.LoadLevel(gameSceneName);
+        }
+    }
+
+    public override void OnJoinRoomFailed(short returnCode, string message)
+    {
+        Debug.LogError(
+            $"[NetworkGame] Join room failed: {returnCode} {message}"
+        );
+    }
+
+    public override void OnCreateRoomFailed(short returnCode, string message)
+    {
+        Debug.LogError(
+            $"[NetworkGame] Create room failed: {returnCode} {message}"
+        );
+    }
+
+    public override void OnDisconnected(DisconnectCause cause)
+    {
+        Debug.Log($"[NetworkGame] Photon disconnected: {cause}");
+    }
+
+    private void JoinOrCreateConfiguredRoom()
+    {
+        if (!wantsHost && !wantsClient)
+        {
+            return;
+        }
+
+        RoomOptions options = new RoomOptions
+        {
+            MaxPlayers = maxPlayers,
+            EmptyRoomTtl = 0,
+            PlayerTtl = 0,
+            CleanupCacheOnLeave = true
+        };
+
+        if (wantsHost)
+        {
+            PhotonNetwork.JoinOrCreateRoom(roomName, options, TypedLobby.Default);
+            Debug.Log($"[NetworkGame] Host JoinOrCreateRoom: {roomName}");
+            return;
+        }
+
+        PhotonNetwork.JoinRoom(roomName);
+        Debug.Log($"[NetworkGame] Client JoinRoom: {roomName}");
     }
 }

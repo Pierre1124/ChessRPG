@@ -2794,14 +2794,7 @@ public class LogicManager : MonoBehaviour
             return;
         }
 
-        if (isWhiteTurn)
-        {
-            cameraController.WhitePerspective();
-        }
-        else
-        {
-            cameraController.BlackPerspective();
-        }
+        cameraController.ApplyLocalPlayerPerspective();
     }
 
     private bool EnsureCardHandManager()

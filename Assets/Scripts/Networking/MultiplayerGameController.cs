@@ -1,17 +1,39 @@
-using System.Collections;
-using Unity.Netcode;
+﻿using System.Collections;
+using ExitGames.Client.Photon;
+using System.Collections.Generic;
+using Photon.Pun;
+using Photon.Realtime;
 using UnityEngine;
 using UnityEngine.SceneManagement;
+using Hashtable = ExitGames.Client.Photon.Hashtable;
 
-[RequireComponent(typeof(NetworkObject))]
-public class MultiplayerGameController : NetworkBehaviour
+public class MultiplayerGameController :
+    MonoBehaviourPunCallbacks,
+    IOnEventCallback
 {
+    private const byte EventCommandRequest = 1;
+    private const byte EventPromotionRequest = 2;
+    private const byte EventDeckSubmit = 3;
+    private const byte EventCommandResult = 4;
+    private const byte EventState = 5;
+    private const byte EventDamageBatch = 6;
+    private const byte EventPhaseChange = 7;
+    private const byte EventMoveResult = 8;
+    private const byte EventPromotionResult = 9;
+    private const byte EventCardOnPieceResult = 10;
+    private const byte EventFieldCardResult = 11;
+    private const byte EventGameOver = 12;
+    private const byte EventReturnToStart = 13;
+    private const byte EventRestartRequest = 14;
+    private const byte EventSideAssignment = 15;
+    private const string RoomPropertyMasterWhite = "MasterWhite";
+
     [Header("Mode")]
     [SerializeField] private MultiplayerMode mode = MultiplayerMode.Local;
     [SerializeField] private PlayerSide localSide = PlayerSide.White;
     [SerializeField] private PlayerSide hostSide = PlayerSide.White;
     [SerializeField] private PlayerSide firstRemoteClientSide = PlayerSide.Black;
-    [SerializeField] private bool followNetworkManagerState = true;
+    [SerializeField] private bool followPhotonState = true;
     [SerializeField, Min(2)] private int requiredPlayerCount = 2;
     [SerializeField] private bool logCommands = true;
     [SerializeField] private string gameSceneName = "ChessScene";
@@ -25,6 +47,13 @@ public class MultiplayerGameController : NetworkBehaviour
     private bool hasFirstRemoteClientDeck;
     private bool isReturningToStartScene;
     private bool isRestartingGame;
+    private bool submittedLocalDeck;
+    private bool sideAssignmentReady;
+    private bool masterPlaysWhite = true;
+    private bool receivedInitialNetworkState;
+    private bool isRemotePhaseQueuePlaying;
+    private readonly Queue<string> pendingRemotePhaseMessages =
+        new Queue<string>();
 
     public MultiplayerMode Mode
     {
@@ -35,43 +64,32 @@ public class MultiplayerGameController : NetworkBehaviour
     {
         get
         {
-            RefreshModeFromNetworkManager();
+            RefreshModeFromPhoton();
             return localSide;
         }
     }
 
     public bool IsOnline
     {
-        get
-        {
-            return mode != MultiplayerMode.Local ||
-                (
-                    NetworkManager.Singleton != null &&
-                    NetworkManager.Singleton.IsListening
-                );
-        }
+        get { return PhotonNetwork.InRoom; }
     }
 
     public bool IsHostAuthority
     {
-        get { return mode == MultiplayerMode.Local || mode == MultiplayerMode.Host; }
+        get
+        {
+            return mode == MultiplayerMode.Local ||
+                PhotonNetwork.IsMasterClient;
+        }
     }
 
     public bool IsWaitingForPlayer
     {
         get
         {
-            NetworkManager manager = NetworkManager.Singleton;
-            if (
-                manager == null ||
-                !manager.IsListening ||
-                !(manager.IsHost || manager.IsServer)
-            )
-            {
-                return false;
-            }
-
-            return manager.ConnectedClientsIds.Count < requiredPlayerCount;
+            return PhotonNetwork.InRoom &&
+                PhotonNetwork.CurrentRoom != null &&
+                PhotonNetwork.CurrentRoom.PlayerCount < requiredPlayerCount;
         }
     }
 
@@ -79,50 +97,64 @@ public class MultiplayerGameController : NetworkBehaviour
     {
         get
         {
-            NetworkManager manager = NetworkManager.Singleton;
-            return IsOnline &&
-                manager != null &&
-                manager.IsListening &&
-                manager.IsServer &&
-                manager.ConnectedClientsIds.Count >= requiredPlayerCount &&
-                !hasFirstRemoteClientDeck;
+            return PhotonNetwork.InRoom &&
+                PhotonNetwork.IsMasterClient &&
+                PhotonNetwork.CurrentRoom != null &&
+                PhotonNetwork.CurrentRoom.PlayerCount >= requiredPlayerCount &&
+                (!sideAssignmentReady || !hasFirstRemoteClientDeck);
         }
     }
 
     public bool CanGameplayOperate
     {
-        get { return !IsWaitingForPlayer && !IsWaitingForRemoteDeck; }
-    }
-
-    public bool IsClientOnly
-    {
         get
         {
-            NetworkManager manager = NetworkManager.Singleton;
-            return IsOnline &&
-                manager != null &&
-                manager.IsClient &&
-                !manager.IsServer;
-        }
-    }
-
-    public bool IsServerAuthority
-    {
-        get
-        {
-            if (!IsOnline)
+            if (!PhotonNetwork.InRoom)
             {
                 return true;
             }
 
-            NetworkManager manager = NetworkManager.Singleton;
-            return manager != null && manager.IsServer;
+            return !IsWaitingForPlayer &&
+                sideAssignmentReady &&
+                (PhotonNetwork.IsMasterClient || receivedInitialNetworkState) &&
+                !IsWaitingForRemoteDeck;
         }
+    }
+
+    public bool IsClientOnly
+    {
+        get { return PhotonNetwork.InRoom && !PhotonNetwork.IsMasterClient; }
+    }
+
+    public bool IsServerAuthority
+    {
+        get { return !PhotonNetwork.InRoom || PhotonNetwork.IsMasterClient; }
     }
 
     private void Awake()
     {
         ResolveReferences();
+        PhotonNetwork.AutomaticallySyncScene = true;
+        TryReadSideAssignmentFromRoom();
+    }
+
+    private void OnEnable()
+    {
+        PhotonNetwork.AddCallbackTarget(this);
+        SceneManager.sceneLoaded += HandleSceneLoaded;
+        TryReadSideAssignmentFromRoom();
+        RefreshModeFromPhoton();
+
+        if (PhotonNetwork.InRoom)
+        {
+            HandleJoinedRoomState();
+        }
+    }
+
+    private void OnDisable()
+    {
+        PhotonNetwork.RemoveCallbackTarget(this);
+        SceneManager.sceneLoaded -= HandleSceneLoaded;
     }
 
     private void Reset()
@@ -130,42 +162,114 @@ public class MultiplayerGameController : NetworkBehaviour
         ResolveReferences();
     }
 
-    public override void OnNetworkSpawn()
+    public override void OnJoinedRoom()
     {
-        RefreshModeFromNetworkManager();
+        HandleJoinedRoomState();
+    }
 
-        if (IsServer)
+    public override void OnPlayerEnteredRoom(Player newPlayer)
+    {
+        RefreshModeFromPhoton();
+        TryAssignSidesIfReady();
+
+        if (!PhotonNetwork.IsMasterClient)
         {
-            hasFirstRemoteClientDeck = requiredPlayerCount <= 1;
+            return;
         }
 
-        if (NetworkManager != null)
+        BroadcastCurrentStateIfReady();
+        RefreshLocalCardUi();
+    }
+
+    public override void OnPlayerLeftRoom(Player otherPlayer)
+    {
+        if (!PhotonNetwork.IsMasterClient)
         {
-            NetworkManager.OnClientConnectedCallback += HandleClientConnected;
-            NetworkManager.OnClientDisconnectCallback += HandleClientDisconnected;
+            return;
         }
 
-        if (IsClient && !IsServer)
+        hasFirstRemoteClientDeck = false;
+        Debug.Log(
+            $"[NetworkGame][ClientDisconnected] Actor={otherPlayer.ActorNumber}"
+        );
+        Debug.Log("[NetworkGame][DisconnectedRestart] Resetting game for reconnect.");
+        RestartGameAsAuthority();
+    }
+
+    public override void OnRoomPropertiesUpdate(Hashtable propertiesThatChanged)
+    {
+        if (
+            propertiesThatChanged == null ||
+            !propertiesThatChanged.ContainsKey(RoomPropertyMasterWhite)
+        )
         {
+            return;
+        }
+
+        bool wasReady = sideAssignmentReady;
+        TryReadSideAssignmentFromRoom();
+        RefreshModeFromPhoton();
+
+        if (!wasReady && sideAssignmentReady)
+        {
+            GameFlowUI.Show(
+                localSide == PlayerSide.White
+                    ? "你是白方"
+                    : "你是黑方"
+            );
+            ApplyLocalPlayerCameraPerspective();
+        }
+    }
+
+    public override void OnDisconnected(DisconnectCause cause)
+    {
+        if (!isReturningToStartScene && !isRestartingGame)
+        {
+            Debug.Log($"[NetworkGame][Disconnected] Returning to StartScene. Cause={cause}");
+            LoadSceneLocal(startSceneName);
+        }
+    }
+
+    private void HandleSceneLoaded(Scene scene, LoadSceneMode loadMode)
+    {
+        ResolveReferences();
+        TryReadSideAssignmentFromRoom();
+        RefreshModeFromPhoton();
+
+        if (PhotonNetwork.InRoom && scene.name == gameSceneName)
+        {
+            HandleJoinedRoomState();
+        }
+    }
+
+    private void HandleJoinedRoomState()
+    {
+        TryReadSideAssignmentFromRoom();
+        RefreshModeFromPhoton();
+
+        if (PhotonNetwork.IsMasterClient)
+        {
+            receivedInitialNetworkState = true;
+            hasFirstRemoteClientDeck =
+                PhotonNetwork.CurrentRoom == null ||
+                PhotonNetwork.CurrentRoom.PlayerCount < requiredPlayerCount;
+            TryAssignSidesIfReady();
+        }
+        else if (!submittedLocalDeck)
+        {
+            TryReadSideAssignmentFromRoom();
             StartCoroutine(SubmitLocalDeckWhenReady());
         }
 
         BroadcastCurrentStateIfReady();
-    }
-
-    public override void OnNetworkDespawn()
-    {
-        if (NetworkManager != null)
-        {
-            NetworkManager.OnClientConnectedCallback -= HandleClientConnected;
-            NetworkManager.OnClientDisconnectCallback -= HandleClientDisconnected;
-        }
+        RefreshLocalCardUi();
+        ApplyLocalPlayerCameraPerspective();
     }
 
     public void RequestRestartGame()
     {
         Time.timeScale = 1f;
-        RefreshModeFromNetworkManager();
+        RefreshModeFromPhoton();
 
         if (!IsOnline)
         {
@@ -173,26 +277,20 @@ public class MultiplayerGameController : NetworkBehaviour
             return;
         }
 
-        if (!IsSpawned)
-        {
-            GameFlowUI.Show("連線尚未準備完成");
-            return;
-        }
-
-        if (IsServer)
+        if (PhotonNetwork.IsMasterClient)
         {
             RestartGameAsAuthority();
             return;
         }
 
-        GameFlowUI.Show("已向主機請求重新開始");
-        RequestRestartRpc();
+        GameFlowUI.Show("已向主機要求重新開始");
+        RaiseToMaster(EventRestartRequest, string.Empty);
     }
 
     public void RequestReturnToStart()
     {
         Time.timeScale = 1f;
-        RefreshModeFromNetworkManager();
+        RefreshModeFromPhoton();
 
         if (!IsOnline)
         {
@@ -200,42 +298,48 @@ public class MultiplayerGameController : NetworkBehaviour
             return;
         }
 
-        if (IsServer)
+        if (PhotonNetwork.IsMasterClient)
         {
-            NotifyReturnToStartRpc("主機已返回主選單");
+            RaiseToOthers(EventReturnToStart, "主機返回主選單");
         }
 
         StartCoroutine(ShutdownAndLoadStartSceneRoutine());
     }
 
-    private void RefreshModeFromNetworkManager()
+    private void RefreshModeFromPhoton()
     {
-        if (!followNetworkManagerState)
+        if (!followPhotonState)
         {
             return;
         }
 
-        NetworkManager manager = NetworkManager.Singleton;
-        if (manager == null || !manager.IsListening)
+        if (!PhotonNetwork.InRoom)
         {
             return;
         }
 
-        if (manager.IsHost || manager.IsServer)
+        if (PhotonNetwork.IsMasterClient)
         {
             mode = MultiplayerMode.Host;
-            localSide = hostSide;
+            localSide = sideAssignmentReady
+                ? (masterPlaysWhite ? PlayerSide.White : PlayerSide.Black)
+                : hostSide;
         }
-        else if (manager.IsClient)
+        else
         {
             mode = MultiplayerMode.Client;
-            localSide = firstRemoteClientSide;
+            localSide = sideAssignmentReady
+                ? (masterPlaysWhite ? PlayerSide.Black : PlayerSide.White)
+                : firstRemoteClientSide;
         }
 
-        Debug.Log(
-            $"[NetworkGame] Network mode resolved | " +
-            $"Mode={mode} | LocalSide={localSide}"
-        );
+        if (logCommands)
+        {
+            Debug.Log(
+                $"[NetworkGame] Photon mode resolved | " +
+                $"Mode={mode} | LocalSide={localSide}"
+            );
+        }
     }
 
     public bool CanLocalPlayerAct(bool isWhiteTurn)
@@ -260,16 +364,15 @@ public class MultiplayerGameController : NetworkBehaviour
 
     private bool IsLocalPlayerSide(bool isWhitePlayer)
     {
-        RefreshModeFromNetworkManager();
-        if (localSide == PlayerSide.None)
-        {
-            return false;
-        }
-
-        return (localSide == PlayerSide.White) == isWhitePlayer;
+        RefreshModeFromPhoton();
+        return localSide != PlayerSide.None &&
+            (localSide == PlayerSide.White) == isWhitePlayer;
     }
 
-    public NetworkGameCommand CreateMoveCommand(Piece piece, Vector2 targetCoordinates)
+    public NetworkGameCommand CreateMoveCommand(
+        Piece piece,
+        Vector2 targetCoordinates
+    )
     {
         return NetworkGameCommand.Move(
             ConsumeSequence(),
@@ -331,7 +434,7 @@ public class MultiplayerGameController : NetworkBehaviour
 
     public bool ShouldLocalChoosePromotion(bool isWhitePlayer)
     {
-        RefreshModeFromNetworkManager();
+        RefreshModeFromPhoton();
 
         if (!IsOnline)
         {
@@ -356,7 +459,7 @@ public class MultiplayerGameController : NetworkBehaviour
         bool isWhitePlayer = pawn.IsWhite;
         int sequence = ConsumeSequence();
 
-        RefreshModeFromNetworkManager();
+        RefreshModeFromPhoton();
 
         if (!IsOnline)
         {
@@ -369,38 +472,34 @@ public class MultiplayerGameController : NetworkBehaviour
             return;
         }
 
-        if (!IsSpawned)
-        {
-            Debug.LogWarning(
-                "[NetworkGame] Cannot submit promotion before NetworkObject is spawned."
-            );
-            return;
-        }
-
-        if (IsServer)
+        if (PhotonNetwork.IsMasterClient)
         {
             ExecutePromotionAsAuthority(
                 sequence,
                 isWhitePlayer,
                 coordinate,
                 pieceName,
-                NetworkManager.LocalClientId
+                PhotonNetwork.LocalPlayer.ActorNumber
             );
             return;
         }
 
-        RequestPromotionRpc(
-            sequence,
-            isWhitePlayer,
-            coordinate.x,
-            coordinate.y,
-            pieceName
+        RaiseToMaster(
+            EventPromotionRequest,
+            new object[]
+            {
+                sequence,
+                isWhitePlayer,
+                coordinate.x,
+                coordinate.y,
+                pieceName
+            }
         );
     }
 
     public void SubmitCommand(NetworkGameCommand command)
     {
-        RefreshModeFromNetworkManager();
+        RefreshModeFromPhoton();
 
         if (!IsOnline)
         {
@@ -408,43 +507,16 @@ public class MultiplayerGameController : NetworkBehaviour
             return;
         }
 
-        if (!IsSpawned)
+        if (PhotonNetwork.IsMasterClient)
         {
-            LogCommand("NetworkObject is not spawned yet", command);
+            ExecuteCommandAsAuthority(
+                command,
+                PhotonNetwork.LocalPlayer.ActorNumber
+            );
             return;
         }
 
-        if (IsServer)
-        {
-            ExecuteCommandAsAuthority(command, NetworkManager.LocalClientId);
-            return;
-        }
-
-        switch (command.kind)
-        {
-            case NetworkGameCommandKind.MovePiece:
-                RequestMoveRpc(
-                    command.sequence,
-                    command.isWhitePlayer,
-                    command.from.x,
-                    command.from.y,
-                    command.to.x,
-                    command.to.y
-                );
-                break;
-            default:
-                RequestCardCommandRpc(
-                    (int)command.kind,
-                    command.sequence,
-                    command.isWhitePlayer,
-                    command.cardId,
-                    command.to.x,
-                    command.to.y,
-                    command.targetObjectName,
-                    command.fieldPlaceName
-                );
-                break;
-        }
+        RaiseToMaster(EventCommandRequest, JsonUtility.ToJson(command));
     }
 
     public NetworkGameSnapshot CaptureSnapshot()
@@ -460,93 +532,370 @@ public class MultiplayerGameController : NetworkBehaviour
         };
     }
 
-    [Rpc(SendTo.Server)]
-    private void RequestMoveRpc(
-        int sequence,
-        bool isWhitePlayer,
-        int fromX,
-        int fromY,
-        int toX,
-        int toY,
-        RpcParams rpcParams = default
-    )
+    public void BroadcastState(bool isWhiteTurn, int whiteHealth, int blackHealth)
     {
-        NetworkGameCommand command = NetworkGameCommand.Move(
-            sequence,
-            isWhitePlayer,
-            new BoardCoordinate(fromX, fromY),
-            new BoardCoordinate(toX, toY)
-        );
-
-        ExecuteCommandAsAuthority(command, rpcParams.Receive.SenderClientId);
-    }
-
-    [Rpc(SendTo.Server)]
-    private void RequestCardCommandRpc(
-        int kind,
-        int sequence,
-        bool isWhitePlayer,
-        string cardId,
-        int targetX,
-        int targetY,
-        string targetObjectName,
-        string fieldPlaceName,
-        RpcParams rpcParams = default
-    )
-    {
-        NetworkGameCommand command = new NetworkGameCommand
-        {
-            kind = (NetworkGameCommandKind)kind,
-            sequence = sequence,
-            isWhitePlayer = isWhitePlayer,
-            cardId = cardId,
-            to = new BoardCoordinate(targetX, targetY),
-            targetObjectName = targetObjectName,
-            fieldPlaceName = fieldPlaceName
-        };
-
-        ExecuteCommandAsAuthority(command, rpcParams.Receive.SenderClientId);
-    }
-
-    [Rpc(SendTo.Server)]
-    private void RequestPromotionRpc(
-        int sequence,
-        bool isWhitePlayer,
-        int x,
-        int y,
-        string pieceName,
-        RpcParams rpcParams = default
-    )
-    {
-        ExecutePromotionAsAuthority(
-            sequence,
-            isWhitePlayer,
-            new BoardCoordinate(x, y),
-            pieceName,
-            rpcParams.Receive.SenderClientId
-        );
-    }
-
-    [Rpc(SendTo.Server)]
-    private void SubmitDeckRpc(
-        string serializedDeckIds,
-        bool keepFirstCard,
-        RpcParams rpcParams = default
-    )
-    {
+        RefreshModeFromPhoton();
         ResolveReferences();
 
-        PlayerSide senderSide = GetSideForClient(
-            rpcParams.Receive.SenderClientId
+        if (
+            !IsOnline ||
+            !PhotonNetwork.IsMasterClient ||
+            IsWaitingForPlayer ||
+            IsWaitingForRemoteDeck
+        )
+        {
+            return;
+        }
+
+        string cardState = cardHandManager != null
+            ? cardHandManager.SerializeNetworkCardState()
+            : string.Empty;
+        bool canDrawThisTurn =
+            cardHandManager != null && cardHandManager.CanDrawThisTurn;
+
+        Debug.Log(
+            $"[NetworkGame][BroadcastState] Turn={(isWhiteTurn ? "White" : "Black")} | " +
+            $"HP={whiteHealth}/{blackHealth} | CanDraw={canDrawThisTurn}"
         );
+
+        RaiseToOthers(
+            EventState,
+            new object[]
+            {
+                isWhiteTurn,
+                whiteHealth,
+                blackHealth,
+                cardState,
+                canDrawThisTurn
+            }
+        );
+    }
+
+    public void BroadcastDamageCalculationBatch(string payload)
+    {
+        RefreshModeFromPhoton();
+
+        if (
+            string.IsNullOrEmpty(payload) ||
+            !IsOnline ||
+            !PhotonNetwork.IsMasterClient ||
+            IsWaitingForPlayer ||
+            IsWaitingForRemoteDeck
+        )
+        {
+            return;
+        }
+
+        if (logCommands)
+        {
+            Debug.Log(
+                $"[NetworkGame][DamageVisual] Broadcast batch payload length={payload.Length}"
+            );
+        }
+
+        RaiseToOthers(EventDamageBatch, payload);
+    }
+
+    public void BroadcastPhaseChange(string message)
+    {
+        RefreshModeFromPhoton();
+
+        if (
+            string.IsNullOrWhiteSpace(message) ||
+            !IsOnline ||
+            !PhotonNetwork.IsMasterClient ||
+            IsWaitingForPlayer ||
+            IsWaitingForRemoteDeck
+        )
+        {
+            return;
+        }
+
+        RaiseToOthers(EventPhaseChange, message);
+    }
+
+    public void BroadcastGameOver(string result)
+    {
+        RefreshModeFromPhoton();
+
+        if (!IsOnline || !PhotonNetwork.IsMasterClient)
+        {
+            return;
+        }
+
+        RaiseToOthers(EventGameOver, result);
+    }
+
+    public void OnEvent(EventData photonEvent)
+    {
+        switch (photonEvent.Code)
+        {
+            case EventCommandRequest:
+                HandleCommandRequest(photonEvent);
+                break;
+            case EventPromotionRequest:
+                HandlePromotionRequest(photonEvent);
+                break;
+            case EventDeckSubmit:
+                HandleDeckSubmit(photonEvent);
+                break;
+            case EventCommandResult:
+                ApplyCommandResult(photonEvent.CustomData as object[]);
+                break;
+            case EventState:
+                ApplyState(photonEvent.CustomData as object[]);
+                break;
+            case EventDamageBatch:
+                ResolveReferences();
+                logicManager?.PlayRemoteDamageCalculationBatch(
+                    photonEvent.CustomData as string
+                );
+                break;
+            case EventPhaseChange:
+                EnqueueRemotePhaseChange(photonEvent.CustomData as string);
+                break;
+            case EventMoveResult:
+                ApplyMoveResult(photonEvent.CustomData as object[]);
+                break;
+            case EventPromotionResult:
+                ApplyPromotionResult(photonEvent.CustomData as object[]);
+                break;
+            case EventCardOnPieceResult:
+                ApplyCardOnPieceResult(photonEvent.CustomData as object[]);
+                break;
+            case EventFieldCardResult:
+                ApplyFieldCardResult(photonEvent.CustomData as object[]);
+                break;
+            case EventGameOver:
+                ResolveReferences();
+                logicManager?.ApplyRemoteGameOver(photonEvent.CustomData as string);
+                break;
+            case EventReturnToStart:
+                GameFlowUI.Show(photonEvent.CustomData as string);
+                StartCoroutine(ShutdownAndLoadStartSceneRoutine());
+                break;
+            case EventRestartRequest:
+                if (PhotonNetwork.IsMasterClient)
+                {
+                    Debug.Log(
+                        $"[NetworkGame][RestartRequested] Sender={photonEvent.Sender}"
+                    );
+                    RestartGameAsAuthority();
+                }
+                break;
+            case EventSideAssignment:
+                ApplySideAssignment(photonEvent.CustomData as object[], true);
+                break;
+        }
+    }
+
+    private void TryAssignSidesIfReady()
+    {
+        if (
+            !PhotonNetwork.InRoom ||
+            !PhotonNetwork.IsMasterClient ||
+            PhotonNetwork.CurrentRoom == null ||
+            PhotonNetwork.CurrentRoom.PlayerCount < requiredPlayerCount ||
+            sideAssignmentReady
+        )
+        {
+            return;
+        }
+
+        bool masterIsWhite = Random.value >= 0.5f;
+        Hashtable properties = new Hashtable
+        {
+            { RoomPropertyMasterWhite, masterIsWhite }
+        };
+        PhotonNetwork.CurrentRoom.SetCustomProperties(properties);
+
+        object[] payload =
+            new object[]
+            {
+                PhotonNetwork.MasterClient.ActorNumber,
+                masterIsWhite
+            };
+        ApplySideAssignment(payload, true);
+        RaiseToOthers(EventSideAssignment, payload);
+    }
+
+    private void TryReadSideAssignmentFromRoom()
+    {
+        if (
+            !PhotonNetwork.InRoom ||
+            PhotonNetwork.CurrentRoom == null ||
+            !PhotonNetwork.CurrentRoom.CustomProperties.ContainsKey(
+                RoomPropertyMasterWhite
+            )
+        )
+        {
+            return;
+        }
+
+        masterPlaysWhite =
+            ToBool(PhotonNetwork.CurrentRoom.CustomProperties[
+                RoomPropertyMasterWhite
+            ]);
+        sideAssignmentReady = true;
+    }
+
+    private void ApplySideAssignment(object[] data, bool showAlarm)
+    {
+        if (data == null || data.Length < 2)
+        {
+            return;
+        }
+
+        int masterActorNumber = ToInt(data[0]);
+        masterPlaysWhite = ToBool(data[1]);
+        sideAssignmentReady = true;
+        RefreshModeFromPhoton();
+
+        if (showAlarm)
+        {
+            GameFlowUI.Show(
+                localSide == PlayerSide.White
+                    ? "你是白方"
+                    : "你是黑方"
+            );
+        }
+
+        ApplyLocalPlayerCameraPerspective();
+
+        Debug.Log(
+            $"[NetworkGame][SideAssigned] MasterActor={masterActorNumber} | " +
+            $"Master={(masterPlaysWhite ? "White" : "Black")} | " +
+            $"Local={localSide}"
+        );
+    }
+
+    private void EnqueueRemotePhaseChange(string message)
+    {
+        if (string.IsNullOrWhiteSpace(message))
+        {
+            return;
+        }
+
+        pendingRemotePhaseMessages.Enqueue(message);
+
+        if (!isRemotePhaseQueuePlaying)
+        {
+            StartCoroutine(PlayRemotePhaseQueue());
+        }
+    }
+
+    private IEnumerator PlayRemotePhaseQueue()
+    {
+        isRemotePhaseQueuePlaying = true;
+
+        while (pendingRemotePhaseMessages.Count > 0)
+        {
+            string message = pendingRemotePhaseMessages.Dequeue();
+
+            yield return WaitForPhaseUiReady();
+
+            bool completed = false;
+            GameFlowUI.PlayPhase(
+                this,
+                message,
+                () =>
+                {
+                    completed = true;
+                }
+            );
+
+            while (!completed)
+            {
+                yield return null;
+            }
+        }
+
+        isRemotePhaseQueuePlaying = false;
+    }
+
+    private IEnumerator WaitForPhaseUiReady()
+    {
+        for (int frame = 0; frame < 120; frame++)
+        {
+            if (GameFlowUI.IsPhaseReady())
+            {
+                yield break;
+            }
+
+            yield return null;
+        }
+
+        Debug.LogWarning(
+            "[NetworkGame][PhaseChange] Phase UI was not ready before timeout."
+        );
+    }
+
+    private void HandleCommandRequest(EventData photonEvent)
+    {
+        if (!PhotonNetwork.IsMasterClient)
+        {
+            return;
+        }
+
+        string payload = photonEvent.CustomData as string;
+        if (string.IsNullOrWhiteSpace(payload))
+        {
+            return;
+        }
+
+        NetworkGameCommand command =
+            JsonUtility.FromJson<NetworkGameCommand>(payload);
+        ExecuteCommandAsAuthority(command, photonEvent.Sender);
+    }
+
+    private void HandlePromotionRequest(EventData photonEvent)
+    {
+        if (!PhotonNetwork.IsMasterClient)
+        {
+            return;
+        }
+
+        object[] data = photonEvent.CustomData as object[];
+        if (data == null || data.Length < 5)
+        {
+            return;
+        }
+
+        ExecutePromotionAsAuthority(
+            ToInt(data[0]),
+            ToBool(data[1]),
+            new BoardCoordinate(ToInt(data[2]), ToInt(data[3])),
+            data[4] as string,
+            photonEvent.Sender
+        );
+    }
+
+    private void HandleDeckSubmit(EventData photonEvent)
+    {
+        if (!PhotonNetwork.IsMasterClient)
+        {
+            return;
+        }
+
+        object[] data = photonEvent.CustomData as object[];
+        if (data == null || data.Length < 2)
+        {
+            return;
+        }
+
+        ResolveReferences();
+
+        PlayerSide senderSide = GetSideForActor(photonEvent.Sender);
         if (senderSide == PlayerSide.None)
         {
             Debug.LogWarning(
-                $"[NetworkGame][DeckRejected] Unknown sender={rpcParams.Receive.SenderClientId}"
+                $"[NetworkGame][DeckRejected] Unknown sender={photonEvent.Sender}"
             );
             return;
         }
 
+        string serializedDeckIds = data[0] as string;
+        bool keepFirstCard = ToBool(data[1]);
         bool isWhitePlayer = senderSide == PlayerSide.White;
         bool accepted =
             cardHandManager != null &&
@@ -558,9 +907,7 @@ public class MultiplayerGameController : NetworkBehaviour
 
         if (!accepted)
         {
-            Debug.LogWarning(
-                $"[NetworkGame][DeckRejected] Player={senderSide}"
-            );
+            Debug.LogWarning($"[NetworkGame][DeckRejected] Player={senderSide}");
             return;
         }
 
@@ -580,167 +927,6 @@ public class MultiplayerGameController : NetworkBehaviour
         }
     }
 
-    [Rpc(SendTo.ClientsAndHost)]
-    private void AnnounceCommandResultRpc(
-        int kind,
-        int sequence,
-        bool accepted,
-        string message
-    )
-    {
-        if (logCommands)
-        {
-            Debug.Log(
-                $"[NetworkGame] Result | Kind={(NetworkGameCommandKind)kind} | " +
-                $"Seq={sequence} | Accepted={accepted} | {message}"
-            );
-        }
-
-        if (!accepted)
-        {
-            GameFlowUI.Show(GetAlarmMessageForRejectedCommand(
-                (NetworkGameCommandKind)kind,
-                message
-            ));
-        }
-    }
-
-    private string GetAlarmMessageForRejectedCommand(
-        NetworkGameCommandKind kind,
-        string message
-    )
-    {
-        switch (kind)
-        {
-            case NetworkGameCommandKind.MovePiece:
-                return "非法走法";
-            case NetworkGameCommandKind.DrawCard:
-                return "現在不能抽牌";
-            case NetworkGameCommandKind.PlayCardOnPiece:
-                return "卡片不能使用";
-            case NetworkGameCommandKind.PlayFieldCard:
-                return "場地區不能放";
-            case NetworkGameCommandKind.RecycleCard:
-                return "現在不能回收卡片";
-            default:
-                return string.IsNullOrWhiteSpace(message)
-                    ? "操作失敗"
-                    : message;
-        }
-    }
-
-    public void BroadcastState(bool isWhiteTurn, int whiteHealth, int blackHealth)
-    {
-        RefreshModeFromNetworkManager();
-        ResolveReferences();
-
-        if (
-            !IsOnline ||
-            !IsServer ||
-            IsWaitingForPlayer ||
-            IsWaitingForRemoteDeck
-        )
-        {
-            return;
-        }
-
-        string cardState = cardHandManager != null
-            ? cardHandManager.SerializeNetworkCardState()
-            : string.Empty;
-        bool canDrawThisTurn =
-            cardHandManager != null && cardHandManager.CanDrawThisTurn;
-
-        Debug.Log(
-            $"[NetworkGame][BroadcastState] Turn={(isWhiteTurn ? "White" : "Black")} | " +
-            $"HP={whiteHealth}/{blackHealth} | CanDraw={canDrawThisTurn}"
-        );
-
-        ApplyStateRpc(
-            isWhiteTurn,
-            whiteHealth,
-            blackHealth,
-            cardState,
-            canDrawThisTurn
-        );
-    }
-
-    public void BroadcastDamageCalculationBatch(string payload)
-    {
-        RefreshModeFromNetworkManager();
-
-        if (
-            string.IsNullOrEmpty(payload) ||
-            !IsOnline ||
-            !IsServer ||
-            IsWaitingForPlayer ||
-            IsWaitingForRemoteDeck
-        )
-        {
-            return;
-        }
-
-        if (logCommands)
-        {
-            Debug.Log(
-                $"[NetworkGame][DamageVisual] Broadcast batch payload length={payload.Length}"
-            );
-        }
-
-        ApplyDamageCalculationBatchRpc(payload);
-    }
-
-    public void BroadcastPhaseChange(string message)
-    {
-        RefreshModeFromNetworkManager();
-
-        if (
-            string.IsNullOrWhiteSpace(message) ||
-            !IsOnline ||
-            !IsServer ||
-            IsWaitingForPlayer ||
-            IsWaitingForRemoteDeck
-        )
-        {
-            return;
-        }
-
-        ApplyPhaseChangeRpc(message);
-    }
-
-    private void BroadcastCurrentStateIfReady()
-    {
-        ResolveReferences();
-
-        if (logicManager == null)
-        {
-            return;
-        }
-
-        BroadcastState(
-            logicManager.isWhiteTurn,
-            logicManager.whiteHealth,
-            logicManager.blackHealth
-        );
-    }
-
-    private void HandleClientConnected(ulong clientId)
-    {
-        RefreshModeFromNetworkManager();
-
-        if (!IsServer)
-        {
-            return;
-        }
-
-        BroadcastCurrentStateIfReady();
-
-        if (cardHandManager != null && logicManager != null)
-        {
-            cardHandManager.Refresh(logicManager.isWhiteTurn);
-            cardHandManager.RefreshHealth();
-        }
-    }
-
     private IEnumerator SubmitLocalDeckWhenReady()
     {
         for (int frame = 0; frame < 120; frame++)
@@ -757,7 +943,11 @@ public class MultiplayerGameController : NetworkBehaviour
 
                 if (!string.IsNullOrEmpty(deckIds))
                 {
-                    SubmitDeckRpc(deckIds, keepFirstCard);
+                    RaiseToMaster(
+                        EventDeckSubmit,
+                        new object[] { deckIds, keepFirstCard }
+                    );
+                    submittedLocalDeck = true;
                     Debug.Log(
                         $"[NetworkGame][DeckSubmitted] LocalSide={localSide} | " +
                         $"Ids={deckIds} | Opening={keepFirstCard}"
@@ -774,298 +964,23 @@ public class MultiplayerGameController : NetworkBehaviour
         );
     }
 
-    public void BroadcastGameOver(string result)
-    {
-        RefreshModeFromNetworkManager();
-
-        if (!IsOnline || !IsServer)
-        {
-            return;
-        }
-
-        ApplyGameOverRpc(result);
-    }
-
-    [Rpc(SendTo.Server)]
-    private void RequestRestartRpc(RpcParams rpcParams = default)
-    {
-        Debug.Log(
-            $"[NetworkGame][RestartRequested] Sender={rpcParams.Receive.SenderClientId}"
-        );
-        RestartGameAsAuthority();
-    }
-
-    [Rpc(SendTo.NotServer)]
-    private void NotifyReturnToStartRpc(string message)
-    {
-        if (IsServer)
-        {
-            return;
-        }
-
-        GameFlowUI.Show(message);
-        StartCoroutine(ShutdownAndLoadStartSceneRoutine());
-    }
-
-    [Rpc(SendTo.NotServer)]
-    private void ApplyStateRpc(
-        bool isWhiteTurn,
-        int whiteHealth,
-        int blackHealth,
-        string cardState,
-        bool canDrawThisTurn
-    )
-    {
-        if (IsServer)
-        {
-            return;
-        }
-
-        ResolveReferences();
-        logicManager?.ApplyRemoteNetworkState(
-            isWhiteTurn,
-            whiteHealth,
-            blackHealth,
-            cardState,
-            canDrawThisTurn
-        );
-    }
-
-    [Rpc(SendTo.NotServer)]
-    private void ApplyGameOverRpc(string result)
-    {
-        if (IsServer)
-        {
-            return;
-        }
-
-        ResolveReferences();
-        logicManager?.ApplyRemoteGameOver(result);
-    }
-
-    [Rpc(SendTo.NotServer)]
-    private void ApplyDamageCalculationBatchRpc(string payload)
-    {
-        if (IsServer)
-        {
-            return;
-        }
-
-        ResolveReferences();
-        logicManager?.PlayRemoteDamageCalculationBatch(payload);
-    }
-
-    [Rpc(SendTo.NotServer)]
-    private void ApplyPhaseChangeRpc(string message)
-    {
-        if (IsServer)
-        {
-            return;
-        }
-
-        GameFlowUI.PlayPhase(this, message, null);
-    }
-
-    [Rpc(SendTo.NotServer)]
-    private void ApplyMoveResultRpc(
-        int sequence,
-        bool isWhitePlayer,
-        int fromX,
-        int fromY,
-        int toX,
-        int toY,
-        bool finalIsWhiteTurn,
-        int finalWhiteHealth,
-        int finalBlackHealth,
-        string finalCardState,
-        bool finalCanDrawThisTurn
-    )
-    {
-        if (IsServer)
-        {
-            return;
-        }
-
-        ResolveReferences();
-
-        BoardCoordinate from = new BoardCoordinate(fromX, fromY);
-        BoardCoordinate to = new BoardCoordinate(toX, toY);
-        bool applied =
-            logicManager != null &&
-            logicManager.ApplyNetworkMoveResult(
-                from,
-                to,
-                isWhitePlayer
-            );
-
-        if (logCommands)
-        {
-            Debug.Log(
-                $"[NetworkGame] Remote move result | Seq={sequence} | " +
-                $"Applied={applied} | From={from} | To={to}"
-            );
-        }
-
-        if (logicManager != null)
-        {
-            logicManager.ApplyRemoteNetworkState(
-                finalIsWhiteTurn,
-                finalWhiteHealth,
-                finalBlackHealth,
-                finalCardState,
-                finalCanDrawThisTurn
-            );
-        }
-    }
-
-    [Rpc(SendTo.NotServer)]
-    private void ApplyPromotionResultRpc(
-        int sequence,
-        bool isWhitePlayer,
-        int x,
-        int y,
-        string pieceName
-    )
-    {
-        if (IsServer)
-        {
-            return;
-        }
-
-        ResolveReferences();
-
-        BoardCoordinate coordinate = new BoardCoordinate(x, y);
-        bool applied =
-            logicManager != null &&
-            logicManager.ApplyPromotionChoice(
-                coordinate,
-                isWhitePlayer,
-                pieceName,
-                true
-            );
-
-        if (logCommands)
-        {
-            Debug.Log(
-                $"[NetworkGame] Promotion result | Seq={sequence} | " +
-                $"Applied={applied} | Cell={coordinate} | Piece={pieceName}"
-            );
-        }
-    }
-
-    [Rpc(SendTo.NotServer)]
-    private void ApplyCardOnPieceResultRpc(
-        int sequence,
-        bool isWhitePlayer,
-        string cardId,
-        int targetX,
-        int targetY
-    )
-    {
-        if (IsServer)
-        {
-            return;
-        }
-
-        ResolveReferences();
-
-        BoardCoordinate target = new BoardCoordinate(targetX, targetY);
-        bool applied =
-            cardHandManager != null &&
-            cardHandManager.PlayCardOnPieceAsAuthority(
-                isWhitePlayer,
-                cardId,
-                target,
-                false
-            );
-        bool playedVisual = false;
-        if (
-            applied &&
-            cardHandManager != null &&
-            !IsLocalPlayerSide(isWhitePlayer)
-        )
-        {
-            playedVisual =
-                cardHandManager.PlayUsingCardAnimationOnPiece(
-                    cardId,
-                    target
-                );
-        }
-
-        if (logCommands)
-        {
-            Debug.Log(
-                $"[NetworkGame] Card result | Seq={sequence} | " +
-                $"Applied={applied} | Visual={playedVisual} | " +
-                $"Card={cardId} | Target={target}"
-            );
-        }
-    }
-
-    [Rpc(SendTo.NotServer)]
-    private void ApplyFieldCardResultRpc(
-        int sequence,
-        bool isWhitePlayer,
-        string cardId,
-        string fieldPlaceName
-    )
-    {
-        if (IsServer)
-        {
-            return;
-        }
-
-        ResolveReferences();
-
-        bool applied =
-            cardHandManager != null &&
-            cardHandManager.PlayFieldCardAsAuthority(
-                isWhitePlayer,
-                cardId,
-                fieldPlaceName,
-                false
-            );
-        bool playedVisual = false;
-        if (
-            applied &&
-            cardHandManager != null &&
-            !IsLocalPlayerSide(isWhitePlayer)
-        )
-        {
-            playedVisual =
-                cardHandManager.PlayUsingCardAnimationOnField(
-                    cardId,
-                    fieldPlaceName
-                );
-        }
-
-        if (logCommands)
-        {
-            Debug.Log(
-                $"[NetworkGame] Field card result | Seq={sequence} | " +
-                $"Applied={applied} | Visual={playedVisual} | " +
-                $"Card={cardId} | Place={fieldPlaceName}"
-            );
-        }
-    }
-
     private void ExecutePromotionAsAuthority(
         int sequence,
         bool isWhitePlayer,
         BoardCoordinate coordinate,
         string pieceName,
-        ulong senderClientId
+        int senderActorNumber
     )
     {
         ResolveReferences();
 
-        PlayerSide senderSide = GetSideForClient(senderClientId);
+        PlayerSide senderSide = GetSideForActor(senderActorNumber);
         bool senderIsWhite = senderSide == PlayerSide.White;
 
         if (senderSide == PlayerSide.None || senderIsWhite != isWhitePlayer)
         {
-            AnnounceCommandResultRpc(
-                (int)NetworkGameCommandKind.MovePiece,
+            AnnounceCommandResult(
+                NetworkGameCommandKind.MovePiece,
                 sequence,
                 false,
                 "Promotion rejected: sender side mismatch"
@@ -1084,17 +999,21 @@ public class MultiplayerGameController : NetworkBehaviour
 
         if (accepted)
         {
-            ApplyPromotionResultRpc(
-                sequence,
-                isWhitePlayer,
-                coordinate.x,
-                coordinate.y,
-                pieceName
+            RaiseToOthers(
+                EventPromotionResult,
+                new object[]
+                {
+                    sequence,
+                    isWhitePlayer,
+                    coordinate.x,
+                    coordinate.y,
+                    pieceName
+                }
             );
         }
 
-        AnnounceCommandResultRpc(
-            (int)NetworkGameCommandKind.MovePiece,
+        AnnounceCommandResult(
+            NetworkGameCommandKind.MovePiece,
             sequence,
             accepted,
             accepted
@@ -1105,16 +1024,16 @@ public class MultiplayerGameController : NetworkBehaviour
 
     private void ExecuteCommandAsAuthority(
         NetworkGameCommand command,
-        ulong senderClientId
+        int senderActorNumber
     )
     {
         ResolveReferences();
 
-        if (!IsSenderAllowed(command, senderClientId, out string rejectReason))
+        if (!IsSenderAllowed(command, senderActorNumber, out string rejectReason))
         {
             LogCommand($"Rejected: {rejectReason}", command);
-            AnnounceCommandResultRpc(
-                (int)command.kind,
+            AnnounceCommandResult(
+                command.kind,
                 command.sequence,
                 false,
                 rejectReason
@@ -1138,21 +1057,25 @@ public class MultiplayerGameController : NetworkBehaviour
                 message = accepted ? "Move applied" : "Move rejected by LogicManager";
                 if (accepted)
                 {
-                    ApplyMoveResultRpc(
-                        command.sequence,
-                        command.isWhitePlayer,
-                        command.from.x,
-                        command.from.y,
-                        command.to.x,
-                        command.to.y,
-                        logicManager.isWhiteTurn,
-                        logicManager.whiteHealth,
-                        logicManager.blackHealth,
-                        cardHandManager != null
-                            ? cardHandManager.SerializeNetworkCardState()
-                            : string.Empty,
-                        cardHandManager != null &&
-                            cardHandManager.CanDrawThisTurn
+                    RaiseToOthers(
+                        EventMoveResult,
+                        new object[]
+                        {
+                            command.sequence,
+                            command.isWhitePlayer,
+                            command.from.x,
+                            command.from.y,
+                            command.to.x,
+                            command.to.y,
+                            logicManager.isWhiteTurn,
+                            logicManager.whiteHealth,
+                            logicManager.blackHealth,
+                            cardHandManager != null
+                                ? cardHandManager.SerializeNetworkCardState()
+                                : string.Empty,
+                            cardHandManager != null &&
+                                cardHandManager.CanDrawThisTurn
+                        }
                     );
                 }
                 break;
@@ -1209,12 +1132,16 @@ public class MultiplayerGameController : NetworkBehaviour
                             command.cardId,
                             command.to
                         );
-                    ApplyCardOnPieceResultRpc(
-                        command.sequence,
-                        command.isWhitePlayer,
-                        command.cardId,
-                        command.to.x,
-                        command.to.y
+                    RaiseToOthers(
+                        EventCardOnPieceResult,
+                        new object[]
+                        {
+                            command.sequence,
+                            command.isWhitePlayer,
+                            command.cardId,
+                            command.to.x,
+                            command.to.y
+                        }
                     );
                     BroadcastState(
                         logicManager.isWhiteTurn,
@@ -1251,11 +1178,15 @@ public class MultiplayerGameController : NetworkBehaviour
                             command.cardId,
                             command.fieldPlaceName
                         );
-                    ApplyFieldCardResultRpc(
-                        command.sequence,
-                        command.isWhitePlayer,
-                        command.cardId,
-                        command.fieldPlaceName
+                    RaiseToOthers(
+                        EventFieldCardResult,
+                        new object[]
+                        {
+                            command.sequence,
+                            command.isWhitePlayer,
+                            command.cardId,
+                            command.fieldPlaceName
+                        }
                     );
                     BroadcastState(
                         logicManager.isWhiteTurn,
@@ -1273,14 +1204,13 @@ public class MultiplayerGameController : NetworkBehaviour
                 }
                 break;
             default:
-                message =
-                    "Command reached host. Card commands are scaffolded only.";
+                message = "Command kind is not implemented.";
                 break;
         }
 
         LogCommand(message, command);
-        AnnounceCommandResultRpc(
-            (int)command.kind,
+        AnnounceCommandResult(
+            command.kind,
             command.sequence,
             accepted,
             message
@@ -1289,27 +1219,30 @@ public class MultiplayerGameController : NetworkBehaviour
 
     private bool IsSenderAllowed(
         NetworkGameCommand command,
-        ulong senderClientId,
+        int senderActorNumber,
         out string reason
     )
     {
-        PlayerSide senderSide = GetSideForClient(senderClientId);
+        PlayerSide senderSide = GetSideForActor(senderActorNumber);
         bool senderIsWhite = senderSide == PlayerSide.White;
 
         if (senderSide == PlayerSide.None)
         {
-            reason = $"No side assigned to client {senderClientId}";
+            reason = $"No side assigned to actor {senderActorNumber}";
             return false;
         }
 
         if (senderIsWhite != command.isWhitePlayer)
         {
             reason =
-                $"Client side mismatch. Client={senderSide}, CommandWhite={command.isWhitePlayer}";
+                $"Player side mismatch. Player={senderSide}, CommandWhite={command.isWhitePlayer}";
             return false;
         }
 
-        if (logicManager != null && logicManager.isWhiteTurn != command.isWhitePlayer)
+        if (
+            logicManager != null &&
+            logicManager.isWhiteTurn != command.isWhitePlayer
+        )
         {
             reason = "Not this player's turn";
             return false;
@@ -1319,18 +1252,274 @@ public class MultiplayerGameController : NetworkBehaviour
         return true;
     }
 
-    private PlayerSide GetSideForClient(ulong clientId)
+    private void ApplyMoveResult(object[] data)
     {
-        if (
-            NetworkManager != null &&
-            IsServer &&
-            clientId == NetworkManager.LocalClientId
-        )
+        if (PhotonNetwork.IsMasterClient || data == null || data.Length < 11)
         {
-            return hostSide;
+            return;
         }
 
-        return firstRemoteClientSide;
+        ResolveReferences();
+
+        int sequence = ToInt(data[0]);
+        bool isWhitePlayer = ToBool(data[1]);
+        BoardCoordinate from =
+            new BoardCoordinate(ToInt(data[2]), ToInt(data[3]));
+        BoardCoordinate to =
+            new BoardCoordinate(ToInt(data[4]), ToInt(data[5]));
+        bool finalIsWhiteTurn = ToBool(data[6]);
+        int finalWhiteHealth = ToInt(data[7]);
+        int finalBlackHealth = ToInt(data[8]);
+        string finalCardState = data[9] as string;
+        bool finalCanDrawThisTurn = ToBool(data[10]);
+
+        bool applied =
+            logicManager != null &&
+            logicManager.ApplyNetworkMoveResult(
+                from,
+                to,
+                isWhitePlayer
+            );
+
+        if (logCommands)
+        {
+            Debug.Log(
+                $"[NetworkGame] Remote move result | Seq={sequence} | " +
+                $"Applied={applied} | From={from} | To={to}"
+            );
+        }
+
+        logicManager?.ApplyRemoteNetworkState(
+            finalIsWhiteTurn,
+            finalWhiteHealth,
+            finalBlackHealth,
+            finalCardState,
+            finalCanDrawThisTurn
+        );
+    }
+
+    private void ApplyPromotionResult(object[] data)
+    {
+        if (PhotonNetwork.IsMasterClient || data == null || data.Length < 5)
+        {
+            return;
+        }
+
+        ResolveReferences();
+
+        int sequence = ToInt(data[0]);
+        bool isWhitePlayer = ToBool(data[1]);
+        BoardCoordinate coordinate =
+            new BoardCoordinate(ToInt(data[2]), ToInt(data[3]));
+        string pieceName = data[4] as string;
+        bool applied =
+            logicManager != null &&
+            logicManager.ApplyPromotionChoice(
+                coordinate,
+                isWhitePlayer,
+                pieceName,
+                true
+            );
+
+        if (logCommands)
+        {
+            Debug.Log(
+                $"[NetworkGame] Promotion result | Seq={sequence} | " +
+                $"Applied={applied} | Cell={coordinate} | Piece={pieceName}"
+            );
+        }
+    }
+
+    private void ApplyCardOnPieceResult(object[] data)
+    {
+        if (PhotonNetwork.IsMasterClient || data == null || data.Length < 5)
+        {
+            return;
+        }
+
+        ResolveReferences();
+
+        int sequence = ToInt(data[0]);
+        bool isWhitePlayer = ToBool(data[1]);
+        string cardId = data[2] as string;
+        BoardCoordinate target =
+            new BoardCoordinate(ToInt(data[3]), ToInt(data[4]));
+        bool applied =
+            cardHandManager != null &&
+            cardHandManager.PlayCardOnPieceAsAuthority(
+                isWhitePlayer,
+                cardId,
+                target,
+                false
+            );
+        bool playedVisual = false;
+        if (
+            applied &&
+            cardHandManager != null &&
+            !IsLocalPlayerSide(isWhitePlayer)
+        )
+        {
+            playedVisual =
+                cardHandManager.PlayUsingCardAnimationOnPiece(
+                    cardId,
+                    target
+                );
+        }
+
+        if (logCommands)
+        {
+            Debug.Log(
+                $"[NetworkGame] Card result | Seq={sequence} | " +
+                $"Applied={applied} | Visual={playedVisual} | " +
+                $"Card={cardId} | Target={target}"
+            );
+        }
+    }
+
+    private void ApplyFieldCardResult(object[] data)
+    {
+        if (PhotonNetwork.IsMasterClient || data == null || data.Length < 4)
+        {
+            return;
+        }
+
+        ResolveReferences();
+
+        int sequence = ToInt(data[0]);
+        bool isWhitePlayer = ToBool(data[1]);
+        string cardId = data[2] as string;
+        string fieldPlaceName = data[3] as string;
+        bool applied =
+            cardHandManager != null &&
+            cardHandManager.PlayFieldCardAsAuthority(
+                isWhitePlayer,
+                cardId,
+                fieldPlaceName,
+                false
+            );
+        bool playedVisual = false;
+        if (
+            applied &&
+            cardHandManager != null &&
+            !IsLocalPlayerSide(isWhitePlayer)
+        )
+        {
+            playedVisual =
+                cardHandManager.PlayUsingCardAnimationOnField(
+                    cardId,
+                    fieldPlaceName
+                );
+        }
+
+        if (logCommands)
+        {
+            Debug.Log(
+                $"[NetworkGame] Field card result | Seq={sequence} | " +
+                $"Applied={applied} | Visual={playedVisual} | " +
+                $"Card={cardId} | Place={fieldPlaceName}"
+            );
+        }
+    }
+
+    private void ApplyState(object[] data)
+    {
+        if (PhotonNetwork.IsMasterClient || data == null || data.Length < 5)
+        {
+            return;
+        }
+
+        receivedInitialNetworkState = true;
+        ResolveReferences();
+        logicManager?.ApplyRemoteNetworkState(
+            ToBool(data[0]),
+            ToInt(data[1]),
+            ToInt(data[2]),
+            data[3] as string,
+            ToBool(data[4])
+        );
+    }
+
+    private void ApplyCommandResult(object[] data)
+    {
+        if (data == null || data.Length < 4)
+        {
+            return;
+        }
+
+        NetworkGameCommandKind kind =
+            (NetworkGameCommandKind)ToInt(data[0]);
+        int sequence = ToInt(data[1]);
+        bool accepted = ToBool(data[2]);
+        string message = data[3] as string;
+
+        if (logCommands)
+        {
+            Debug.Log(
+                $"[NetworkGame] Result | Kind={kind} | " +
+                $"Seq={sequence} | Accepted={accepted} | {message}"
+            );
+        }
+
+        if (!accepted)
+        {
+            GameFlowUI.Show(GetAlarmMessageForRejectedCommand(kind, message));
+        }
+    }
+
+    private void AnnounceCommandResult(
+        NetworkGameCommandKind kind,
+        int sequence,
+        bool accepted,
+        string message
+    )
+    {
+        ApplyCommandResult(
+            new object[] { (int)kind, sequence, accepted, message }
+        );
+
+        if (IsOnline)
+        {
+            RaiseToOthers(
+                EventCommandResult,
+                new object[] { (int)kind, sequence, accepted, message }
+            );
+        }
+    }
+
+    private string GetAlarmMessageForRejectedCommand(
+        NetworkGameCommandKind kind,
+        string message
+    )
+    {
+        return kind switch
+        {
+            NetworkGameCommandKind.MovePiece => "非法走法",
+            NetworkGameCommandKind.DrawCard => "現在不能抽牌",
+            NetworkGameCommandKind.PlayCardOnPiece => "卡片不能裝備到該棋子",
+            NetworkGameCommandKind.PlayFieldCard => "場地卡不能放置",
+            NetworkGameCommandKind.RecycleCard => "現在不能回收卡片",
+            _ => string.IsNullOrWhiteSpace(message) ? "操作失敗" : message
+        };
+    }
+
+    private PlayerSide GetSideForActor(int actorNumber)
+    {
+        if (!PhotonNetwork.InRoom)
+        {
+            return PlayerSide.None;
+        }
+
+        Player master = PhotonNetwork.MasterClient;
+        if (master != null && actorNumber == master.ActorNumber)
+        {
+            return sideAssignmentReady
+                ? (masterPlaysWhite ? PlayerSide.White : PlayerSide.Black)
+                : hostSide;
+        }
+
+        return sideAssignmentReady
+            ? (masterPlaysWhite ? PlayerSide.Black : PlayerSide.White)
+            : firstRemoteClientSide;
     }
 
     private void ResolveReferences()
@@ -1346,6 +1535,41 @@ public class MultiplayerGameController : NetworkBehaviour
         }
     }
 
+    private void RefreshLocalCardUi()
+    {
+        if (cardHandManager != null && logicManager != null)
+        {
+            cardHandManager.Refresh(logicManager.isWhiteTurn);
+            cardHandManager.RefreshHealth();
+        }
+    }
+
+    private void ApplyLocalPlayerCameraPerspective()
+    {
+        CameraController cameraController =
+            FindFirstObjectByType<CameraController>();
+        if (cameraController != null)
+        {
+            cameraController.ApplyLocalPlayerPerspective();
+        }
+    }
+
+    private void BroadcastCurrentStateIfReady()
+    {
+        ResolveReferences();
+
+        if (logicManager == null)
+        {
+            return;
+        }
+
+        BroadcastState(
+            logicManager.isWhiteTurn,
+            logicManager.whiteHealth,
+            logicManager.blackHealth
+        );
+    }
+
     private void RestartGameAsAuthority()
     {
         if (isRestartingGame)
@@ -1354,7 +1578,13 @@ public class MultiplayerGameController : NetworkBehaviour
         }
 
         isRestartingGame = true;
-        hasFirstRemoteClientDeck = requiredPlayerCount <= 1;
+        sideAssignmentReady = false;
+        receivedInitialNetworkState = PhotonNetwork.IsMasterClient;
+        hasFirstRemoteClientDeck =
+            !PhotonNetwork.InRoom ||
+            PhotonNetwork.CurrentRoom == null ||
+            PhotonNetwork.CurrentRoom.PlayerCount < requiredPlayerCount;
+        submittedLocalDeck = false;
 
         if (!IsOnline)
         {
@@ -1362,48 +1592,14 @@ public class MultiplayerGameController : NetworkBehaviour
             return;
         }
 
-        if (NetworkManager == null || NetworkManager.SceneManager == null)
-        {
-            Debug.LogError(
-                "[NetworkGame] Cannot restart without NetworkSceneManager."
-            );
-            isRestartingGame = false;
-            return;
-        }
-
-        NetworkManager.SceneManager.LoadScene(
-            gameSceneName,
-            LoadSceneMode.Single
-        );
-        Debug.Log($"[NetworkGame][Restart] Loading scene: {gameSceneName}");
-    }
-
-    private void HandleClientDisconnected(ulong clientId)
-    {
-        if (NetworkManager == null)
+        if (!PhotonNetwork.IsMasterClient)
         {
             return;
         }
 
-        if (
-            NetworkManager.IsClient &&
-            clientId == NetworkManager.LocalClientId &&
-            !isReturningToStartScene &&
-            !isRestartingGame
-        )
-        {
-            Debug.Log("[NetworkGame][Disconnected] Returning to StartScene.");
-            LoadSceneLocal(startSceneName);
-            return;
-        }
-
-        if (NetworkManager.IsServer && clientId != NetworkManager.LocalClientId)
-        {
-            hasFirstRemoteClientDeck = false;
-            Debug.Log($"[NetworkGame][ClientDisconnected] Client={clientId}");
-            Debug.Log("[NetworkGame][DisconnectedRestart] Resetting game for reconnect.");
-            RestartGameAsAuthority();
-        }
+        TryAssignSidesIfReady();
+        PhotonNetwork.LoadLevel(gameSceneName);
+        Debug.Log($"[NetworkGame][Restart] Photon loading scene: {gameSceneName}");
     }
 
     private IEnumerator ShutdownAndLoadStartSceneRoutine()
@@ -1417,10 +1613,9 @@ public class MultiplayerGameController : NetworkBehaviour
 
         yield return new WaitForSecondsRealtime(0.1f);
 
-        NetworkManager manager = NetworkManager.Singleton;
-        if (manager != null && manager.IsListening)
+        if (PhotonNetwork.IsConnected)
         {
-            manager.Shutdown();
+            PhotonNetwork.Disconnect();
             yield return null;
         }
 
@@ -1435,6 +1630,46 @@ public class MultiplayerGameController : NetworkBehaviour
         }
 
         SceneManager.LoadScene(sceneName);
+    }
+
+    private void RaiseToMaster(byte eventCode, object payload)
+    {
+        RaiseEventOptions options = new RaiseEventOptions
+        {
+            Receivers = ReceiverGroup.MasterClient
+        };
+        PhotonNetwork.RaiseEvent(
+            eventCode,
+            payload,
+            options,
+            SendOptions.SendReliable
+        );
+    }
+
+    private void RaiseToOthers(byte eventCode, object payload)
+    {
+        RaiseEventOptions options = new RaiseEventOptions
+        {
+            Receivers = ReceiverGroup.Others
+        };
+        PhotonNetwork.RaiseEvent(
+            eventCode,
+            payload,
+            options,
+            SendOptions.SendReliable
+        );
+    }
+
+    private static int ToInt(object value)
+    {
+        return value is int intValue ? intValue : System.Convert.ToInt32(value);
+    }
+
+    private static bool ToBool(object value)
+    {
+        return value is bool boolValue
+            ? boolValue
+            : System.Convert.ToBoolean(value);
     }
 
     private int ConsumeSequence()
