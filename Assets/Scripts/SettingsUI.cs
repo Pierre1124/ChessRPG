@@ -1,4 +1,4 @@
-﻿using TMPro;
+using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
 
@@ -24,6 +24,9 @@ public class SettingsUI : MonoBehaviour
     private MultiplayerGameController multiplayerGameController;
     private Resolution[] availableResolutions;
 
+    /// <summary>
+    /// 取得對局引用、載入設定，並綁定音效、玩法及畫面控制項。
+    /// </summary>
     private void Start()
     {
         logicManager = FindFirstObjectByType<LogicManager>();
@@ -47,6 +50,9 @@ public class SettingsUI : MonoBehaviour
         BindDisplayControls();
     }
 
+    /// <summary>
+    /// 綁定音效開關與音量控制項。
+    /// </summary>
     private void BindAudioControls()
     {
         if (soundToggle != null && volumeSlider != null)
@@ -73,6 +79,9 @@ public class SettingsUI : MonoBehaviour
         }
     }
 
+    /// <summary>
+    /// 綁定遊戲操作與相機相關設定控制項。
+    /// </summary>
     private void BindGameplayControls()
     {
         if (cameraRotationToggle == null)
@@ -91,6 +100,9 @@ public class SettingsUI : MonoBehaviour
         });
     }
 
+    /// <summary>
+    /// 綁定解析度與視窗模式控制項。
+    /// </summary>
     private void BindDisplayControls()
     {
         availableResolutions =
@@ -117,6 +129,9 @@ public class SettingsUI : MonoBehaviour
         }
     }
 
+    /// <summary>
+    /// 依介面選擇套用畫面設定。
+    /// </summary>
     private void ApplyDisplaySettings(bool save)
     {
         int index = resolutionDropdown != null
@@ -137,6 +152,9 @@ public class SettingsUI : MonoBehaviour
         );
     }
 
+    /// <summary>
+    /// 將目前設定控制項的值保存到 PlayerPrefs。
+    /// </summary>
     private void SaveSettings()
     {
         if (soundToggle != null)
@@ -179,6 +197,9 @@ public class SettingsUI : MonoBehaviour
         PlayerPrefs.Save();
     }
 
+    /// <summary>
+    /// 讀取已儲存設定並套用到介面及遊戲元件。
+    /// </summary>
     private void LoadSettings()
     {
         if (soundToggle != null)
@@ -200,6 +221,9 @@ public class SettingsUI : MonoBehaviour
         }
     }
 
+    /// <summary>
+    /// 開啟設定面板並更新控制項內容。
+    /// </summary>
     public void ShowPanel()
     {
         if (panel != null)
@@ -208,6 +232,9 @@ public class SettingsUI : MonoBehaviour
         }
     }
 
+    /// <summary>
+    /// 關閉設定面板並返回原本的遊戲介面。
+    /// </summary>
     public void goBack()
     {
         if (panel != null)
@@ -226,6 +253,9 @@ public class SettingsUI : MonoBehaviour
         }
     }
 
+    /// <summary>
+    /// 顯示重新開始對局的確認介面。
+    /// </summary>
     public void ShowRestartConfirmation()
     {
         MultiplayerGameController controller =
@@ -245,6 +275,9 @@ public class SettingsUI : MonoBehaviour
         }
     }
 
+    /// <summary>
+    /// 依目前模式確認並執行重新開始要求。
+    /// </summary>
     public void ConfirmRestart()
     {
         MultiplayerGameController controller =
@@ -274,6 +307,9 @@ public class SettingsUI : MonoBehaviour
         }
     }
 
+    /// <summary>
+    /// 依連線狀態離開對局並返回主選單。
+    /// </summary>
     public void ReturnToStartMenu()
     {
         Time.timeScale = 1f;
@@ -290,6 +326,9 @@ public class SettingsUI : MonoBehaviour
         }
     }
 
+    /// <summary>
+    /// 關閉重新開始確認介面。
+    /// </summary>
     public void CancelRestart()
     {
         if (confirmationPopup != null)
@@ -298,6 +337,9 @@ public class SettingsUI : MonoBehaviour
         }
     }
 
+    /// <summary>
+    /// 取得並快取目前場景中的多人遊戲控制器。
+    /// </summary>
     private MultiplayerGameController GetMultiplayerGameController()
     {
         if (multiplayerGameController == null)

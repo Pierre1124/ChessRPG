@@ -1,4 +1,4 @@
-﻿using TMPro;
+using TMPro;
 using UnityEngine;
 
 public class GameOverUI : MonoBehaviour
@@ -9,6 +9,9 @@ public class GameOverUI : MonoBehaviour
     private LogicManager logicManager;
     private MultiplayerGameController multiplayerGameController;
 
+    /// <summary>
+    /// 取得對局及多人控制器，並隱藏初始結束畫面。
+    /// </summary>
     private void Start()
     {
         logicManager = FindFirstObjectByType<LogicManager>();
@@ -21,6 +24,9 @@ public class GameOverUI : MonoBehaviour
         }
     }
 
+    /// <summary>
+    /// 顯示遊戲結束結果並套用相關介面狀態。
+    /// </summary>
     public void ShowGameOver(string result)
     {
         if (panel != null)
@@ -34,6 +40,9 @@ public class GameOverUI : MonoBehaviour
         }
     }
 
+    /// <summary>
+    /// 隱藏遊戲結束介面。
+    /// </summary>
     public void HideGameOver()
     {
         if (panel != null)
@@ -42,6 +51,9 @@ public class GameOverUI : MonoBehaviour
         }
     }
 
+    /// <summary>
+    /// 依本機或連線模式提出重新開始要求。
+    /// </summary>
     public void RestartGame()
     {
         if (IsRestartBlocked())
@@ -62,6 +74,9 @@ public class GameOverUI : MonoBehaviour
         }
     }
 
+    /// <summary>
+    /// 判斷目前對局狀態是否禁止重新開始。
+    /// </summary>
     private bool IsRestartBlocked()
     {
         multiplayerGameController = GetMultiplayerGameController();
@@ -70,6 +85,9 @@ public class GameOverUI : MonoBehaviour
             !multiplayerGameController.CanGameplayOperate;
     }
 
+    /// <summary>
+    /// 取得並快取目前場景中的多人遊戲控制器。
+    /// </summary>
     private MultiplayerGameController GetMultiplayerGameController()
     {
         if (multiplayerGameController == null)

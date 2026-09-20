@@ -19,6 +19,9 @@ public class PieceAnimationPlayer : MonoBehaviour
 
     private Vector3 moveStartLocalOffset;
 
+    /// <summary>
+    /// 補齊棋子 Animator 與視覺根物件引用。
+    /// </summary>
     private void Awake()
     {
         if (animator == null)
@@ -33,6 +36,9 @@ public class PieceAnimationPlayer : MonoBehaviour
         }
     }
 
+    /// <summary>
+    /// 在一般更新完成後維持棋子視覺物件的定位。
+    /// </summary>
     private void LateUpdate()
     {
         if (visualRoot == null)
@@ -44,6 +50,9 @@ public class PieceAnimationPlayer : MonoBehaviour
             Vector3.Lerp(moveStartLocalOffset, Vector3.zero, moveBlend);
     }
 
+    /// <summary>
+    /// 觸發棋子的移動動畫。
+    /// </summary>
     public void PlayMove(Vector3 fromWorldPosition, Vector3 toWorldPosition)
     {
         if (visualRoot != null)
@@ -59,11 +68,17 @@ public class PieceAnimationPlayer : MonoBehaviour
         PlayTrigger(moveTrigger);
     }
 
+    /// <summary>
+    /// 觸發棋子的吃子動畫。
+    /// </summary>
     public void PlayCapture()
     {
         PlayTrigger(captureTrigger);
     }
 
+    /// <summary>
+    /// 播放被吃動畫並依設定延後銷毀物件。
+    /// </summary>
     public void PlayCapturedAndDestroy()
     {
         PlayTrigger(capturedTrigger);
@@ -80,6 +95,9 @@ public class PieceAnimationPlayer : MonoBehaviour
         Destroy(gameObject, capturedDestroyDelay);
     }
 
+    /// <summary>
+    /// 向 Animator 發送指定觸發參數。
+    /// </summary>
     private void PlayTrigger(string triggerName)
     {
         if (animator != null && !string.IsNullOrEmpty(triggerName))

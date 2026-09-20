@@ -18,6 +18,9 @@ public class CardDragHandler : MonoBehaviour,
     private Vector2 originalPivot;
     private float originalAlpha = 1f;
 
+    /// <summary>
+    /// 保存手牌管理器與卡牌資料，取得拖曳使用的 UI 元件。
+    /// </summary>
     public void Initialize(CardHandManager manager, CardDefinition card)
     {
         handManager = manager;
@@ -33,6 +36,9 @@ public class CardDragHandler : MonoBehaviour,
         }
     }
 
+    /// <summary>
+    /// 記錄拖曳起點並調整卡片的顯示層級與互動狀態。
+    /// </summary>
     public void OnBeginDrag(PointerEventData eventData)
     {
         if (handManager == null || rectTransform == null)
@@ -68,6 +74,9 @@ public class CardDragHandler : MonoBehaviour,
         }
     }
 
+    /// <summary>
+    /// 依游標位置更新拖曳中的卡片位置。
+    /// </summary>
     public void OnDrag(PointerEventData eventData)
     {
         if (rectTransform != null)
@@ -76,6 +85,9 @@ public class CardDragHandler : MonoBehaviour,
         }
     }
 
+    /// <summary>
+    /// 判斷卡片放置目標並提交操作；未成功放置時恢復手牌位置。
+    /// </summary>
     public void OnEndDrag(PointerEventData eventData)
     {
         if (canvasGroup != null)
@@ -123,6 +135,9 @@ public class CardDragHandler : MonoBehaviour,
         RestoreToHand();
     }
 
+    /// <summary>
+    /// 嘗試將拖曳中的場地卡放入有效的場地欄位。
+    /// </summary>
     private bool TryDropFieldCard(PointerEventData eventData)
     {
         if (
@@ -151,6 +166,9 @@ public class CardDragHandler : MonoBehaviour,
         return handManager.TryApplyFieldCardToPlace(cardDefinition, place);
     }
 
+    /// <summary>
+    /// 接收回收區操作並嘗試回收目前卡牌。
+    /// </summary>
     public bool RecycleFromDropZone()
     {
         if (handManager == null)
@@ -161,6 +179,9 @@ public class CardDragHandler : MonoBehaviour,
         return handManager.TryRecycleCard(cardDefinition);
     }
 
+    /// <summary>
+    /// 判斷游標是否落在卡片回收區。
+    /// </summary>
     private bool IsOverRecycleCard(PointerEventData eventData)
     {
         if (handManager == null || handManager.RecycleCardRoot == null)
@@ -176,6 +197,9 @@ public class CardDragHandler : MonoBehaviour,
         );
     }
 
+    /// <summary>
+    /// 將拖曳中的卡片還原到原本手牌階層與位置。
+    /// </summary>
     private void RestoreToHand()
     {
         if (originalParent == null || rectTransform == null)

@@ -34,6 +34,9 @@ public class Knight : Piece
     //==============================
     // 取得合法移動位置
     //==============================
+    /// <summary>
+    /// 依棋子的基本走法列出候選目的地；王受將軍的限制由合法走法檢查處理。
+    /// </summary>
     protected override List<Vector2> GetPotentialMoves()
     {
         // 合法移動列表
@@ -87,9 +90,12 @@ public class Knight : Piece
     // 取得攻擊範圍
     // 用於將軍判定
     //==============================
+    /// <summary>
+    /// 列出棋子攻擊的格子，供將軍與王車易位判定使用；攻擊線保留第一個阻擋格。
+    /// </summary>
     public override List<Vector2> GetAttackedFields()
     {
-        
+
         if (UsesDefinitionRules)
         {
             return GetDefinitionAttackedFields();

@@ -11,6 +11,9 @@ public class StatusInfoTooltip : MonoBehaviour
     [SerializeField, Min(1f)] private float minHeight = 64f;
     [SerializeField] private Vector2 mouseOffset = new Vector2(16f, 16f);
 
+    /// <summary>
+    /// 依提示文字計算面板尺寸，再定位到指定螢幕位置旁。
+    /// </summary>
     public void Show(string content, Vector2 screenPosition)
     {
         if (panel == null || infoText == null || string.IsNullOrEmpty(content))
@@ -44,11 +47,17 @@ public class StatusInfoTooltip : MonoBehaviour
         PlaceBesideMouse(screenPosition);
     }
 
+    /// <summary>
+    /// 停用狀態提示物件。
+    /// </summary>
     public void Hide()
     {
         gameObject.SetActive(false);
     }
 
+    /// <summary>
+    /// 將提示面板放在游標旁並依畫面範圍調整位置。
+    /// </summary>
     private void PlaceBesideMouse(Vector2 screenPosition)
     {
         RectTransform parentRect = panel.parent as RectTransform;

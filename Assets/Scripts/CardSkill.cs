@@ -10,6 +10,9 @@ public class CardSkillContext
     public CardEffectTrigger trigger;
     public int amount;
 
+    /// <summary>
+    /// 建立技能執行情境並保存對局、擁有者與效果來源。
+    /// </summary>
     public CardSkillContext(
         LogicManager logic,
         Piece owner,
@@ -34,8 +37,14 @@ public sealed class CardSkill
     public static readonly CardSkill Shared = new CardSkill();
     public static CardSkill Empty { get { return Shared; } }
 
+    /// <summary>
+    /// 建立共用技能物件；私有建構式限制外部另建實例。
+    /// </summary>
     private CardSkill() { }
 
+    /// <summary>
+    /// 依卡號建立共用技能設定；先清除可重建的效果、狀態與動畫資料。
+    /// </summary>
     public void ConfigureCard(CardDefinition card)
     {
         if (card == null) return;
@@ -85,6 +94,9 @@ public sealed class CardSkill
         }
     }
 
+    /// <summary>
+    /// 設定場地卡的傷害標籤，保留場地效果分類。
+    /// </summary>
     private static void ConfigureFieldTag(
         CardDefinition card,
         DamageTag tag
@@ -93,6 +105,9 @@ public sealed class CardSkill
         card.damageTags = tag | DamageTag.Field;
     }
 
+    /// <summary>
+    /// 設定 J01 卡牌的狀態、效果或特殊移動規則。
+    /// </summary>
     private static void ConfigureJ01(CardDefinition card)
     {
         AddStatus(card, StatusKind.Buff);
@@ -127,6 +142,9 @@ public sealed class CardSkill
         };
     }
 
+    /// <summary>
+    /// 設定 J02 卡牌的狀態、效果或特殊移動規則。
+    /// </summary>
     private static void ConfigureJ02(CardDefinition card)
     {
         StatusDefinition status = AddStatus(card, StatusKind.Buff);
@@ -139,6 +157,9 @@ public sealed class CardSkill
         );
     }
 
+    /// <summary>
+    /// 設定 J04 卡牌的狀態、效果或特殊移動規則。
+    /// </summary>
     private static void ConfigureJ04(CardDefinition card)
     {
         card.damageTags = DamageTag.Electric | DamageTag.Skill;
@@ -153,6 +174,9 @@ public sealed class CardSkill
         );
     }
 
+    /// <summary>
+    /// 設定 J05 卡牌的狀態、效果或特殊移動規則。
+    /// </summary>
     private static void ConfigureJ05(CardDefinition card)
     {
         StatusDefinition status = AddStatus(card, StatusKind.Buff);
@@ -166,6 +190,9 @@ public sealed class CardSkill
         AddDamageAnimation(card, 1f);
     }
 
+    /// <summary>
+    /// 設定 J07 卡牌的狀態、效果或特殊移動規則。
+    /// </summary>
     private static void ConfigureJ07(CardDefinition card)
     {
         card.damageTags = DamageTag.Fire | DamageTag.Skill;
@@ -181,6 +208,9 @@ public sealed class CardSkill
         AddDamageAnimation(card, 2f);
     }
 
+    /// <summary>
+    /// 設定 J08 卡牌的狀態、效果或特殊移動規則。
+    /// </summary>
     private static void ConfigureJ08(CardDefinition card)
     {
         StatusDefinition status = AddRechargeStatus(card, StatusKind.Buff);
@@ -193,6 +223,9 @@ public sealed class CardSkill
         );
     }
 
+    /// <summary>
+    /// 設定 J11 卡牌的狀態、效果或特殊移動規則。
+    /// </summary>
     private static void ConfigureJ11(CardDefinition card)
     {
         StatusDefinition status = AddStatus(card, StatusKind.Aura);
@@ -205,22 +238,34 @@ public sealed class CardSkill
         );
     }
 
+    /// <summary>
+    /// 設定 J10 卡牌的狀態、效果或特殊移動規則。
+    /// </summary>
     private static void ConfigureJ10(CardDefinition card)
     {
         card.damageTags = DamageTag.LastWill | DamageTag.Skill;
         AddStatus(card, StatusKind.Aura);
     }
 
+    /// <summary>
+    /// 設定 E04 卡牌的狀態、效果或特殊移動規則。
+    /// </summary>
     private static void ConfigureE04(CardDefinition card)
     {
         card.damageTags = DamageTag.Fire | DamageTag.Event;
     }
 
+    /// <summary>
+    /// 設定 E03 卡牌的狀態、效果或特殊移動規則。
+    /// </summary>
     private static void ConfigureE03(CardDefinition card)
     {
         card.damageTags = DamageTag.Cost | DamageTag.Event;
     }
 
+    /// <summary>
+    /// 設定 J12 卡牌的狀態、效果或特殊移動規則。
+    /// </summary>
     private static void ConfigureJ12(CardDefinition card)
     {
         StatusDefinition status = AddStatus(card, StatusKind.Aura);
@@ -233,6 +278,9 @@ public sealed class CardSkill
         );
     }
 
+    /// <summary>
+    /// 設定 E12 卡牌的狀態、效果或特殊移動規則。
+    /// </summary>
     private static void ConfigureE12(CardDefinition card)
     {
         StatusDefinition status = AddStatus(card, StatusKind.Buff);
@@ -247,6 +295,9 @@ public sealed class CardSkill
         );
     }
 
+    /// <summary>
+    /// 設定 E06 卡牌的狀態、效果或特殊移動規則。
+    /// </summary>
     private static void ConfigureE06(CardDefinition card)
     {
         StatusDefinition status = AddStatus(card, StatusKind.Debuff);
@@ -267,6 +318,9 @@ public sealed class CardSkill
         );
     }
 
+    /// <summary>
+    /// 設定 E05 卡牌的狀態、效果或特殊移動規則。
+    /// </summary>
     private static void ConfigureE05(CardDefinition card)
     {
         card.damageTags =
@@ -283,6 +337,9 @@ public sealed class CardSkill
         );
     }
 
+    /// <summary>
+    /// 設定 E07 卡牌的狀態、效果或特殊移動規則。
+    /// </summary>
     private static void ConfigureE07(CardDefinition card)
     {
         StatusDefinition status = AddStatus(card, StatusKind.Buff);
@@ -296,6 +353,9 @@ public sealed class CardSkill
         );
     }
 
+    /// <summary>
+    /// 設定 E08 卡牌的狀態、效果或特殊移動規則。
+    /// </summary>
     private static void ConfigureE08(CardDefinition card)
     {
         StatusDefinition status = AddStatus(card, StatusKind.Buff);
@@ -310,6 +370,9 @@ public sealed class CardSkill
         effect.operation = CardValueOperation.Set;
     }
 
+    /// <summary>
+    /// 設定 E09 卡牌的狀態、效果或特殊移動規則。
+    /// </summary>
     private static void ConfigureE09(CardDefinition card)
     {
         card.damageTags =
@@ -334,6 +397,9 @@ public sealed class CardSkill
         );
     }
 
+    /// <summary>
+    /// 設定 E10 卡牌的狀態、效果或特殊移動規則。
+    /// </summary>
     private static void ConfigureE10(CardDefinition card)
     {
         card.damageTags = DamageTag.Cost | DamageTag.Event;
@@ -348,6 +414,9 @@ public sealed class CardSkill
         );
     }
 
+    /// <summary>
+    /// 設定 E11 卡牌的狀態、效果或特殊移動規則。
+    /// </summary>
     private static void ConfigureE11(CardDefinition card)
     {
         card.damageTags =
@@ -364,6 +433,9 @@ public sealed class CardSkill
         );
     }
 
+    /// <summary>
+    /// 建立並登錄卡牌狀態定義。
+    /// </summary>
     private static StatusDefinition AddStatus(CardDefinition card, StatusKind kind)
     {
         StatusDefinition status = new StatusDefinition
@@ -377,6 +449,9 @@ public sealed class CardSkill
         return status;
     }
 
+    /// <summary>
+    /// 建立可依指定時機補充次數的狀態定義。
+    /// </summary>
     private static StatusDefinition AddRechargeStatus(
         CardDefinition card,
         StatusKind kind
@@ -391,6 +466,9 @@ public sealed class CardSkill
         return status;
     }
 
+    /// <summary>
+    /// 將指定觸發時機與數值操作加入效果清單。
+    /// </summary>
     private static CardEffectData AddEffect(
         StatusDefinition status,
         CardEffectTrigger trigger,
@@ -407,6 +485,9 @@ public sealed class CardSkill
         return effect;
     }
 
+    /// <summary>
+    /// 將傷害動畫設定加入卡牌定義。
+    /// </summary>
     private static void AddDamageAnimation(CardDefinition card, float lifetime)
     {
         card.animations.Add(new CardAnimationData
@@ -422,6 +503,9 @@ public sealed class CardSkill
         });
     }
 
+    /// <summary>
+    /// 處理卡牌裝備到棋子時的特殊規則。
+    /// </summary>
     public void OnEquip(CardSkillContext context)
     {
         switch (GetId(context))
@@ -441,8 +525,14 @@ public sealed class CardSkill
         }
     }
 
+    /// <summary>
+    /// 保留卸除卡牌的技能掛點；目前不執行額外效果。
+    /// </summary>
     public void OnUnequip(CardSkillContext context) { }
 
+    /// <summary>
+    /// 依事件卡卡號執行對應的即時效果。
+    /// </summary>
     public bool ResolveEvent(CardSkillContext context)
     {
         if (!IsValid(context) || context.sourceCard == null ||
@@ -561,6 +651,9 @@ public sealed class CardSkill
         return true;
     }
 
+    /// <summary>
+    /// 將事件卡的狀態套用到指定棋子。
+    /// </summary>
     private static bool ApplyEventStatus(
         CardDefinition card,
         Piece target,
@@ -584,6 +677,9 @@ public sealed class CardSkill
         return true;
     }
 
+    /// <summary>
+    /// 將事件卡狀態套用到符合條件的棋盤棋子。
+    /// </summary>
     private static int ApplyEventStatusToBoard(
         LogicManager logic,
         CardDefinition card
@@ -610,6 +706,9 @@ public sealed class CardSkill
         return appliedCount;
     }
 
+    /// <summary>
+    /// 依卡牌特殊規則判斷是否可套用到目前目標。
+    /// </summary>
     public bool CanApply(CardSkillContext context)
     {
         switch (GetId(context))
@@ -646,6 +745,9 @@ public sealed class CardSkill
         }
     }
 
+    /// <summary>
+    /// 取得效果擁有者所屬玩家的目前血量。
+    /// </summary>
     private int GetOwnerPlayerHealth(CardSkillContext context)
     {
         if (!IsValid(context)) return 0;
@@ -654,6 +756,9 @@ public sealed class CardSkill
             : context.logic.blackHealth;
     }
 
+    /// <summary>
+    /// 取得目前回合玩家的血量。
+    /// </summary>
     private int GetCurrentPlayerHealth(CardSkillContext context)
     {
         if (!IsValid(context)) return 0;
@@ -662,6 +767,9 @@ public sealed class CardSkill
             : context.logic.blackHealth;
     }
 
+    /// <summary>
+    /// 依吃子規則轉移事件卡建立的狀態。
+    /// </summary>
     public void TransferEventStatusesOnCapture(Piece attacker, Piece target)
     {
         if (attacker == null || target == null) return;
@@ -700,11 +808,26 @@ public sealed class CardSkill
         );
     }
 
+    /// <summary>
+    /// 保留卡牌回合開始的技能掛點；目前不執行額外效果。
+    /// </summary>
     public void OnTurnStarted(CardSkillContext context) { }
+    /// <summary>
+    /// 保留卡牌回合結束的技能掛點；目前不執行額外效果。
+    /// </summary>
     public void OnTurnEnded(CardSkillContext context) { }
+    /// <summary>
+    /// 保留卡牌擁有者移動後的技能掛點；目前不執行額外效果。
+    /// </summary>
     public void OnOwnerMoved(CardSkillContext context) { }
+    /// <summary>
+    /// 保留王車易位後的技能掛點；目前不執行額外效果。
+    /// </summary>
     public void OnOwnerCastled(CardSkillContext context) { }
 
+    /// <summary>
+    /// 處理卡牌擁有者被吃掉時的特殊技能。
+    /// </summary>
     public void OnOwnerCaptured(CardSkillContext context, Piece attacker)
     {
         switch (GetId(context))
@@ -731,6 +854,9 @@ public sealed class CardSkill
         }
     }
 
+    /// <summary>
+    /// 處理卡牌擁有者吃掉其他棋子時的特殊技能。
+    /// </summary>
     public void OnOwnerCaptures(CardSkillContext context, Piece capturedPiece)
     {
         if (GetId(context) != "J10" || context.owner.CardRuntime == null) return;
@@ -741,6 +867,9 @@ public sealed class CardSkill
         );
     }
 
+    /// <summary>
+    /// 處理友軍棋子被吃掉時的特殊技能。
+    /// </summary>
     public void OnFriendlyPieceCaptured(
         CardSkillContext context,
         Piece capturedPiece,
@@ -755,18 +884,30 @@ public sealed class CardSkill
         );
     }
 
+    /// <summary>
+    /// 保留造成傷害時的技能掛點；目前不執行額外效果。
+    /// </summary>
     public void OnOwnerDealsDamage(CardSkillContext context) { }
 
+    /// <summary>
+    /// 依卡牌特殊技能修正治療量。
+    /// </summary>
     public int ModifyHealAmount(CardSkillContext context, int currentValue)
     {
         return GetId(context) == "J09" ? 0 : currentValue;
     }
 
+    /// <summary>
+    /// 保留特殊攻擊修正掛點；目前原樣回傳傳入的攻擊值。
+    /// </summary>
     public int ModifyAttack(CardSkillContext context, int currentValue)
     {
         return currentValue;
     }
 
+    /// <summary>
+    /// 依卡牌特殊技能修正友軍攻擊力。
+    /// </summary>
     public int ModifyFriendlyAttack(CardSkillContext context, int currentValue)
     {
         switch (GetId(context))
@@ -787,6 +928,9 @@ public sealed class CardSkill
         }
     }
 
+    /// <summary>
+    /// 依卡牌特殊技能修正承受傷害。
+    /// </summary>
     public int ModifyDamageTaken(CardSkillContext context, int currentValue)
     {
         if (GetId(context) != "J06" || context == null ||
@@ -809,6 +953,9 @@ public sealed class CardSkill
         return result;
     }
 
+    /// <summary>
+    /// 判斷指定棋子是否位於中心棋子的九宮格範圍。
+    /// </summary>
     public static bool IsInNineGrid(Piece center, Piece target)
     {
         if (center == null || target == null || center.IsWhite != target.IsWhite)
@@ -827,11 +974,17 @@ public sealed class CardSkill
         return deltaX <= 1 && deltaY <= 1;
     }
 
+    /// <summary>
+    /// 保留玩家承傷修正掛點；目前原樣回傳傳入的傷害值。
+    /// </summary>
     public int ModifyOwnerPlayerDamage(CardSkillContext context, int currentValue)
     {
         return currentValue;
     }
 
+    /// <summary>
+    /// 取得卡牌提供的棋子移動規則。
+    /// </summary>
     public PieceDefinition GetMoveDefinition(CardSkillContext context)
     {
         return GetId(context) == "J01" && context.sourceCard != null
@@ -839,6 +992,9 @@ public sealed class CardSkill
             : null;
     }
 
+    /// <summary>
+    /// 檢查 Bloody Mary 卡牌的特殊施放條件。
+    /// </summary>
     private bool CanApplyBloodyMary(CardSkillContext context)
     {
         if (!IsValid(context)) return false;
@@ -850,11 +1006,17 @@ public sealed class CardSkill
         return fullHealth && noFriendlyCaptured;
     }
 
+    /// <summary>
+    /// 檢查目前技能情境或目標是否具備必要資料。
+    /// </summary>
     private bool IsValid(CardSkillContext context)
     {
         return context != null && context.logic != null && context.owner != null;
     }
 
+    /// <summary>
+    /// 取得技能情境中的來源卡號。
+    /// </summary>
     private string GetId(CardSkillContext context)
     {
         return context != null && context.sourceCard != null
@@ -862,6 +1024,9 @@ public sealed class CardSkill
             : string.Empty;
     }
 
+    /// <summary>
+    /// 產生棋子名稱與位置的辨識文字。
+    /// </summary>
     private static string DescribePiece(Piece piece)
     {
         if (piece == null) return "None";
@@ -873,11 +1038,17 @@ public sealed class CardSkill
 
 public static class BoardFieldCardSkillUtility
 {
+    /// <summary>
+    /// 判斷是否存在符合場地連線條件的同列或同行城堡。
+    /// </summary>
     public static bool HasAlignedRookPartner(CardSkillContext context)
     {
         return FindAlignedRookPartner(context) != null;
     }
 
+    /// <summary>
+    /// 將場地連線相關卡牌套用到符合條件的城堡夥伴。
+    /// </summary>
     public static void EquipAlignedRookPartner(CardSkillContext context, string logName)
     {
         if (!IsValid(context)) return;
@@ -896,6 +1067,9 @@ public static class BoardFieldCardSkillUtility
         context.logic.RefreshBoardFieldEffects();
     }
 
+    /// <summary>
+    /// 尋找與來源城堡對齊且路徑符合條件的友方城堡。
+    /// </summary>
     private static Piece FindAlignedRookPartner(CardSkillContext context)
     {
         if (!IsValid(context)) return null;
@@ -940,6 +1114,9 @@ public static class BoardFieldCardSkillUtility
         return bestPartner;
     }
 
+    /// <summary>
+    /// 檢查兩個棋盤位置之間是否沒有棋子阻擋。
+    /// </summary>
     private static bool IsPathClear(LogicManager logic, Vector2 start, Vector2 end)
     {
         Vector2Int startCell = Vector2Int.RoundToInt(start);
@@ -957,12 +1134,18 @@ public static class BoardFieldCardSkillUtility
         return true;
     }
 
+    /// <summary>
+    /// 檢查目前技能情境或目標是否具備必要資料。
+    /// </summary>
     private static bool IsValid(CardSkillContext context)
     {
         return context != null && context.logic != null &&
             context.owner is Rook && context.sourceCard != null;
     }
 
+    /// <summary>
+    /// 產生物件的辨識文字，供紀錄或偵錯訊息使用。
+    /// </summary>
     private static string Describe(Piece piece)
     {
         if (piece == null) return "None";

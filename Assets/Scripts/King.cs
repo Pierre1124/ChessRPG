@@ -14,9 +14,12 @@ public class King : Piece
     //==============================
     // 取得合法移動
     //==============================
+    /// <summary>
+    /// 篩選棋子的合法走法，排除移動後己方國王仍受攻擊的位置。
+    /// </summary>
     public override List<Vector2> GetLegalMoves()
     {
-        
+
         if (UsesDefinitionRules)
         {
             return base.GetLegalMoves();
@@ -70,6 +73,9 @@ public class King : Piece
     //==============================
     // 是否可短易位（右側）
     //==============================
+    /// <summary>
+    /// 檢查王翼易位的移動紀錄、路徑與受攻擊條件。
+    /// </summary>
     private bool CanCastleKingside()
     {
         // 國王所在列
@@ -115,6 +121,9 @@ public class King : Piece
     //==============================
     // 是否可長易位（左側）
     //==============================
+    /// <summary>
+    /// 檢查后翼易位的移動紀錄、路徑與受攻擊條件。
+    /// </summary>
     private bool CanCastleQueenside()
     {
         int y = (int)GetCoordinates().y;
@@ -160,9 +169,12 @@ public class King : Piece
     //==============================
     // 移動國王
     //==============================
+    /// <summary>
+    /// 執行國王移動，標準走法下同時處理王車易位的城堡移動。
+    /// </summary>
     public override void Move(Vector2 newPosition)
     {
-        
+
         if (UsesDefinitionRules)
         {
             base.Move(newPosition);
@@ -229,6 +241,9 @@ public class King : Piece
     //==============================
     // 檢查國王是否被將軍
     //==============================
+    /// <summary>
+    /// 檢查國王移動相關位置是否受敵方攻擊。
+    /// </summary>
     public bool CheckForChecks()
     {
         // 目前座標
@@ -261,6 +276,9 @@ public class King : Piece
     //==============================
     // 取得理論可移動位置
     //==============================
+    /// <summary>
+    /// 依棋子的基本走法列出候選目的地；王受將軍的限制由合法走法檢查處理。
+    /// </summary>
     protected override List<Vector2> GetPotentialMoves()
     {
         // 合法移動列表
@@ -331,9 +349,12 @@ public class King : Piece
     //==============================
     // 取得攻擊範圍
     //==============================
+    /// <summary>
+    /// 列出棋子攻擊的格子，供將軍與王車易位判定使用；攻擊線保留第一個阻擋格。
+    /// </summary>
     public override List<Vector2> GetAttackedFields()
     {
-        
+
         if (UsesDefinitionRules)
         {
             return GetDefinitionAttackedFields();

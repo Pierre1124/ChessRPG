@@ -15,6 +15,9 @@ public class FieldCardPlace : MonoBehaviour
         get { return activeCard; }
     }
 
+    /// <summary>
+    /// 取得場地引用、建立執行期材質並刷新初始顯示。
+    /// </summary>
     private void Awake()
     {
         ResolveReferences();
@@ -22,11 +25,17 @@ public class FieldCardPlace : MonoBehaviour
         RefreshVisual();
     }
 
+    /// <summary>
+    /// 編輯器重設元件時補齊場地引用。
+    /// </summary>
     private void Reset()
     {
         ResolveReferences();
     }
 
+    /// <summary>
+    /// 將場地卡指定到此欄位並更新顯示。
+    /// </summary>
     public void SetCard(CardDefinition card)
     {
         activeCard = card;
@@ -34,11 +43,17 @@ public class FieldCardPlace : MonoBehaviour
         RefreshVisual();
     }
 
+    /// <summary>
+    /// 清除此場地欄位的卡牌與顯示內容。
+    /// </summary>
     public void Clear()
     {
         SetCard(null);
     }
 
+    /// <summary>
+    /// 顯示此場地卡的資訊提示。
+    /// </summary>
     public void ShowInfo(Vector2 screenPosition)
     {
         if (statusTooltip == null || activeCard == null)
@@ -49,6 +64,9 @@ public class FieldCardPlace : MonoBehaviour
         statusTooltip.Show(BuildTooltipContent(activeCard), screenPosition);
     }
 
+    /// <summary>
+    /// 隱藏此場地卡的資訊提示。
+    /// </summary>
     public void HideInfo()
     {
         if (statusTooltip != null)
@@ -57,6 +75,9 @@ public class FieldCardPlace : MonoBehaviour
         }
     }
 
+    /// <summary>
+    /// 回應場地欄位點擊並顯示資訊。
+    /// </summary>
     private void OnMouseDown()
     {
         if (InputManager.IsPointerOverUiStatic())
@@ -67,6 +88,9 @@ public class FieldCardPlace : MonoBehaviour
         ShowInfo(Input.mousePosition);
     }
 
+    /// <summary>
+    /// 補齊此元件所需的場景與 UI 引用。
+    /// </summary>
     private void ResolveReferences()
     {
         if (targetRenderer == null)
@@ -82,6 +106,9 @@ public class FieldCardPlace : MonoBehaviour
         }
     }
 
+    /// <summary>
+    /// 確保場地顯示使用可獨立修改的執行期材質。
+    /// </summary>
     private void EnsureRuntimeMaterial()
     {
         if (targetRenderer == null || runtimeMaterial != null)
@@ -100,6 +127,9 @@ public class FieldCardPlace : MonoBehaviour
         targetRenderer.material = runtimeMaterial;
     }
 
+    /// <summary>
+    /// 依目前場地卡更新圖像與材質顯示。
+    /// </summary>
     private void RefreshVisual()
     {
         if (runtimeMaterial == null)
@@ -125,6 +155,9 @@ public class FieldCardPlace : MonoBehaviour
         );
     }
 
+    /// <summary>
+    /// 將場地卡貼圖套用到材質支援的貼圖屬性。
+    /// </summary>
     private void SetMaterialTexture(Texture texture)
     {
         if (runtimeMaterial.HasProperty("_BaseMap"))
@@ -140,6 +173,9 @@ public class FieldCardPlace : MonoBehaviour
         runtimeMaterial.mainTexture = texture;
     }
 
+    /// <summary>
+    /// 將顏色套用到材質支援的色彩屬性。
+    /// </summary>
     private void SetMaterialColor(Color color)
     {
         if (runtimeMaterial.HasProperty("_BaseColor"))
@@ -155,6 +191,9 @@ public class FieldCardPlace : MonoBehaviour
         runtimeMaterial.color = color;
     }
 
+    /// <summary>
+    /// 組合場地卡的名稱與效果說明。
+    /// </summary>
     private string BuildTooltipContent(CardDefinition card)
     {
         return $"{card.id} {card.cardName}\n" +
@@ -164,6 +203,9 @@ public class FieldCardPlace : MonoBehaviour
             "來源：場地卡區";
     }
 
+    /// <summary>
+    /// 回傳可用文字，沒有內容時使用既有的空值提示。
+    /// </summary>
     private string GetTextOrNone(string value)
     {
         return string.IsNullOrWhiteSpace(value) ? "無" : value;

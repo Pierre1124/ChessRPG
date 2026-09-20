@@ -3,44 +3,53 @@ using UnityEngine;
 public class Square : MonoBehaviour
 {
     //==============================
-    // ®æ¤lªº Renderer
-    // ¥Î¨Ó§ïÅÜ®æ¤lÃC¦â
+    // æ ¼å­çš„ Renderer
+    // ç”¨ä¾†æ”¹è®Šæ ¼å­é¡è‰²
     //==============================
     private Renderer squareRenderer;
 
     //==============================
-    // ­ì¥»ÃC¦â
-    // ¥Î©ó¨ú®ø°ª«G®É«ì´_
+    // åŸæœ¬é¡è‰²
+    // ç”¨æ–¼å–æ¶ˆé«˜äº®æ™‚æ¢å¾©
     //==============================
     private Color originalColor;
 
     //==============================
-    // ªì©l¤Æ
+    // åˆå§‹åŒ–
     //==============================
+    /// <summary>
+    /// å–å¾—æ£‹ç›¤æ ¼ Renderer ä¸¦è¨˜éŒ„åŸå§‹é¡è‰²ã€‚
+    /// </summary>
     void Start()
     {
-        // ¨ú±o Renderer ¤¸¥ó
+        // å–å¾— Renderer å…ƒä»¶
         squareRenderer = GetComponent<Renderer>();
 
-        // °O¿ıªì©lÃC¦â
+        // è¨˜éŒ„åˆå§‹é¡è‰²
         originalColor = squareRenderer.material.color;
     }
 
     //==============================
-    // °ª«G®æ¤l
+    // é«˜äº®æ ¼å­
     //==============================
+    /// <summary>
+    /// å°‡æ£‹ç›¤æ ¼çš„æè³ªé¡è‰²è¨­ç‚ºæŒ‡å®šé«˜äº®è‰²ã€‚
+    /// </summary>
     public void Highlight(Color highlightColor)
     {
-        // ­×§ï®æ¤lÃC¦â
+        // ä¿®æ”¹æ ¼å­é¡è‰²
         squareRenderer.material.color = highlightColor;
     }
 
     //==============================
-    // ¨ú®ø°ª«G
+    // å–æ¶ˆé«˜äº®
     //==============================
+    /// <summary>
+    /// å°‡æ£‹ç›¤æ ¼çš„æè³ªé¡è‰²é‚„åŸç‚ºå•Ÿå‹•æ™‚è¨˜éŒ„çš„é¡è‰²ã€‚
+    /// </summary>
     public void Unhighlight()
     {
-        // «ì´_­ì¥»ÃC¦â
+        // æ¢å¾©åŸæœ¬é¡è‰²
         squareRenderer.material.color = originalColor;
     }
 }

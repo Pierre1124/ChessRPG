@@ -127,8 +127,14 @@ public class CardEffectData
     public int duration;
     [Min(0)] public int range;
 
+    /// <summary>
+    /// 建立卡牌效果資料，供序列化或以指定觸發、目標與數值初始化。
+    /// </summary>
     public CardEffectData() { }
 
+    /// <summary>
+    /// 建立卡牌效果資料，供序列化或以指定觸發、目標與數值初始化。
+    /// </summary>
     public CardEffectData(
         CardEffectTrigger trigger,
         CardEffectType effectType,
@@ -160,6 +166,9 @@ public class StatusDefinition
     public CardEffectTrigger removeTrigger = CardEffectTrigger.AfterOwnerMoves;
     public List<CardEffectData> effects = new List<CardEffectData>();
 
+    /// <summary>
+    /// 判斷狀態定義是否包含指定觸發時機的效果。
+    /// </summary>
     public bool HasTrigger(CardEffectTrigger trigger)
     {
         return effects.Exists(effect => effect != null && effect.trigger == trigger);
@@ -228,11 +237,17 @@ public class CardDefinition
     public CardSkill skill { get { return CardSkill.Shared; } }
     public CardDefinition Api { get { return this; } }
 
+    /// <summary>
+    /// 檢查卡牌基本目標限制與特殊技能條件。
+    /// </summary>
     public bool CanApplyTo(Piece target)
     {
         return CanApplyTo(target, UnityEngine.Object.FindFirstObjectByType<LogicManager>());
     }
 
+    /// <summary>
+    /// 檢查卡牌基本目標限制與特殊技能條件。
+    /// </summary>
     public bool CanApplyTo(Piece target, LogicManager logicManager)
     {
         if (target == null || !MatchesTarget(target)) return false;
@@ -241,6 +256,9 @@ public class CardDefinition
         return skill.CanApply(new CardSkillContext(logicManager, target, this));
     }
 
+    /// <summary>
+    /// 檢查卡牌類型、棋子種類與目標分類的基本限制。
+    /// </summary>
     public bool BaseCanApplyTo(Piece target, LogicManager logicManager)
     {
         return target != null && MatchesTarget(target) &&
@@ -248,11 +266,17 @@ public class CardDefinition
                 this, target, logicManager, CardConditionTiming.OnPlay);
     }
 
+    /// <summary>
+    /// 判斷卡牌是否允許指定棋子轉職。
+    /// </summary>
     public bool CanPromote(Piece target)
     {
         return pawnCanPromote && target is Pawn && CanApplyTo(target);
     }
 
+    /// <summary>
+    /// 判斷棋子是否符合卡牌的目標種類。
+    /// </summary>
     private bool MatchesTarget(Piece target)
     {
         CardTargetType type = CardTargetType.None;
@@ -279,6 +303,9 @@ public class DamageContext
     public DamageTag tags;
     public Sprite visualIcon;
 
+    /// <summary>
+    /// 判斷目前傷害情境是否含有指定標籤。
+    /// </summary>
     public bool HasTag(DamageTag tag)
     {
         return (tags & tag) == tag;
@@ -294,6 +321,9 @@ public class CardRuntimeState
     public int skillCounterA;
     public int skillCounterB;
 
+    /// <summary>
+    /// 建立指定卡牌的執行期狀態。
+    /// </summary>
     public CardRuntimeState(CardDefinition card) { definition = card; }
 }
 
@@ -310,6 +340,9 @@ public class StatusRuntime
     public bool hasSourcePlayer;
     public bool sourcePlayerIsWhite;
 
+    /// <summary>
+    /// 依狀態定義初始化擁有者、來源、持續回合與使用次數。
+    /// </summary>
     public StatusRuntime(StatusDefinition definition, Piece owner, Piece source, bool fromCard)
     {
         this.definition = definition;
@@ -329,6 +362,9 @@ public class StatusRuntime
 
     public bool HasCharges { get { return !UsesCharges || charges > 0; } }
 
+    /// <summary>
+    /// 依狀態定義補充可用次數。
+    /// </summary>
     public void Recharge(CardEffectTrigger trigger)
     {
         if (definition == null || !UsesCharges ||
@@ -336,6 +372,9 @@ public class StatusRuntime
         charges = Mathf.Min(definition.maxCharges, charges + definition.rechargeAmount);
     }
 
+    /// <summary>
+    /// 依狀態的次數限制消耗一次效果使用額度。
+    /// </summary>
     public bool ConsumeIfNeeded()
     {
         if (definition == null || !definition.consumeChargeOnTrigger || !UsesCharges)
@@ -360,6 +399,9 @@ public class CardAnimationContext
 
 public interface ICardAnimationReceiver
 {
+    /// <summary>
+    /// 接收卡牌動畫情境並依事件時機與接收對象處理演出。
+    /// </summary>
     void PlayCardAnimation(CardAnimationContext context);
 }
 
@@ -546,6 +588,9 @@ public class ChessCard : MonoBehaviour
         }
     }
 
+    /// <summary>
+    /// 依唯一卡號取得卡牌定義，找不到時回傳空值。
+    /// </summary>
     public CardDefinition GetCard(string id)
     {
         foreach (CardDefinition card in Cards)
@@ -558,6 +603,9 @@ public class ChessCard : MonoBehaviour
         get { return defaultStatusSprite; }
     }
 
+    /// <summary>
+    /// 依棋子種類與陣營取得顯示圖像。
+    /// </summary>
     public Sprite GetPieceSprite(Piece piece)
     {
         if (piece == null) return null;
@@ -584,8 +632,14 @@ public class ChessCard : MonoBehaviour
         return null;
     }
 
+    /// <summary>
+    /// Inspector 資料變更時清除卡牌快取，讓下次存取重新建立定義。
+    /// </summary>
     private void OnValidate() { cards = null; }
 
+    /// <summary>
+    /// 建立卡牌庫並依既有順序登錄轉職、事件與場地卡。
+    /// </summary>
     private List<CardDefinition> BuildCards()
     {
         return new List<CardDefinition>
@@ -602,6 +656,9 @@ public class ChessCard : MonoBehaviour
         };
     }
 
+    /// <summary>
+    /// 建立轉職卡的基本資料與資源設定。
+    /// </summary>
     private CardDefinition NewCard(
         string id,
         string name,
@@ -629,6 +686,9 @@ public class ChessCard : MonoBehaviour
         return card;
     }
 
+    /// <summary>
+    /// 建立含技能圖像、特效與音效資源的卡牌定義。
+    /// </summary>
     private CardDefinition NewCardWithSkillResources(
         string id,
         string name,
@@ -660,6 +720,9 @@ public class ChessCard : MonoBehaviour
         return card;
     }
 
+    /// <summary>
+    /// 建立事件卡的基本資料與資源設定。
+    /// </summary>
     private CardDefinition NewEventCard(
         string id,
         string name,
@@ -687,6 +750,9 @@ public class ChessCard : MonoBehaviour
         return card;
     }
 
+    /// <summary>
+    /// 建立場地卡的基本資料與資源設定。
+    /// </summary>
     private CardDefinition NewFieldCard(
         string id,
         string name,
@@ -713,6 +779,9 @@ public class ChessCard : MonoBehaviour
         return card;
     }
 
+    /// <summary>
+    /// 建立 J01 卡牌的名稱、說明與資源設定。
+    /// </summary>
     private CardDefinition BuildJ01()
     {
         CardDefinition card = NewCard(
@@ -726,6 +795,9 @@ public class ChessCard : MonoBehaviour
         return card;
     }
 
+    /// <summary>
+    /// 建立 J02 卡牌的名稱、說明與資源設定。
+    /// </summary>
     private CardDefinition BuildJ02()
     {
         CardDefinition card = NewCard(
@@ -739,6 +811,9 @@ public class ChessCard : MonoBehaviour
         return card;
     }
 
+    /// <summary>
+    /// 建立 J03 卡牌的名稱、說明與資源設定。
+    /// </summary>
     private CardDefinition BuildJ03()
     {
         return NewCard(
@@ -750,6 +825,9 @@ public class ChessCard : MonoBehaviour
         );
     }
 
+    /// <summary>
+    /// 建立 J04 卡牌的名稱、說明與資源設定。
+    /// </summary>
     private CardDefinition BuildJ04()
     {
         return NewCard(
@@ -761,6 +839,9 @@ public class ChessCard : MonoBehaviour
         );
     }
 
+    /// <summary>
+    /// 建立 J05 卡牌的名稱、說明與資源設定。
+    /// </summary>
     private CardDefinition BuildJ05()
     {
         return NewCardWithSkillResources(
@@ -772,6 +853,9 @@ public class ChessCard : MonoBehaviour
         );
     }
 
+    /// <summary>
+    /// 建立 J06 卡牌的名稱、說明與資源設定。
+    /// </summary>
     private CardDefinition BuildJ06()
     {
         return NewCard(
@@ -783,6 +867,9 @@ public class ChessCard : MonoBehaviour
         );
     }
 
+    /// <summary>
+    /// 建立 J07 卡牌的名稱、說明與資源設定。
+    /// </summary>
     private CardDefinition BuildJ07()
     {
         return NewCardWithSkillResources(
@@ -794,6 +881,9 @@ public class ChessCard : MonoBehaviour
         );
     }
 
+    /// <summary>
+    /// 建立 J08 卡牌的名稱、說明與資源設定。
+    /// </summary>
     private CardDefinition BuildJ08()
     {
         return NewCard(
@@ -805,6 +895,9 @@ public class ChessCard : MonoBehaviour
         );
     }
 
+    /// <summary>
+    /// 建立 J09 卡牌的名稱、說明與資源設定。
+    /// </summary>
     private CardDefinition BuildJ09()
     {
         return NewCard(
@@ -816,6 +909,9 @@ public class ChessCard : MonoBehaviour
         );
     }
 
+    /// <summary>
+    /// 建立 J10 卡牌的名稱、說明與資源設定。
+    /// </summary>
     private CardDefinition BuildJ10()
     {
         return NewCard(
@@ -827,6 +923,9 @@ public class ChessCard : MonoBehaviour
         );
     }
 
+    /// <summary>
+    /// 建立 J11 卡牌的名稱、說明與資源設定。
+    /// </summary>
     private CardDefinition BuildJ11()
     {
         return NewCard(
@@ -838,10 +937,13 @@ public class ChessCard : MonoBehaviour
         );
     }
 
+    /// <summary>
+    /// 建立 J12 卡牌的名稱、說明與資源設定。
+    /// </summary>
     private CardDefinition BuildJ12()
     {
         return NewCard(
-            "J12", "昏君", CardTargetType.King, 
+            "J12", "昏君", CardTargetType.King,
             "無",
             "我方所有棋子價值-1。",
             j12CardImage, j12SkillImage,
@@ -849,6 +951,9 @@ public class ChessCard : MonoBehaviour
         );
     }
 
+    /// <summary>
+    /// 建立 E01 卡牌的名稱、說明與資源設定。
+    /// </summary>
     private CardDefinition BuildE01()
     {
         return NewEventCard(
@@ -859,6 +964,9 @@ public class ChessCard : MonoBehaviour
         );
     }
 
+    /// <summary>
+    /// 建立 E02 卡牌的名稱、說明與資源設定。
+    /// </summary>
     private CardDefinition BuildE02()
     {
         return NewEventCard(
@@ -869,6 +977,9 @@ public class ChessCard : MonoBehaviour
         );
     }
 
+    /// <summary>
+    /// 建立 E03 卡牌的名稱、說明與資源設定。
+    /// </summary>
     private CardDefinition BuildE03()
     {
         return NewEventCard(
@@ -880,6 +991,9 @@ public class ChessCard : MonoBehaviour
         );
     }
 
+    /// <summary>
+    /// 建立 E04 卡牌的名稱、說明與資源設定。
+    /// </summary>
     private CardDefinition BuildE04()
     {
         return NewEventCard(
@@ -890,6 +1004,9 @@ public class ChessCard : MonoBehaviour
         );
     }
 
+    /// <summary>
+    /// 建立 E05 卡牌的名稱、說明與資源設定。
+    /// </summary>
     private CardDefinition BuildE05()
     {
         return NewEventCard(
@@ -901,6 +1018,9 @@ public class ChessCard : MonoBehaviour
         );
     }
 
+    /// <summary>
+    /// 建立 E06 卡牌的名稱、說明與資源設定。
+    /// </summary>
     private CardDefinition BuildE06()
     {
         return NewEventCard(
@@ -911,6 +1031,9 @@ public class ChessCard : MonoBehaviour
         );
     }
 
+    /// <summary>
+    /// 建立 E07 卡牌的名稱、說明與資源設定。
+    /// </summary>
     private CardDefinition BuildE07()
     {
         return NewEventCard(
@@ -921,6 +1044,9 @@ public class ChessCard : MonoBehaviour
         );
     }
 
+    /// <summary>
+    /// 建立 E08 卡牌的名稱、說明與資源設定。
+    /// </summary>
     private CardDefinition BuildE08()
     {
         return NewEventCard(
@@ -931,6 +1057,9 @@ public class ChessCard : MonoBehaviour
         );
     }
 
+    /// <summary>
+    /// 建立 E09 卡牌的名稱、說明與資源設定。
+    /// </summary>
     private CardDefinition BuildE09()
     {
         return NewEventCard(
@@ -942,6 +1071,9 @@ public class ChessCard : MonoBehaviour
         );
     }
 
+    /// <summary>
+    /// 建立 E10 卡牌的名稱、說明與資源設定。
+    /// </summary>
     private CardDefinition BuildE10()
     {
         return NewEventCard(
@@ -953,6 +1085,9 @@ public class ChessCard : MonoBehaviour
         );
     }
 
+    /// <summary>
+    /// 建立 E11 卡牌的名稱、說明與資源設定。
+    /// </summary>
     private CardDefinition BuildE11()
     {
         return NewEventCard(
@@ -964,6 +1099,9 @@ public class ChessCard : MonoBehaviour
         );
     }
 
+    /// <summary>
+    /// 建立 E12 卡牌的名稱、說明與資源設定。
+    /// </summary>
     private CardDefinition BuildE12()
     {
         return NewEventCard(
@@ -974,6 +1112,9 @@ public class ChessCard : MonoBehaviour
         );
     }
 
+    /// <summary>
+    /// 建立 F01 卡牌的名稱、說明與資源設定。
+    /// </summary>
     private CardDefinition BuildF01()
     {
         return NewFieldCard(
@@ -984,6 +1125,9 @@ public class ChessCard : MonoBehaviour
         );
     }
 
+    /// <summary>
+    /// 建立 F02 卡牌的名稱、說明與資源設定。
+    /// </summary>
     private CardDefinition BuildF02()
     {
         return NewFieldCard(
@@ -995,6 +1139,9 @@ public class ChessCard : MonoBehaviour
         );
     }
 
+    /// <summary>
+    /// 建立 F03 卡牌的名稱、說明與資源設定。
+    /// </summary>
     private CardDefinition BuildF03()
     {
         return NewFieldCard(
@@ -1005,6 +1152,9 @@ public class ChessCard : MonoBehaviour
         );
     }
 
+    /// <summary>
+    /// 建立 F04 卡牌的名稱、說明與資源設定。
+    /// </summary>
     private CardDefinition BuildF04()
     {
         return NewFieldCard(
@@ -1016,6 +1166,9 @@ public class ChessCard : MonoBehaviour
         );
     }
 
+    /// <summary>
+    /// 建立 F05 卡牌的名稱、說明與資源設定。
+    /// </summary>
     private CardDefinition BuildF05()
     {
         return NewFieldCard(
@@ -1026,6 +1179,9 @@ public class ChessCard : MonoBehaviour
         );
     }
 
+    /// <summary>
+    /// 建立 F06 卡牌的名稱、說明與資源設定。
+    /// </summary>
     private CardDefinition BuildF06()
     {
         return NewFieldCard(
@@ -1037,6 +1193,9 @@ public class ChessCard : MonoBehaviour
         );
     }
 
+    /// <summary>
+    /// 建立 F07 卡牌的名稱、說明與資源設定。
+    /// </summary>
     private CardDefinition BuildF07()
     {
         return NewFieldCard(
@@ -1047,6 +1206,9 @@ public class ChessCard : MonoBehaviour
         );
     }
 
+    /// <summary>
+    /// 建立 F08 卡牌的名稱、說明與資源設定。
+    /// </summary>
     private CardDefinition BuildF08()
     {
         return NewFieldCard(
@@ -1058,6 +1220,9 @@ public class ChessCard : MonoBehaviour
         );
     }
 
+    /// <summary>
+    /// 建立 F09 卡牌的名稱、說明與資源設定。
+    /// </summary>
     private CardDefinition BuildF09()
     {
         return NewFieldCard(
@@ -1068,6 +1233,9 @@ public class ChessCard : MonoBehaviour
         );
     }
 
+    /// <summary>
+    /// 建立 F10 卡牌的名稱、說明與資源設定。
+    /// </summary>
     private CardDefinition BuildF10()
     {
         return NewFieldCard(
@@ -1079,6 +1247,9 @@ public class ChessCard : MonoBehaviour
         );
     }
 
+    /// <summary>
+    /// 建立 F11 卡牌的名稱、說明與資源設定。
+    /// </summary>
     private CardDefinition BuildF11()
     {
         return NewFieldCard(
@@ -1090,6 +1261,9 @@ public class ChessCard : MonoBehaviour
         );
     }
 
+    /// <summary>
+    /// 建立 F12 卡牌的名稱、說明與資源設定。
+    /// </summary>
     private CardDefinition BuildF12()
     {
         return NewFieldCard(

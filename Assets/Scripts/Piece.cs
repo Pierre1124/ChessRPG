@@ -1,11 +1,9 @@
-﻿using System.Collections.Generic;
+using System.Collections.Generic;
 using UnityEngine;
 
-//==============================
-// ??????????????皜∪??
-// Pawn??抬?牽k??抬?赯ht??拆??shop??抬?een??抬?謈經
-// ????雓制??????????
-//==============================
+/// <summary>
+/// 棋子的共用座標、移動、卡牌裝備與狀態行為。
+/// </summary>
 public abstract class Piece : MonoBehaviour
 {
     [Header("Combat")]
@@ -24,8 +22,12 @@ public abstract class Piece : MonoBehaviour
         get { return Mathf.Max(0, value + extraValue); }
     }
 
+    /// <summary>
+    /// 將永久攻擊或價值修正累加到棋子。
+    /// </summary>
     public void AddPermanentStats(int attackDelta, int valueDelta)
     {
+        if (logicManager != null && logicManager.IsClassicChess) return;
         int previousAttack = Attack;
         int previousValue = Value;
 
@@ -39,15 +41,8 @@ public abstract class Piece : MonoBehaviour
         );
     }
 
-    //==============================
-    // ??頩???????鞊????
-    //==============================
     protected LogicManager logicManager;
 
-    //==============================
-    // ???????????
-    // ???潸葭????豱???????????????雓?? / ???????
-    //==============================
     [System.NonSerialized]
     public CardDefinition cardDefinition;
 
@@ -68,8 +63,12 @@ public abstract class Piece : MonoBehaviour
         get { return statuses; }
     }
 
+    /// <summary>
+    /// 將卡牌裝備到棋子，更新執行期資料並處理裝卸效果。
+    /// </summary>
     public void ApplyCard(CardDefinition card)
     {
+        if (logicManager != null && logicManager.IsClassicChess) return;
         CardDefinition previousCard = cardDefinition;
         if (previousCard != null)
         {
@@ -138,6 +137,9 @@ public abstract class Piece : MonoBehaviour
         }
     }
 
+    /// <summary>
+    /// 將狀態定義轉成棋子持有的執行期狀態。
+    /// </summary>
     public void ApplyStatus(
         StatusDefinition statusDefinition,
         Piece source,
@@ -146,6 +148,7 @@ public abstract class Piece : MonoBehaviour
         bool sourcePlayerIsWhite = false
     )
     {
+        if (logicManager != null && logicManager.IsClassicChess) return;
         if (statusDefinition == null)
         {
             return;
@@ -176,6 +179,9 @@ public abstract class Piece : MonoBehaviour
         );
     }
 
+    /// <summary>
+    /// 移除棋子上與卡牌裝備相關的狀態。
+    /// </summary>
     private void RemoveCardStatuses()
     {
         for (int i = statuses.Count - 1; i >= 0; i--)
@@ -193,6 +199,9 @@ public abstract class Piece : MonoBehaviour
         }
     }
 
+    /// <summary>
+    /// 移除指定來源卡號建立的狀態。
+    /// </summary>
     public int RemoveStatusesByCardId(string cardId)
     {
         if (string.IsNullOrEmpty(cardId)) return 0;
@@ -218,6 +227,9 @@ public abstract class Piece : MonoBehaviour
         return removed;
     }
 
+    /// <summary>
+    /// 依指定觸發時機移除到期或應解除的狀態。
+    /// </summary>
     public int RemoveStatusesOnTrigger(CardEffectTrigger trigger)
     {
         int removed = 0;
@@ -243,8 +255,7 @@ public abstract class Piece : MonoBehaviour
     }
 
     /// <summary>
-    /// Advances finite statuses by one completed owner turn.
-    /// A duration of zero means the status does not expire by time.
+    /// 推進狀態持續回合數並移除到期項目。
     /// </summary>
     public int AdvanceStatusDurations()
     {
@@ -299,6 +310,9 @@ public abstract class Piece : MonoBehaviour
         return removed;
     }
 
+    /// <summary>
+    /// 產生狀態剩餘次數的紀錄文字。
+    /// </summary>
     private string DescribeStatusCharges(StatusRuntime status)
     {
         if (status == null || !status.UsesCharges)
@@ -309,6 +323,9 @@ public abstract class Piece : MonoBehaviour
         return $"{status.charges}/{status.definition.maxCharges}";
     }
 
+    /// <summary>
+    /// 產生目前棋子的名稱、陣營與位置描述。
+    /// </summary>
     private string DescribeSelf()
     {
         string side = IsWhite ? "White" : "Black";
@@ -320,6 +337,9 @@ public abstract class Piece : MonoBehaviour
         return $"{side} {type} ({coordinates.x:0},{coordinates.y:0})";
     }
 
+    /// <summary>
+    /// 依加算、指定或乘算方式套用數值效果。
+    /// </summary>
     private int ApplyValueOperation(
         int currentValue,
         CardValueOperation operation,
@@ -339,32 +359,29 @@ public abstract class Piece : MonoBehaviour
         }
     }
 
-    //==============================
-    // ??????豯殷???
-    // true = ???
-    // false = ??秋偃豱?
-    //==============================
     public bool IsWhite { get; private set; }
 
-    //==============================
-    // ??????皜∪???雓?
-    // ?雓????
-    // Pawn??抬?牽k??抬?赯ht...
-    //==============================
     public string PieceType { get; private set; }
 
-    //==============================
-    // ?????雓????
-    // 0 = ??????
-    // 1 = ??頦????
-    // ??????
-    // ????????拆??????
-    //==============================
     public int HasMoved { get; private set; }
 
     protected bool UsesDefinitionRules
     {
-        get { return ActiveDefinition != null; }
+        get { return (logicManager == null || !logicManager.IsClassicChess) && ActiveDefinition != null; }
+    }
+
+    /// <summary>
+    /// 移除轉職、狀態與永久加成，不觸發任何卸裝技能；保留棋子陣營及移動紀錄。
+    /// </summary>
+    public void ClearRpgState()
+    {
+        cardDefinition = null;
+        cardRuntime = null;
+        statuses.Clear();
+        attack = 0;
+        extraAttack = 0;
+        extraValue = 0;
+        value = GetDefaultValue();
     }
 
     private PieceDefinition ActiveDefinition
@@ -398,26 +415,22 @@ public abstract class Piece : MonoBehaviour
         }
     }
 
-    //==============================
-    // ??????????
-    // ?????頩??????
-    //==============================
+    /// <summary>
+    /// 列出棋子攻擊的格子，供將軍與王車易位判定使用；攻擊線保留第一個阻擋格。
+    /// </summary>
     public abstract List<Vector2> GetAttackedFields();
 
-    //==============================
-    // ???????????????
-    // ?鞊???????
-    //==============================
+    /// <summary>
+    /// 依棋子的基本走法列出候選目的地；王受將軍的限制由合法走法檢查處理。
+    /// </summary>
     protected abstract List<Vector2> GetPotentialMoves();
 
-    //==============================
-    // ???????雓??
-    // ???????
-    // ? ?鞊?????箇????????瘞???
-    //==============================
+    /// <summary>
+    /// 篩選棋子的合法走法，排除移動後己方國王仍受攻擊的位置。
+    /// </summary>
     public virtual List<Vector2> GetLegalMoves()
     {
-        
+
         if (UsesDefinitionRules)
         {
             return logicManager.ApplyBoardFieldEffects(
@@ -426,36 +439,29 @@ public abstract class Piece : MonoBehaviour
             );
         }
 
-// ????雓????憌??
         List<Vector2> legalMoves =
             new List<Vector2>();
 
-        // ???????怏???瘞???
         bool isKingInCheck =
             logicManager.CheckKingStatus();
 
-        //==============================
-        // ??朵???????????????
-        //==============================
         foreach (Vector2 move in GetPotentialMoves())
         {
-            // ?????雓????祈??????啣???頩???
+
             if (WillMoveEndCheck(move))
             {
                 legalMoves.Add(move);
             }
         }
 
-        // Debug??
         // Debug.Log($"Legal moves for {PieceType}: {legalMoves.Count}");
 
         return logicManager.ApplyBoardFieldEffects(this, legalMoves);
     }
 
-    //==============================
-    // ??蝛????????
-    // ?????????????頩???頩???
-    //==============================
+    /// <summary>
+    /// 依轉職或自訂移動定義取得攻擊格。
+    /// </summary>
     protected List<Vector2> GetDefinitionAttackedFields()
     {
         if (!UsesDefinitionRules)
@@ -466,6 +472,9 @@ public abstract class Piece : MonoBehaviour
         return GetDefinitionFields(includeEmpty: true);
     }
 
+    /// <summary>
+    /// 依自訂移動定義取得候選格並檢查國王安全。
+    /// </summary>
     private List<Vector2> GetDefinitionLegalMoves()
     {
         List<Vector2> legalMoves =
@@ -482,6 +491,9 @@ public abstract class Piece : MonoBehaviour
         return legalMoves;
     }
 
+    /// <summary>
+    /// 依單步或射線移動規則建立指定用途的格子清單。
+    /// </summary>
     private List<Vector2> GetDefinitionFields(bool includeEmpty)
     {
         List<Vector2> fields =
@@ -595,6 +607,9 @@ public abstract class Piece : MonoBehaviour
 
         return fields;
     }
+    /// <summary>
+    /// 依自訂走法的跳躍與路徑設定檢查阻擋。
+    /// </summary>
     private bool IsDefinitionPathBlocked(
         Vector2 start,
         Vector2Int direction,
@@ -624,6 +639,9 @@ public abstract class Piece : MonoBehaviour
         return false;
     }
 
+    /// <summary>
+    /// 依棋子朝向解析自訂移動規則的方向。
+    /// </summary>
     private Vector2Int ResolveRuleDirection(
         PieceMoveRule rule
     )
@@ -641,24 +659,20 @@ public abstract class Piece : MonoBehaviour
 
         return rule.direction;
     }
+    /// <summary>
+    /// 暫時模擬移動並檢查己方國王安全，完成後還原棋盤。
+    /// </summary>
     protected bool WillMoveEndCheck(Vector2 move)
     {
-        //==============================
-        // ??????蝮?????
-        //==============================
         Piece originalPiece =
             logicManager.boardMap[
                 (int)move.x,
                 (int)move.y
             ];
 
-        // ???蝮??????
         Vector2 originalPosition =
             GetCoordinates();
 
-        //==============================
-        // ??蝛??????
-        //==============================
         logicManager.boardMap[
             (int)originalPosition.x,
             (int)originalPosition.y
@@ -669,17 +683,11 @@ public abstract class Piece : MonoBehaviour
             (int)move.y
         ] = this;
 
-        // ??豲????????
         logicManager.UpdateCheckMap();
 
-        // ??????瘞???
         bool isKingInCheck =
             logicManager.CheckKingStatus();
 
-        //==============================
-        // ?????雓?????? King
-        // ????????????????????????瘞????
-        //==============================
         if (this is King)
         {
             isKingInCheck =
@@ -696,9 +704,6 @@ public abstract class Piece : MonoBehaviour
                 ];
         }
 
-        //==============================
-        // ?????蝛???
-        //==============================
         logicManager.boardMap[
             (int)originalPosition.x,
             (int)originalPosition.y
@@ -709,19 +714,14 @@ public abstract class Piece : MonoBehaviour
             (int)move.y
         ] = originalPiece;
 
-        // ??豲????????
         logicManager.UpdateCheckMap();
 
-        //==============================
-        // true = ???
-        // false = ???啣???頩???
-        //==============================
         return !isKingInCheck;
     }
 
-    //==============================
-    // ????????
-    //==============================
+    /// <summary>
+    /// 設定棋子種類、陣營與初始屬性，並重設移動紀錄。
+    /// </summary>
     public void Initialize(
         string pieceType,
         bool isWhite
@@ -740,10 +740,13 @@ public abstract class Piece : MonoBehaviour
         attack = 0;
         value = GetDefaultValue();
 
-        // ?鞊啣???????????
         HasMoved = 0;
+        if (logicManager != null && logicManager.IsClassicChess) ClearRpgState();
     }
 
+    /// <summary>
+    /// 依棋子種類取得原始價值。
+    /// </summary>
     private int GetDefaultValue()
     {
         if (this is Queen)
@@ -769,27 +772,30 @@ public abstract class Piece : MonoBehaviour
         return 0;
     }
 
-    //==============================
-    // ?????????
-    //==============================
+    /// <summary>
+    /// 取得對局控制器、套用預設裝備並登錄棋盤位置。
+    /// </summary>
     private void Start()
     {
-        // ?頩???LogicManager
+
         logicManager =
             Object.FindFirstObjectByType<LogicManager>();
 
-        if (cardDefinition != null && cardRuntime == null)
+        if (logicManager != null && logicManager.IsClassicChess)
+        {
+            ClearRpgState();
+        }
+        else if (cardDefinition != null && cardRuntime == null)
         {
             ApplyCard(cardDefinition);
         }
 
-        // ??豲???????謑???
         UpdateBoardMap();
     }
 
-    //==============================
-    // ?????????頦?
-    //==============================
+    /// <summary>
+    /// 取得棋子的目前棋盤座標。
+    /// </summary>
     public Vector2 GetCoordinates()
     {
         return new Vector2(
@@ -798,10 +804,9 @@ public abstract class Piece : MonoBehaviour
         );
     }
 
-    //==============================
-    // ??豲???????謑???
-    // boardMap[x,y] = ????
-    //==============================
+    /// <summary>
+    /// 將棋子目前位置登錄到棋盤索引。
+    /// </summary>
     public void UpdateBoardMap()
     {
         Vector2 coordinates =
@@ -813,12 +818,12 @@ public abstract class Piece : MonoBehaviour
         ] = this;
     }
 
-    //==============================
-    // ?雓??????
-    //==============================
+    /// <summary>
+    /// 更新棋盤位置、處理吃子與移動演出，再通知對局系統觸發移動效果。
+    /// </summary>
     public virtual void Move(Vector2 newPosition)
     {
-        // ???蝮??????
+
         Vector2 currentCoordinates =
             GetCoordinates();
         Vector3 startWorldPosition = transform.position;
@@ -829,48 +834,41 @@ public abstract class Piece : MonoBehaviour
                 newPosition.y
             );
 
-        // ?雓????????
         logicManager.boardMap[
             (int)currentCoordinates.x,
             (int)currentCoordinates.y
         ] = null;
 
-        // ??橘擐???頦????
         HasMoved = 1;
 
-        // ???
         Take(newPosition);
 
-        // ??豲???雓雓??????
         transform.position = endWorldPosition;
 
         PlayMoveAnimation(startWorldPosition, endWorldPosition);
 
-        // ??豲???????謑???
         UpdateBoardMap();
 
         logicManager.OnPieceMoved(this);
     }
 
-    //==============================
-    // ???
-    //==============================
+    /// <summary>
+    /// 處理目的格上的吃子事件、清空該格索引，並回傳被吃的棋子。
+    /// </summary>
     public Piece Take(Vector2 targetPosition)
     {
-        // ??????????
+
         Piece targetPiece =
             logicManager.boardMap[
                 (int)targetPosition.x,
                 (int)targetPosition.y
             ];
 
-        // ?????????
         if (targetPiece != null)
         {
             logicManager.OnPieceCaptured(this, targetPiece);
         }
 
-        // ?雓???蝬??鞈?????
         logicManager.boardMap[
             (int)targetPosition.x,
             (int)targetPosition.y
@@ -884,6 +882,9 @@ public abstract class Piece : MonoBehaviour
         return targetPiece;
     }
 
+    /// <summary>
+    /// 播放棋子被吃的動畫，並處理後續移除。
+    /// </summary>
     public void PlayCapturedAnimation()
     {
         PieceAnimationPlayer animationPlayer =
@@ -898,6 +899,9 @@ public abstract class Piece : MonoBehaviour
         Destroy(gameObject);
     }
 
+    /// <summary>
+    /// 播放棋子的移動動畫。
+    /// </summary>
     private void PlayMoveAnimation(Vector3 from, Vector3 to)
     {
         PieceAnimationPlayer animationPlayer =
@@ -913,6 +917,9 @@ public abstract class Piece : MonoBehaviour
         // 移動/吃子動畫一律交給 Unity Animation / Animator。
     }
 
+    /// <summary>
+    /// 播放棋子吃子的動畫。
+    /// </summary>
     public void PlayCaptureAnimation()
     {
         PieceAnimationPlayer animationPlayer =
@@ -924,9 +931,9 @@ public abstract class Piece : MonoBehaviour
         }
     }
 
-    //==============================
-    // ????????????
-    //==============================
+    /// <summary>
+    /// 判斷座標是否位於既有的 8×8 棋盤範圍。
+    /// </summary>
     public bool IsPositionWithinBoard(Vector2 position)
     {
         return
@@ -935,5 +942,46 @@ public abstract class Piece : MonoBehaviour
             position.y >= 0 &&
             position.y < 8;
     }
-}
 
+    /// <summary>
+    /// 依傳入方向順序收集射線格子，遇到第一枚棋子即停止；攻擊圖可包含友方阻擋格。
+    /// </summary>
+    protected List<Vector2> CollectRayFields(
+        int[] directionsX,
+        int[] directionsY,
+        bool includeFriendlyBlocker
+    )
+    {
+        List<Vector2> fields = new List<Vector2>();
+        Vector2 currentCoordinates = GetCoordinates();
+
+        for (int i = 0; i < directionsX.Length; i++)
+        {
+            for (int step = 1; ; step++)
+            {
+                Vector2 position = new Vector2(
+                    currentCoordinates.x + step * directionsX[i],
+                    currentCoordinates.y + step * directionsY[i]
+                );
+                if (!IsPositionWithinBoard(position))
+                {
+                    break;
+                }
+
+                Piece occupant = logicManager.boardMap[(int)position.x, (int)position.y];
+                // 攻擊圖包含第一個友方阻擋格；移動候選格則排除友方棋子。
+                if (includeFriendlyBlocker || occupant == null || occupant.IsWhite != IsWhite)
+                {
+                    fields.Add(position);
+                }
+
+                if (occupant != null)
+                {
+                    break;
+                }
+            }
+        }
+
+        return fields;
+    }
+}

@@ -2,6 +2,9 @@ using UnityEngine;
 
 public static class CardAnimationEvents
 {
+    /// <summary>
+    /// 建立卡牌動畫情境並通知來源與目標棋子的動畫接收器。
+    /// </summary>
     public static void Play(
         Piece source,
         Piece target,
@@ -34,6 +37,9 @@ public static class CardAnimationEvents
         }
     }
 
+    /// <summary>
+    /// 找出棋子上的動畫接收器，派送目前卡牌動畫情境。
+    /// </summary>
     private static void Notify(
         Piece piece,
         CardAnimationContext context,

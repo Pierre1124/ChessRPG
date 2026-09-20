@@ -26,6 +26,9 @@ public class GameFlowUI : MonoBehaviour
     private readonly Dictionary<string, GameObject> persistentAlarms =
         new Dictionary<string, GameObject>();
 
+    /// <summary>
+    /// 登錄共用提示實例，補齊引用並隱藏樣板。
+    /// </summary>
     private void Awake()
     {
         instance = this;
@@ -33,26 +36,41 @@ public class GameFlowUI : MonoBehaviour
         HideTemplateObjects();
     }
 
+    /// <summary>
+    /// 編輯器重設元件時補齊提示介面引用。
+    /// </summary>
     private void Reset()
     {
         AutoBindReferences();
     }
 
+    /// <summary>
+    /// Inspector 變更時補齊提示介面引用。
+    /// </summary>
     private void OnValidate()
     {
         AutoBindReferences();
     }
 
+    /// <summary>
+    /// 透過目前場景的提示實例顯示一次性訊息。
+    /// </summary>
     public static void Show(string message)
     {
         ResolveInstance()?.ShowAlarm(message);
     }
 
+    /// <summary>
+    /// 以識別鍵更新持續顯示的對局提示。
+    /// </summary>
     public static void SetPersistent(string key, string message, bool visible)
     {
         ResolveInstance()?.SetPersistentAlarm(key, message, visible);
     }
 
+    /// <summary>
+    /// 啟動回合階段提示的演出。
+    /// </summary>
     public static Coroutine PlayPhase(MonoBehaviour owner, string message, Action onComplete)
     {
         GameFlowUI ui = ResolveInstance();
@@ -65,12 +83,18 @@ public class GameFlowUI : MonoBehaviour
         return owner.StartCoroutine(ui.PlayPhaseRoutine(message, onComplete));
     }
 
+    /// <summary>
+    /// 判斷回合階段提示是否已具備播放條件。
+    /// </summary>
     public static bool IsPhaseReady()
     {
         GameFlowUI ui = ResolveInstance();
         return ui != null && ui.phaseChangeRoot != null;
     }
 
+    /// <summary>
+    /// 取得目前場景中的共用 UI 實例。
+    /// </summary>
     private static GameFlowUI ResolveInstance()
     {
         if (instance != null)
@@ -101,6 +125,9 @@ public class GameFlowUI : MonoBehaviour
         return instance;
     }
 
+    /// <summary>
+    /// 依既有命名與階層規則補齊 UI 或動畫引用。
+    /// </summary>
     private void AutoBindReferences()
     {
         if (alarmTemplate == null)
@@ -140,6 +167,9 @@ public class GameFlowUI : MonoBehaviour
         }
     }
 
+    /// <summary>
+    /// 隱藏用於複製提示內容的樣板物件。
+    /// </summary>
     private void HideTemplateObjects()
     {
         if (alarmTemplate != null)
@@ -153,6 +183,9 @@ public class GameFlowUI : MonoBehaviour
         }
     }
 
+    /// <summary>
+    /// 顯示操作或對局提示訊息。
+    /// </summary>
     private void ShowAlarm(string message)
     {
         if (alarmTemplate == null || string.IsNullOrWhiteSpace(message))
@@ -181,6 +214,9 @@ public class GameFlowUI : MonoBehaviour
         StartCoroutine(DestroyAlarmAfterDelay(instanceObject, rectTransform));
     }
 
+    /// <summary>
+    /// 等待指定時間後移除一次性提示。
+    /// </summary>
     private IEnumerator DestroyAlarmAfterDelay(
         GameObject alarm,
         RectTransform rectTransform
@@ -200,6 +236,9 @@ public class GameFlowUI : MonoBehaviour
         }
     }
 
+    /// <summary>
+    /// 重新排列目前的一次性提示。
+    /// </summary>
     private void ReflowOneShotAlarms()
     {
         for (int i = 0; i < activeOneShotAlarms.Count; i++)
@@ -216,6 +255,9 @@ public class GameFlowUI : MonoBehaviour
         }
     }
 
+    /// <summary>
+    /// 建立、更新或移除指定識別鍵的持續提示。
+    /// </summary>
     private void SetPersistentAlarm(string key, string message, bool visible)
     {
         if (alarmTemplate == null || string.IsNullOrEmpty(key))
@@ -248,6 +290,9 @@ public class GameFlowUI : MonoBehaviour
         alarm.SetActive(true);
     }
 
+    /// <summary>
+    /// 播放階段提示並等待動畫結束。
+    /// </summary>
     private IEnumerator PlayPhaseRoutine(string message, Action onComplete)
     {
         if (phaseChangeRoot == null)
@@ -269,6 +314,9 @@ public class GameFlowUI : MonoBehaviour
         onComplete?.Invoke();
     }
 
+    /// <summary>
+    /// 從指定狀態播放階段提示動畫。
+    /// </summary>
     private float PlayPhaseAnimation()
     {
         Animation legacyAnimation = phaseChangeRoot.GetComponent<Animation>();
@@ -312,6 +360,9 @@ public class GameFlowUI : MonoBehaviour
         return fallbackPhaseSeconds;
     }
 
+    /// <summary>
+    /// 取得目前 Animator 狀態的播放時間。
+    /// </summary>
     private float GetCurrentAnimatorStateDuration(Animator animator)
     {
         AnimatorStateInfo stateInfo = animator.GetCurrentAnimatorStateInfo(0);
@@ -323,6 +374,9 @@ public class GameFlowUI : MonoBehaviour
         return fallbackPhaseSeconds;
     }
 
+    /// <summary>
+    /// 尋找指定文字元件並更新其顯示內容。
+    /// </summary>
     private static void SetText(GameObject root, string message)
     {
         TMP_Text tmpText = root.GetComponentInChildren<TMP_Text>(true);
@@ -339,6 +393,9 @@ public class GameFlowUI : MonoBehaviour
         }
     }
 
+    /// <summary>
+    /// 依階層順序遞迴尋找指定名稱的 Transform；回傳第一個符合的物件。
+    /// </summary>
     private static Transform FindChildRecursive(Transform root, string childName)
     {
         if (root == null)

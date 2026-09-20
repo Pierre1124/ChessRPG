@@ -1,4 +1,4 @@
-﻿using System.Collections;
+using System.Collections;
 using System.Collections.Generic;
 using System.Globalization;
 using System.Text;
@@ -42,6 +42,9 @@ public class OperateLogUI : MonoBehaviour
     private readonly Dictionary<string, bool> cardActorSides =
         new Dictionary<string, bool>();
 
+    /// <summary>
+    /// 登錄操作紀錄實例、綁定按鈕並初始化面板動畫。
+    /// </summary>
     private void Awake()
     {
         instance = this;
@@ -51,16 +54,25 @@ public class OperateLogUI : MonoBehaviour
         InitializeToggleAnimation();
     }
 
+    /// <summary>
+    /// 編輯器重設元件時補齊操作紀錄介面引用。
+    /// </summary>
     private void Reset()
     {
         AutoBindReferences();
     }
 
+    /// <summary>
+    /// Inspector 變更時補齊操作紀錄介面引用。
+    /// </summary>
     private void OnValidate()
     {
         AutoBindReferences();
     }
 
+    /// <summary>
+    /// 清空對局操作紀錄並建立起始回合資料。
+    /// </summary>
     public static void ResetLog(bool isWhiteTurn)
     {
         OperateLogUI ui = ResolveInstance();
@@ -70,11 +82,17 @@ public class OperateLogUI : MonoBehaviour
         ui.BeginTurnEntry(isWhiteTurn);
     }
 
+    /// <summary>
+    /// 為新回合建立操作紀錄區段。
+    /// </summary>
     public static void BeginTurn(bool isWhiteTurn)
     {
         ResolveInstance()?.BeginTurnEntry(isWhiteTurn);
     }
 
+    /// <summary>
+    /// 記錄棋子的移動資訊。
+    /// </summary>
     public static void LogMove(Piece piece, Vector2 from, Vector2 to)
     {
         OperateLogUI ui = ResolveInstance();
@@ -86,6 +104,9 @@ public class OperateLogUI : MonoBehaviour
         ui.ClearEffectLink();
     }
 
+    /// <summary>
+    /// 記錄卡牌使用者、卡牌與目標資訊。
+    /// </summary>
     public static void LogCard(
         bool isWhitePlayer,
         CardDefinition card,
@@ -107,6 +128,9 @@ public class OperateLogUI : MonoBehaviour
         ui.SetEffectLink(key, entry);
     }
 
+    /// <summary>
+    /// 將傷害結果加入對應操作紀錄。
+    /// </summary>
     public static void LogDamage(
         bool damagedWhitePlayer,
         int amount,
@@ -132,6 +156,9 @@ public class OperateLogUI : MonoBehaviour
         entry.Refresh();
     }
 
+    /// <summary>
+    /// 將治療結果加入對應操作紀錄。
+    /// </summary>
     public static void LogHeal(bool healedWhitePlayer, int amount)
     {
         if (amount <= 0) return;
@@ -152,6 +179,9 @@ public class OperateLogUI : MonoBehaviour
         entry.Refresh();
     }
 
+    /// <summary>
+    /// 取得目前場景中的共用 UI 實例。
+    /// </summary>
     private static OperateLogUI ResolveInstance()
     {
         if (instance != null) return instance;
@@ -177,6 +207,9 @@ public class OperateLogUI : MonoBehaviour
         return instance;
     }
 
+    /// <summary>
+    /// 依既有命名與階層規則補齊 UI 或動畫引用。
+    /// </summary>
     private void AutoBindReferences()
     {
         Transform root = transform;
@@ -240,6 +273,9 @@ public class OperateLogUI : MonoBehaviour
         }
     }
 
+    /// <summary>
+    /// 綁定紀錄面板的開關按鈕。
+    /// </summary>
     private void BindButton()
     {
         if (operateLogButton == null) return;
@@ -248,6 +284,9 @@ public class OperateLogUI : MonoBehaviour
         operateLogButton.onClick.AddListener(ToggleLogList);
     }
 
+    /// <summary>
+    /// 隱藏用來建立紀錄項目的樣板。
+    /// </summary>
     private void HideTemplate()
     {
         if (logTextTemplate != null)
@@ -256,6 +295,9 @@ public class OperateLogUI : MonoBehaviour
         }
     }
 
+    /// <summary>
+    /// 移除既有紀錄項目並清空索引。
+    /// </summary>
     private void ClearEntries()
     {
         turnIndex = 0;
@@ -279,12 +321,18 @@ public class OperateLogUI : MonoBehaviour
         }
     }
 
+    /// <summary>
+    /// 建立目前回合的紀錄項目。
+    /// </summary>
     private void BeginTurnEntry(bool isWhiteTurn)
     {
         turnIndex++;
         ClearEffectLink();
     }
 
+    /// <summary>
+    /// 建立並登錄一筆操作紀錄視圖。
+    /// </summary>
     private LogEntry CreateEntry(string prefix, bool isWhiteActor)
     {
         if (logTextTemplate == null)
@@ -319,6 +367,9 @@ public class OperateLogUI : MonoBehaviour
         return entry;
     }
 
+    /// <summary>
+    /// 將紀錄捲動位置移至最新項目。
+    /// </summary>
     private void ScrollToLatest()
     {
         if (!autoScrollToLatest || logScrollRect == null)
@@ -330,6 +381,9 @@ public class OperateLogUI : MonoBehaviour
         logScrollRect.verticalNormalizedPosition = 0f;
     }
 
+    /// <summary>
+    /// 尋找目前效果應附加到的操作紀錄項目。
+    /// </summary>
     private LogEntry ResolveEffectEntry(string key, DamageContext context)
     {
         if (
@@ -365,18 +419,27 @@ public class OperateLogUI : MonoBehaviour
         return entry;
     }
 
+    /// <summary>
+    /// 建立效果與來源操作紀錄的關聯。
+    /// </summary>
     private void SetEffectLink(string key, LogEntry entry)
     {
         lastEffectKey = key;
         lastEffectEntry = entry;
     }
 
+    /// <summary>
+    /// 清除效果與來源操作紀錄的關聯。
+    /// </summary>
     private void ClearEffectLink()
     {
         lastEffectKey = string.Empty;
         lastEffectEntry = null;
     }
 
+    /// <summary>
+    /// 依操作識別資料建立紀錄索引鍵。
+    /// </summary>
     private string CreateActionKey(CardDefinition card)
     {
         string baseKey = GetCardKey(card);
@@ -386,6 +449,9 @@ public class OperateLogUI : MonoBehaviour
         return $"{baseKey}#{lineSerial}";
     }
 
+    /// <summary>
+    /// 記錄卡牌操作所屬的玩家陣營。
+    /// </summary>
     private void RecordCardActor(CardDefinition card, bool isWhitePlayer)
     {
         string key = GetCardKey(card);
@@ -394,6 +460,9 @@ public class OperateLogUI : MonoBehaviour
         cardActorSides[key] = isWhitePlayer;
     }
 
+    /// <summary>
+    /// 切換操作紀錄面板的展開狀態。
+    /// </summary>
     private void ToggleLogList()
     {
         if (logListRoot == null) return;
@@ -402,6 +471,9 @@ public class OperateLogUI : MonoBehaviour
         SetExpanded(!isExpanded);
     }
 
+    /// <summary>
+    /// 判斷游標是否命中操作紀錄面板。
+    /// </summary>
     private bool PointerHitLogList()
     {
         if (
@@ -443,6 +515,9 @@ public class OperateLogUI : MonoBehaviour
         return false;
     }
 
+    /// <summary>
+    /// 設定面板展開狀態並啟動對應動畫。
+    /// </summary>
     private void SetExpanded(bool expanded)
     {
         if (isExpanded == expanded && animationRoutine == null) return;
@@ -458,6 +533,9 @@ public class OperateLogUI : MonoBehaviour
         animationRoutine = StartCoroutine(AnimateToEndpoint());
     }
 
+    /// <summary>
+    /// 初始化紀錄面板的展開收合動畫。
+    /// </summary>
     private void InitializeToggleAnimation()
     {
         AutoBindReferences();
@@ -471,6 +549,9 @@ public class OperateLogUI : MonoBehaviour
         EvaluateToggleAnimation();
     }
 
+    /// <summary>
+    /// 將展開或收合動畫推進到指定終點。
+    /// </summary>
     private IEnumerator AnimateToEndpoint()
     {
         float targetTime = isExpanded ? 1f : 0f;
@@ -493,6 +574,9 @@ public class OperateLogUI : MonoBehaviour
         animationRoutine = null;
     }
 
+    /// <summary>
+    /// 取得紀錄面板切換動畫的播放時間。
+    /// </summary>
     private float GetToggleDuration()
     {
         if (logListAnimation != null && logListAnimation.clip != null)
@@ -503,6 +587,9 @@ public class OperateLogUI : MonoBehaviour
         return Mathf.Max(0.01f, fallbackToggleSeconds);
     }
 
+    /// <summary>
+    /// 依目前進度更新紀錄面板的切換動畫。
+    /// </summary>
     private void EvaluateToggleAnimation()
     {
         if (logListAnimation != null && logListAnimation.clip != null)
@@ -541,6 +628,9 @@ public class OperateLogUI : MonoBehaviour
         logListAnimator.Update(0f);
     }
 
+    /// <summary>
+    /// 建立卡牌操作的紀錄索引鍵。
+    /// </summary>
     private static string GetCardKey(CardDefinition card)
     {
         return card != null && !string.IsNullOrEmpty(card.id)
@@ -548,6 +638,9 @@ public class OperateLogUI : MonoBehaviour
             : string.Empty;
     }
 
+    /// <summary>
+    /// 建立傷害效果的紀錄索引鍵。
+    /// </summary>
     private static string GetDamageKey(DamageContext context)
     {
         if (context != null && context.sourceCard != null)
@@ -568,6 +661,9 @@ public class OperateLogUI : MonoBehaviour
         return string.Empty;
     }
 
+    /// <summary>
+    /// 依效果來源判斷操作所屬的白黑陣營。
+    /// </summary>
     private static bool ResolveActorIsWhite(DamageContext context)
     {
         if (
@@ -587,6 +683,9 @@ public class OperateLogUI : MonoBehaviour
         return true;
     }
 
+    /// <summary>
+    /// 取得傷害來源的顯示名稱。
+    /// </summary>
     private static string ResolveDamageSourceName(DamageContext context)
     {
         if (context == null) return string.Empty;
@@ -613,6 +712,9 @@ public class OperateLogUI : MonoBehaviour
         return string.Empty;
     }
 
+    /// <summary>
+    /// 從操作描述中擷取第一個棋盤座標文字。
+    /// </summary>
     private static string ExtractFirstCell(string text)
     {
         if (string.IsNullOrEmpty(text)) return string.Empty;
@@ -640,11 +742,17 @@ public class OperateLogUI : MonoBehaviour
         return $"({x}.{y})";
     }
 
+    /// <summary>
+    /// 將棋盤座標格式化為紀錄顯示文字。
+    /// </summary>
     private static string FormatCell(Vector2 coordinate)
     {
         return $"({Mathf.RoundToInt(coordinate.x)}.{Mathf.RoundToInt(coordinate.y)})";
     }
 
+    /// <summary>
+    /// 依階層順序遞迴尋找指定名稱的 Transform；回傳第一個符合的物件。
+    /// </summary>
     private static Transform FindChildRecursive(Transform root, string childName)
     {
         if (root == null) return null;
@@ -670,6 +778,9 @@ public class OperateLogUI : MonoBehaviour
         public int whiteHeal;
         public int blackHeal;
 
+        /// <summary>
+        /// 保存紀錄文字元件與前綴，供後續更新顯示。
+        /// </summary>
         public LogEntry(TMP_Text tmpText, Text legacyText, string prefix)
         {
             this.tmpText = tmpText;
@@ -677,6 +788,9 @@ public class OperateLogUI : MonoBehaviour
             this.prefix = prefix;
         }
 
+        /// <summary>
+        /// 依目前資料刷新此物件的顯示內容。
+        /// </summary>
         public void Refresh()
         {
             string value = Build();
@@ -690,6 +804,9 @@ public class OperateLogUI : MonoBehaviour
             }
         }
 
+        /// <summary>
+        /// 依紀錄項目資料組合顯示文字。
+        /// </summary>
         private string Build()
         {
             StringBuilder builder = new StringBuilder(prefix);
@@ -700,6 +817,9 @@ public class OperateLogUI : MonoBehaviour
             return builder.ToString();
         }
 
+        /// <summary>
+        /// 將傷害或治療結果附加到既有紀錄文字。
+        /// </summary>
         private static void AppendResult(
             StringBuilder builder,
             string side,

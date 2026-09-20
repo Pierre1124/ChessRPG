@@ -1,4 +1,4 @@
-﻿using UnityEngine;
+using UnityEngine;
 using System.Collections;
 using UnityEngine.InputSystem;
 
@@ -22,11 +22,17 @@ public class CameraController : MonoBehaviour
 
     private bool isDragging = false;
 
+    /// <summary>
+    /// 啟動初始視角設定協程。
+    /// </summary>
     void Start()
     {
         StartCoroutine(ApplyDefaultPerspective());
     }
 
+    /// <summary>
+    /// 依目前模式設定相機的初始觀看方向。
+    /// </summary>
     private IEnumerator ApplyDefaultPerspective()
     {
         yield return null;
@@ -46,6 +52,9 @@ public class CameraController : MonoBehaviour
         WhitePerspective();
     }
 
+    /// <summary>
+    /// 處理相機旋轉輸入及回到本機陣營視角的快捷鍵。
+    /// </summary>
     void Update()
     {
         HandleRotation();
@@ -60,6 +69,9 @@ public class CameraController : MonoBehaviour
     //==============================
     // 右鍵旋轉
     //==============================
+    /// <summary>
+    /// 讀取旋轉操作並更新相機的目標方向。
+    /// </summary>
     void HandleRotation()
     {
         if (Mouse.current.rightButton.isPressed)
@@ -83,6 +95,9 @@ public class CameraController : MonoBehaviour
     //==============================
     // 更新旋轉
     //==============================
+    /// <summary>
+    /// 依目標角度更新相機旋轉，讓視角平順切換。
+    /// </summary>
     void UpdateRotation()
     {
         Vector3 center = new Vector3(
@@ -103,6 +118,9 @@ public class CameraController : MonoBehaviour
     //==============================
     // 黑方視角
     //==============================
+    /// <summary>
+    /// 將相機的目標視角切換到黑方。
+    /// </summary>
     public void BlackPerspective()
     {
         currentYaw = 180f;
@@ -126,6 +144,9 @@ public class CameraController : MonoBehaviour
     //==============================
     // 白方視角
     //==============================
+    /// <summary>
+    /// 將相機的目標視角切換到白方。
+    /// </summary>
     public void WhitePerspective()
     {
         currentYaw = 0f;
@@ -149,6 +170,9 @@ public class CameraController : MonoBehaviour
     //==============================
     // 回到本地玩家所屬視角
     //==============================
+    /// <summary>
+    /// 依本機玩家陣營設定棋盤觀看方向。
+    /// </summary>
     public void ApplyLocalPlayerPerspective()
     {
         MultiplayerGameController multiplayer =

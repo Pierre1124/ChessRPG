@@ -41,8 +41,12 @@ public class StartMenuController : MonoBehaviour
     private Resolution[] availableResolutions;
     private string openingCardId;
 
+    /// <summary>
+    /// 補齊選單與連線引用，顯示初始面板並綁定畫面設定。
+    /// </summary>
     private void Start()
     {
+        LogicManager.SetNextGameMode(false);
         if (networkSessionLauncher == null)
         {
             networkSessionLauncher =
@@ -58,11 +62,17 @@ public class StartMenuController : MonoBehaviour
         BindDisplaySettings();
     }
 
+    /// <summary>
+    /// 顯示開始遊戲選單，供玩家選擇對局模式。
+    /// </summary>
     public void StartGame()
     {
         ShowStartMenu();
     }
 
+    /// <summary>
+    /// 準備牌組後載入本機遊戲場景。
+    /// </summary>
     public void StartLocalGame()
     {
         if (cardLibrary == null)
@@ -75,6 +85,9 @@ public class StartMenuController : MonoBehaviour
         SceneManager.LoadScene(gameSceneName);
     }
 
+    /// <summary>
+    /// 顯示起始選單相關面板。
+    /// </summary>
     public void ShowStartMenu()
     {
         ResolveMenuPanels();
@@ -83,6 +96,9 @@ public class StartMenuController : MonoBehaviour
         SetPanelActive(startMenuPanel, true);
     }
 
+    /// <summary>
+    /// 顯示主選單並更新其他面板狀態。
+    /// </summary>
     public void ShowMainMenu()
     {
         ResolveMenuPanels();
@@ -91,11 +107,17 @@ public class StartMenuController : MonoBehaviour
         SetPanelActive(mainMenuPanel, true);
     }
 
+    /// <summary>
+    /// 從目前子面板返回主選單。
+    /// </summary>
     public void BackToMainMenu()
     {
         ShowMainMenu();
     }
 
+    /// <summary>
+    /// 準備牌組並要求啟動 Photon 開房流程。
+    /// </summary>
     public void StartHostGame()
     {
         if (!PrepareDeckBeforeGame())
@@ -115,6 +137,9 @@ public class StartMenuController : MonoBehaviour
         networkSessionLauncher.StartHost();
     }
 
+    /// <summary>
+    /// 準備牌組並要求加入 Photon 房間。
+    /// </summary>
     public void StartClientGame()
     {
         if (!PrepareDeckBeforeGame())
@@ -133,6 +158,9 @@ public class StartMenuController : MonoBehaviour
         networkSessionLauncher.StartClient();
     }
 
+    /// <summary>
+    /// 進入對局前確認牌組設定已準備完成。
+    /// </summary>
     private bool PrepareDeckBeforeGame()
     {
         if (cardLibrary == null)
@@ -145,6 +173,9 @@ public class StartMenuController : MonoBehaviour
         return true;
     }
 
+    /// <summary>
+    /// 補齊主選單與子面板的場景引用。
+    /// </summary>
     private void ResolveMenuPanels()
     {
         if (mainMenuPanel == null)
@@ -160,6 +191,9 @@ public class StartMenuController : MonoBehaviour
         }
     }
 
+    /// <summary>
+    /// 在面板引用有效時設定顯示狀態。
+    /// </summary>
     private static void SetPanelActive(GameObject panel, bool active)
     {
         if (panel != null && panel.activeSelf != active)
@@ -168,6 +202,9 @@ public class StartMenuController : MonoBehaviour
         }
     }
 
+    /// <summary>
+    /// 依名稱尋找場景物件。
+    /// </summary>
     private static Transform FindSceneObject(string objectName)
     {
         GameObject[] roots =
@@ -187,6 +224,9 @@ public class StartMenuController : MonoBehaviour
         return null;
     }
 
+    /// <summary>
+    /// 建立選單中的解析度與視窗模式設定綁定。
+    /// </summary>
     private void BindDisplaySettings()
     {
         availableResolutions =
@@ -213,6 +253,9 @@ public class StartMenuController : MonoBehaviour
         }
     }
 
+    /// <summary>
+    /// 依介面選擇套用畫面設定。
+    /// </summary>
     private void ApplyDisplaySettings(bool save)
     {
         int index = resolutionDropdown != null
@@ -233,6 +276,9 @@ public class StartMenuController : MonoBehaviour
         );
     }
 
+    /// <summary>
+    /// 載入目前牌組選擇並開啟牌組編輯面板。
+    /// </summary>
     public void OpenDeckEditor()
     {
         if (!HasEditorReferences())
@@ -263,6 +309,9 @@ public class StartMenuController : MonoBehaviour
         Canvas.ForceUpdateCanvases();
     }
 
+    /// <summary>
+    /// 驗證並保存牌組編輯器目前的選擇。
+    /// </summary>
     public void SaveDeck()
     {
         if (cardLibrary == null || GetSelectedCopyCount() == 0)
@@ -274,6 +323,9 @@ public class StartMenuController : MonoBehaviour
         CloseDeckEditor();
     }
 
+    /// <summary>
+    /// 關閉牌組編輯面板並返回選單。
+    /// </summary>
     public void CloseDeckEditor()
     {
         if (deckEditorGroup != null)
@@ -289,6 +341,9 @@ public class StartMenuController : MonoBehaviour
         }
     }
 
+    /// <summary>
+    /// 依既有編輯規則選取所有可用卡牌。
+    /// </summary>
     public void SelectAllCards()
     {
         if (cardLibrary == null) return;
@@ -302,6 +357,9 @@ public class StartMenuController : MonoBehaviour
         RefreshSelectionVisuals();
     }
 
+    /// <summary>
+    /// 清空牌組編輯器中的卡牌選擇。
+    /// </summary>
     public void ClearCards()
     {
         selectedCounts.Clear();
@@ -309,6 +367,9 @@ public class StartMenuController : MonoBehaviour
         RefreshSelectionVisuals();
     }
 
+    /// <summary>
+    /// 檢查牌組編輯器所需的 UI 引用是否齊全。
+    /// </summary>
     private bool HasEditorReferences()
     {
         bool valid = cardLibrary != null && deckEditorPanel != null &&
@@ -325,6 +386,9 @@ public class StartMenuController : MonoBehaviour
         return valid;
     }
 
+    /// <summary>
+    /// 依可用卡牌庫重建牌組編輯清單。
+    /// </summary>
     private void RebuildCardList()
     {
         foreach (KeyValuePair<string, GameObject> pair in cardItems)
@@ -354,6 +418,9 @@ public class StartMenuController : MonoBehaviour
         }
     }
 
+    /// <summary>
+    /// 依既有循環規則切換卡片數量或指定起手卡狀態。
+    /// </summary>
     private void ToggleCard(string cardId)
     {
         int count = GetSelectedCount(cardId);
@@ -378,6 +445,9 @@ public class StartMenuController : MonoBehaviour
         RefreshSelectionVisuals();
     }
 
+    /// <summary>
+    /// 依目前牌組選擇更新卡片標示與統計。
+    /// </summary>
     private void RefreshSelectionVisuals()
     {
         foreach (KeyValuePair<string, GameObject> pair in cardItems)
@@ -427,6 +497,9 @@ public class StartMenuController : MonoBehaviour
         }
     }
 
+    /// <summary>
+    /// 將卡牌圖像、文字與相關資訊套用到卡片 UI。
+    /// </summary>
     private void ApplyCardData(Transform item, CardDefinition card)
     {
         Image cardArt = FindChildComponent<Image>(item, "CardArt");
@@ -446,6 +519,9 @@ public class StartMenuController : MonoBehaviour
         SetText(item, "CardDescription", card.description);
     }
 
+    /// <summary>
+    /// 取得指定卡號的選取張數，並限制在編輯器允許的範圍。
+    /// </summary>
     private int GetSelectedCount(string cardId)
     {
         return selectedCounts.TryGetValue(cardId, out int count)
@@ -453,6 +529,9 @@ public class StartMenuController : MonoBehaviour
             : 0;
     }
 
+    /// <summary>
+    /// 取得指定卡號目前選取的張數。
+    /// </summary>
     private int GetSelectedCopyCount()
     {
         int count = 0;
@@ -464,6 +543,9 @@ public class StartMenuController : MonoBehaviour
         return count;
     }
 
+    /// <summary>
+    /// 取得指定起手卡的顯示名稱。
+    /// </summary>
     private string GetOpeningCardName()
     {
         CardDefinition openingCard = FindCard(openingCardId);
@@ -472,6 +554,9 @@ public class StartMenuController : MonoBehaviour
             : "未設定";
     }
 
+    /// <summary>
+    /// 依卡號尋找卡牌定義。
+    /// </summary>
     private CardDefinition FindCard(string cardId)
     {
         if (cardLibrary == null || string.IsNullOrEmpty(cardId))
@@ -490,6 +575,9 @@ public class StartMenuController : MonoBehaviour
         return null;
     }
 
+    /// <summary>
+    /// 依選取數量與起手卡狀態組合卡片名稱。
+    /// </summary>
     private string FormatDeckCardName(
         CardDefinition card,
         int count,
@@ -501,6 +589,9 @@ public class StartMenuController : MonoBehaviour
         return $"{prefix}{card.id}  {card.cardName}{countText}";
     }
 
+    /// <summary>
+    /// 取得卡牌類型對應的介面文字。
+    /// </summary>
     private string GetCardTypeLabel(CardType cardType)
     {
         switch (cardType)
@@ -516,12 +607,18 @@ public class StartMenuController : MonoBehaviour
         }
     }
 
+    /// <summary>
+    /// 尋找指定文字元件並更新其顯示內容。
+    /// </summary>
     private static void SetText(Transform root, string name, string value)
     {
         TMP_Text text = FindChildComponent<TMP_Text>(root, name);
         if (text != null) text.text = value;
     }
 
+    /// <summary>
+    /// 依名稱尋找子物件，再取得所需類型的元件。
+    /// </summary>
     private static T FindChildComponent<T>(Transform root, string name)
         where T : Component
     {
@@ -529,6 +626,9 @@ public class StartMenuController : MonoBehaviour
         return child != null ? child.GetComponent<T>() : null;
     }
 
+    /// <summary>
+    /// 依階層順序遞迴尋找指定名稱的 Transform；回傳第一個符合的物件。
+    /// </summary>
     private static Transform FindChildRecursive(Transform root, string name)
     {
         if (root == null) return null;

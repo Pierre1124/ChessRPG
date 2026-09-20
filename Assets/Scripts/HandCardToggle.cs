@@ -21,6 +21,9 @@ public class HandCardToggle : MonoBehaviour, IPointerClickHandler
         get { return isExpanded; }
     }
 
+    /// <summary>
+    /// 取得手牌 Animator 並初始化收合狀態。
+    /// </summary>
     private void Awake()
     {
         if (animator == null)
@@ -31,6 +34,9 @@ public class HandCardToggle : MonoBehaviour, IPointerClickHandler
         Initialize(animator);
     }
 
+    /// <summary>
+    /// 手牌展開時偵測外部點擊，必要時收合手牌。
+    /// </summary>
     private void Update()
     {
         if (
@@ -49,6 +55,9 @@ public class HandCardToggle : MonoBehaviour, IPointerClickHandler
         }
     }
 
+    /// <summary>
+    /// 設定手牌 Animator 並套用初始動畫進度。
+    /// </summary>
     public void Initialize(Animator targetAnimator)
     {
         if (isInitialized && animator == targetAnimator)
@@ -62,6 +71,9 @@ public class HandCardToggle : MonoBehaviour, IPointerClickHandler
         isInitialized = true;
     }
 
+    /// <summary>
+    /// 回應手牌區點擊並切換展開狀態。
+    /// </summary>
     public void OnPointerClick(PointerEventData eventData)
     {
         if (eventData.button != PointerEventData.InputButton.Left)
@@ -72,16 +84,25 @@ public class HandCardToggle : MonoBehaviour, IPointerClickHandler
         Toggle();
     }
 
+    /// <summary>
+    /// 將手牌區收合。
+    /// </summary>
     public void Collapse()
     {
         SetExpanded(false);
     }
 
+    /// <summary>
+    /// 切換手牌區的展開與收合狀態。
+    /// </summary>
     public void Toggle()
     {
         SetExpanded(!isExpanded);
     }
 
+    /// <summary>
+    /// 設定面板展開狀態並啟動對應動畫。
+    /// </summary>
     private void SetExpanded(bool expanded)
     {
         if (animator == null || animator.runtimeAnimatorController == null)
@@ -104,6 +125,9 @@ public class HandCardToggle : MonoBehaviour, IPointerClickHandler
         animationRoutine = StartCoroutine(AnimateToEndpoint());
     }
 
+    /// <summary>
+    /// 判斷游標是否位於手牌區內。
+    /// </summary>
     private bool IsPointerInsideHandCard(Vector2 screenPosition)
     {
         RectTransform rectTransform = transform as RectTransform;
@@ -145,6 +169,9 @@ public class HandCardToggle : MonoBehaviour, IPointerClickHandler
         return false;
     }
 
+    /// <summary>
+    /// 將展開或收合動畫推進到指定終點。
+    /// </summary>
     private IEnumerator AnimateToEndpoint()
     {
         float targetTime = isExpanded ? 1f : 0f;
@@ -166,6 +193,9 @@ public class HandCardToggle : MonoBehaviour, IPointerClickHandler
         animationRoutine = null;
     }
 
+    /// <summary>
+    /// 依目前進度更新面板動畫姿態。
+    /// </summary>
     private void EvaluateAnimation()
     {
         if (animator == null || animator.runtimeAnimatorController == null)

@@ -6,6 +6,9 @@ public class CardAnimationReceiver : MonoBehaviour, ICardAnimationReceiver
     [SerializeField] private Transform effectRoot;
     [SerializeField] private AudioSource audioSource;
 
+    /// <summary>
+    /// 補齊 Animator、特效掛點與 AudioSource 引用。
+    /// </summary>
     private void Awake()
     {
         if (animator == null)
@@ -24,6 +27,9 @@ public class CardAnimationReceiver : MonoBehaviour, ICardAnimationReceiver
         }
     }
 
+    /// <summary>
+    /// 接收卡牌動畫情境並依事件時機與接收對象處理演出。
+    /// </summary>
     public void PlayCardAnimation(CardAnimationContext context)
     {
         if (context == null || context.card == null)
@@ -46,6 +52,9 @@ public class CardAnimationReceiver : MonoBehaviour, ICardAnimationReceiver
         }
     }
 
+    /// <summary>
+    /// 依動畫設定播放 Animator、特效 Prefab 與音效。
+    /// </summary>
     private void Play(CardAnimationData animation)
     {
         if (animator != null)
@@ -105,6 +114,9 @@ public class CardAnimationReceiver : MonoBehaviour, ICardAnimationReceiver
         }
     }
 
+    /// <summary>
+    /// 判斷動畫設定是否適用於目前的來源或目標接收器。
+    /// </summary>
     private bool MatchesRecipient(
         CardAnimationRecipient expected,
         CardAnimationRecipient actual

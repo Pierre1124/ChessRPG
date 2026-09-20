@@ -1,14 +1,97 @@
-﻿using System.Collections;
+using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 
 /// <summary>
-/// 镼踵?璉蜓瘚?蝞∠??具?/// ??砍鞎痊嚗??方???????鞎摰??UI ????/// ?∠????摰喋?銵????賡?銝剖 CardBattleSystem??/// </summary>
+/// 協調棋盤、回合、場地效果、傷害演出與對局結果。
+/// </summary>
 public class LogicManager : MonoBehaviour
 {
     public const int MaxHealth = 100;
-    private static bool hideCardGameUiAfterFullRestart;
+    private static bool nextGameIsClassicChess;
+
+    public bool IsClassicChess { get; private set; }
+
+    /// <summary>
+    /// 在場景啟動時取得下一局模式；連線玩家以房間保存的模式為預設值。
+    /// </summary>
+    private void Awake()
+    {
+        IsClassicChess = nextGameIsClassicChess ||
+            MultiplayerGameController.IsClassicChessRoom;
+        nextGameIsClassicChess = false;
+    }
+
+    /// <summary>
+    /// 保存跨場景重載所需的模式，下一個對局控制器建立時消耗此設定。
+    /// </summary>
+    public static void SetNextGameMode(bool classicChess)
+    {
+        nextGameIsClassicChess = classicChess;
+    }
+
+    /// <summary>
+    /// 停止 RPG 結算並清除卡牌、場地與傷害介面；保留棋盤與普通棋局操作。
+    /// </summary>
+    public void ApplyClassicChessMode()
+    {
+        IsClassicChess = true;
+        StopAllCoroutines();
+        pendingDamageBatch.Clear();
+        damageCalculationQueue.Clear();
+        damageCalculationBatchDepth = 0;
+        isDamageCalculationPlaying = false;
+        isApplyingRemoteDamageCalculation = false;
+        isEndTurnWaitingForDamage = false;
+        isTurnFlowPlaying = false;
+        isTurnPhaseChangePlaying = false;
+        isFieldFusionPlaying = false;
+        externalOperationLockCount = 0;
+        deferFullGameRestartUntilUsingCard = false;
+        deferredFullGameRestartPending = false;
+        activeFieldCards.Clear();
+        ClearBoardFieldVisuals();
+        ResolveFieldCardPlaces();
+        foreach (FieldCardPlace place in fieldCardPlaces)
+        {
+            if (place == null) continue;
+            place.Clear();
+            place.HideInfo();
+            place.gameObject.SetActive(false);
+        }
+
+        if (EnsureCardHandManager())
+        {
+            cardHandManager.DisableRpgElements();
+        }
+
+        foreach (DamageCalculationVisualizer visualizer in Object.FindObjectsByType<DamageCalculationVisualizer>(
+            FindObjectsInactive.Include, FindObjectsSortMode.None))
+        {
+            visualizer.DisableForClassicChess();
+        }
+        foreach (Piece piece in Object.FindObjectsByType<Piece>(
+            FindObjectsInactive.Include, FindObjectsSortMode.None))
+        {
+            piece.ClearRpgState();
+        }
+        foreach (CardInfoUI info in Object.FindObjectsByType<CardInfoUI>(
+            FindObjectsInactive.Include, FindObjectsSortMode.None))
+        {
+            info.Hide();
+        }
+        foreach (StatusInfoTooltip tooltip in Object.FindObjectsByType<StatusInfoTooltip>(
+            FindObjectsInactive.Include, FindObjectsSortMode.None))
+        {
+            tooltip.Hide();
+        }
+        foreach (CardDebugSpawner spawner in Object.FindObjectsByType<CardDebugSpawner>(
+            FindObjectsInactive.Include, FindObjectsSortMode.None))
+        {
+            spawner.enabled = false;
+        }
+    }
 
     [Header("Board State")]
     public Piece[,] boardMap = new Piece[8, 8];
@@ -153,16 +236,20 @@ public class LogicManager : MonoBehaviour
 
     public bool ShouldApplyLocalHealthChange
     {
-        get { return !IsNetworkClientOnly; }
+        get { return !IsClassicChess && !IsNetworkClientOnly; }
     }
 
+    /// <summary>
+    /// 確保手牌管理器已取得並完成初始化。
+    /// </summary>
     private void Start()
     {
         EnsureCardHandManager();
     }
 
     /// <summary>
-    /// ?啣????oard ?Ｙ?璉???澆?ㄐ??    /// </summary>
+    /// 重設對局旗標、場地與雙方血量，初始化手牌及提示紀錄。
+    /// </summary>
     public void Initialize()
     {
         Time.timeScale = 1f;
@@ -184,16 +271,14 @@ public class LogicManager : MonoBehaviour
         whiteHealth = MaxHealth;
         blackHealth = MaxHealth;
 
-        if (EnsureCardHandManager())
+        if (IsClassicChess)
+        {
+            ApplyClassicChessMode();
+        }
+        else if (EnsureCardHandManager())
         {
             cardHandManager.ResetHands(isWhiteTurn);
             cardHandManager.RefreshHealth();
-
-            if (hideCardGameUiAfterFullRestart)
-            {
-                cardHandManager.SetCardGameUiActive(false);
-                hideCardGameUiAfterFullRestart = false;
-            }
         }
 
         Debug.Log("[CardDebug][Initialize] White starts | HP=100/100");
@@ -203,11 +288,22 @@ public class LogicManager : MonoBehaviour
     }
 
     /// <summary>
-    /// ?臭?甇??????????    /// InputManager 蝘餃?摰??romotionUI ??摰?敺??賣?韏圈ㄐ??    /// </summary>
+    /// 要求結束目前回合；若仍在傷害結算中則等待完成。
+    /// </summary>
     public void EndTurn()
     {
         if (Time.timeScale == 0f)
         {
+            return;
+        }
+
+        if (IsClassicChess)
+        {
+            isWhiteTurn = !isWhiteTurn;
+            OperateLogUI.BeginTurn(isWhiteTurn);
+            CheckGameOver();
+            RotateCameraForCurrentTurn();
+            BroadcastNetworkStateIfAuthority();
             return;
         }
 
@@ -229,6 +325,9 @@ public class LogicManager : MonoBehaviour
         StartCoroutine(TurnFlowRoutine());
     }
 
+    /// <summary>
+    /// 等待傷害結算完成，再依目前對局狀態進入回合切換。
+    /// </summary>
     private IEnumerator EndTurnAfterDamageCalculations()
     {
         isEndTurnWaitingForDamage = true;
@@ -249,6 +348,9 @@ public class LogicManager : MonoBehaviour
         StartCoroutine(TurnFlowRoutine());
     }
 
+    /// <summary>
+    /// 依既有順序執行回合結束效果、陣營切換與新回合效果。
+    /// </summary>
     private IEnumerator TurnFlowRoutine()
     {
         isTurnFlowPlaying = true;
@@ -335,6 +437,9 @@ public class LogicManager : MonoBehaviour
         }
     }
 
+    /// <summary>
+    /// 顯示回合階段提示並等待相關演出完成。
+    /// </summary>
     private IEnumerator PlayPhaseChange(string message)
     {
         isTurnPhaseChangePlaying = true;
@@ -359,6 +464,9 @@ public class LogicManager : MonoBehaviour
         isTurnPhaseChangePlaying = false;
     }
 
+    /// <summary>
+    /// 等待目前傷害結算與排程中的演出全部完成。
+    /// </summary>
     private IEnumerator WaitForDamageCalculations()
     {
         while (HasDamageCalculationWork)
@@ -366,8 +474,12 @@ public class LogicManager : MonoBehaviour
             yield return null;
         }
     }
+    /// <summary>
+    /// 處理棋子移動後的卡牌、狀態與相關效果。
+    /// </summary>
     public void OnPieceMoved(Piece piece)
     {
+        if (IsClassicChess) return;
         if (EnsureCardHandManager())
         {
             cardHandManager.DisableDrawForCurrentTurn();
@@ -377,6 +489,9 @@ public class LogicManager : MonoBehaviour
         RefreshBoardFieldEffects();
     }
 
+    /// <summary>
+    /// 主機驗證來源棋子與合法走法後執行移動。
+    /// </summary>
     public bool TryExecuteNetworkMove(
         BoardCoordinate from,
         BoardCoordinate to,
@@ -443,6 +558,9 @@ public class LogicManager : MonoBehaviour
         return true;
     }
 
+    /// <summary>
+    /// 依主機傳來的移動結果更新本機棋盤與演出。
+    /// </summary>
     public bool ApplyNetworkMoveResult(
         BoardCoordinate from,
         BoardCoordinate to,
@@ -486,7 +604,7 @@ public class LogicManager : MonoBehaviour
             isApplyingRemoteMoveResult = false;
         }
 
-        if (IsNetworkClientOnly && capturedPiece != null)
+        if (!IsClassicChess && IsNetworkClientOnly && capturedPiece != null)
         {
             StartCoroutine(EnsureRemoteCapturedPieceRemoved(capturedPiece));
         }
@@ -519,6 +637,9 @@ public class LogicManager : MonoBehaviour
         return true;
     }
 
+    /// <summary>
+    /// 套用主機提供的回合、血量與卡牌狀態。
+    /// </summary>
     public void ApplyRemoteNetworkState(
         bool remoteIsWhiteTurn,
         int remoteWhiteHealth,
@@ -529,18 +650,21 @@ public class LogicManager : MonoBehaviour
     {
         bool turnChanged = isWhiteTurn != remoteIsWhiteTurn;
         isWhiteTurn = remoteIsWhiteTurn;
-        whiteHealth = remoteWhiteHealth;
-        blackHealth = remoteBlackHealth;
 
-        if (EnsureCardHandManager())
+        if (!IsClassicChess)
         {
-            cardHandManager.Refresh(isWhiteTurn);
-            cardHandManager.RefreshHealth();
-            cardHandManager.ApplyNetworkCardState(
-                remoteCardState,
-                remoteCanDrawThisTurn,
-                isWhiteTurn
-            );
+            whiteHealth = remoteWhiteHealth;
+            blackHealth = remoteBlackHealth;
+            if (EnsureCardHandManager())
+            {
+                cardHandManager.Refresh(isWhiteTurn);
+                cardHandManager.RefreshHealth();
+                cardHandManager.ApplyNetworkCardState(
+                    remoteCardState,
+                    remoteCanDrawThisTurn,
+                    isWhiteTurn
+                );
+            }
         }
 
         if (turnChanged)
@@ -557,18 +681,35 @@ public class LogicManager : MonoBehaviour
         SetCheckAlarm(CheckKingStatus());
     }
 
+    /// <summary>
+    /// 依主機通知套用本機遊戲結束狀態。
+    /// </summary>
     public void ApplyRemoteGameOver(string result)
     {
         ShowGameOverLocal(result);
     }
 
+    /// <summary>
+    /// 處理國王與城堡完成王車易位後的效果。
+    /// </summary>
     public void OnPiecesCastled(King king, Rook rook)
     {
+        if (IsClassicChess) return;
         CardBattle.OnPiecesCastled(king, rook);
     }
 
+    /// <summary>
+    /// 處理吃子事件，計算相關效果並更新對局狀態。
+    /// </summary>
     public void OnPieceCaptured(Piece capturingPiece, Piece capturedPiece)
     {
+        if (IsClassicChess)
+        {
+            // 普通棋局直接播放吃子動作，不建立傷害序列或觸發卡牌技能。
+            if (capturingPiece != null) capturingPiece.PlayCaptureAnimation();
+            if (capturedPiece != null) capturedPiece.PlayCapturedAnimation();
+            return;
+        }
         if (IsNetworkClientOnly && isApplyingRemoteMoveResult)
         {
             return;
@@ -578,14 +719,21 @@ public class LogicManager : MonoBehaviour
         BreakBoardFieldCard(capturedPiece, "PieceCaptured", true);
     }
 
+    /// <summary>
+    /// 處理棋子離開棋盤後需要更新的效果。
+    /// </summary>
     public void OnPieceRemovedFromBoard(Piece removedPiece)
     {
         RefreshBoardFieldEffects();
     }
 
+    /// <summary>
+    /// 重新計算棋盤場地效果並更新對應視覺物件。
+    /// </summary>
     public void RefreshBoardFieldEffects()
     {
         ClearBoardFieldVisuals();
+        if (IsClassicChess) return;
 
         List<BoardFieldEffectZone> zones = GetActiveBoardFieldZones();
         foreach (BoardFieldEffectZone zone in zones)
@@ -601,12 +749,15 @@ public class LogicManager : MonoBehaviour
         }
     }
 
+    /// <summary>
+    /// 依場地區域規則修正指定棋子的可用格子。
+    /// </summary>
     public List<Vector2> ApplyBoardFieldEffects(
         Piece mover,
         List<Vector2> legalMoves
     )
     {
-        if (mover == null || legalMoves == null || legalMoves.Count == 0)
+        if (IsClassicChess || mover == null || legalMoves == null || legalMoves.Count == 0)
         {
             return legalMoves;
         }
@@ -661,6 +812,9 @@ public class LogicManager : MonoBehaviour
         return filteredMoves;
     }
 
+    /// <summary>
+    /// 判斷指定棋子是否為場地區域的來源。
+    /// </summary>
     private bool IsBoardFieldSource(
         Piece mover,
         List<BoardFieldEffectZone> zones
@@ -677,6 +831,9 @@ public class LogicManager : MonoBehaviour
         return false;
     }
 
+    /// <summary>
+    /// 解除棋子的場地卡，並處理場地被破壞時的效果。
+    /// </summary>
     public void BreakBoardFieldCard(
         Piece sourcePiece,
         string reason = "CardDestroyed",
@@ -740,6 +897,9 @@ public class LogicManager : MonoBehaviour
         }
     }
 
+    /// <summary>
+    /// 依場地類型結算被破壞時的傷害或治療。
+    /// </summary>
     private void ResolveBoardFieldDestroyedEffect(
         Piece sourcePiece,
         BoardFieldEffectType type
@@ -777,6 +937,9 @@ public class LogicManager : MonoBehaviour
         }
     }
 
+    /// <summary>
+    /// 處理護城河被破壞後的治療與演出。
+    /// </summary>
     private void PlayMoatDestroyedHeal(Piece sourcePiece, int healAmount)
     {
         if (sourcePiece == null)
@@ -817,6 +980,9 @@ public class LogicManager : MonoBehaviour
         );
     }
 
+    /// <summary>
+    /// 取得卡牌第一個可用狀態圖示，供提示或結算顯示。
+    /// </summary>
     private Sprite GetFirstStatusIcon(CardDefinition card)
     {
         if (card == null || card.statusesToApply == null)
@@ -835,6 +1001,9 @@ public class LogicManager : MonoBehaviour
         return null;
     }
 
+    /// <summary>
+    /// 取得卡牌的第一個狀態定義。
+    /// </summary>
     private StatusDefinition GetFirstStatus(CardDefinition card)
     {
         return card != null && card.statusesToApply != null &&
@@ -843,6 +1012,9 @@ public class LogicManager : MonoBehaviour
             : null;
     }
 
+    /// <summary>
+    /// 依電網狀態設定取得破壞傷害量。
+    /// </summary>
     private int GetPowerGridDamageAmount(StatusDefinition powerGridStatus)
     {
         if (powerGridStatus == null || powerGridStatus.effects == null)
@@ -864,6 +1036,9 @@ public class LogicManager : MonoBehaviour
         return 5;
     }
 
+    /// <summary>
+    /// 處理電網被破壞後的傷害與演出。
+    /// </summary>
     private void PlayPowerGridDestroyedDamage(
         Piece sourcePiece,
         StatusDefinition powerGridStatus,
@@ -945,6 +1120,9 @@ public class LogicManager : MonoBehaviour
         );
     }
 
+    /// <summary>
+    /// 取得電網狀態中的傷害效果設定。
+    /// </summary>
     private CardEffectData GetPowerGridDamageEffect(
         StatusDefinition powerGridStatus
     )
@@ -966,6 +1144,9 @@ public class LogicManager : MonoBehaviour
         return null;
     }
 
+    /// <summary>
+    /// 收集目前棋盤上有效的場地作用區域。
+    /// </summary>
     public List<BoardFieldEffectZone> GetActiveBoardFieldZones()
     {
         UpdatePiecesOnBoard();
@@ -1003,6 +1184,9 @@ public class LogicManager : MonoBehaviour
         return zones;
     }
 
+    /// <summary>
+    /// 依對齊棋子建立相連的場地作用區域。
+    /// </summary>
     private void AddAlignedFieldZones(
         List<BoardFieldEffectZone> zones,
         List<Piece> sources,
@@ -1051,6 +1235,9 @@ public class LogicManager : MonoBehaviour
         }
     }
 
+    /// <summary>
+    /// 依來源與端點資料建立場地區域。
+    /// </summary>
     private BoardFieldEffectZone BuildFieldZone(
         BoardFieldEffectType type,
         Piece first,
@@ -1085,6 +1272,9 @@ public class LogicManager : MonoBehaviour
         return zone;
     }
 
+    /// <summary>
+    /// 尋找移動路徑上第一個進入場地區域的格子。
+    /// </summary>
     private bool TryGetFirstFieldCellOnPath(
         Piece mover,
         Vector2Int start,
@@ -1140,6 +1330,9 @@ public class LogicManager : MonoBehaviour
         }
     }
 
+    /// <summary>
+    /// 依棋子裝備判斷其產生的場地效果類型。
+    /// </summary>
     private BoardFieldEffectType GetBoardFieldEffectType(Piece piece)
     {
         if (!(piece is Rook) || piece.cardDefinition == null)
@@ -1164,6 +1357,9 @@ public class LogicManager : MonoBehaviour
         return BoardFieldEffectType.None;
     }
 
+    /// <summary>
+    /// 將棋盤位置轉換成整數格座標。
+    /// </summary>
     private Vector2Int ToBoardCell(Vector2 position)
     {
         return new Vector2Int(
@@ -1172,6 +1368,9 @@ public class LogicManager : MonoBehaviour
         );
     }
 
+    /// <summary>
+    /// 產生場地效果紀錄使用的棋子辨識文字。
+    /// </summary>
     private string DescribePieceForField(Piece piece)
     {
         if (piece == null)
@@ -1185,6 +1384,9 @@ public class LogicManager : MonoBehaviour
             $"({piece.GetCoordinates().x:0},{piece.GetCoordinates().y:0})";
     }
 
+    /// <summary>
+    /// 依場地區域建立棋盤上的視覺標示。
+    /// </summary>
     private void CreateBoardFieldVisual(
         Piece source,
         Vector2Int cell,
@@ -1262,6 +1464,9 @@ public class LogicManager : MonoBehaviour
         boardFieldVisuals.Add(root);
     }
 
+    /// <summary>
+    /// 取得指定 Renderer 對應的網格資料。
+    /// </summary>
     private Mesh GetRendererMesh(Renderer renderer)
     {
         MeshFilter meshFilter = renderer.GetComponent<MeshFilter>();
@@ -1277,6 +1482,9 @@ public class LogicManager : MonoBehaviour
             : null;
     }
 
+    /// <summary>
+    /// 建立場地標示所需的備援材質。
+    /// </summary>
     private Material CreateFallbackBoardFieldVisualMaterial(
         BoardFieldEffectType type
     )
@@ -1303,6 +1511,9 @@ public class LogicManager : MonoBehaviour
         return material;
     }
 
+    /// <summary>
+    /// 依場地類型建立視覺標示材質。
+    /// </summary>
     private Material CreateBoardFieldVisualMaterial(
         Material sourceMaterial,
         BoardFieldEffectType type
@@ -1324,6 +1535,9 @@ public class LogicManager : MonoBehaviour
         return material;
     }
 
+    /// <summary>
+    /// 將場地顏色套用到指定材質。
+    /// </summary>
     private void ApplyBoardFieldColor(
         Material material,
         BoardFieldEffectType type
@@ -1349,6 +1563,9 @@ public class LogicManager : MonoBehaviour
         }
     }
 
+    /// <summary>
+    /// 清除已建立的場地標示及執行期材質。
+    /// </summary>
     private void ClearBoardFieldVisuals()
     {
         for (int i = boardFieldVisuals.Count - 1; i >= 0; i--)
@@ -1390,12 +1607,16 @@ public class LogicManager : MonoBehaviour
         boardFieldVisualMaterials.Clear();
     }
 
+    /// <summary>
+    /// 排入傷害計算演出與完成後要執行的回呼。
+    /// </summary>
     public void PlayDamageCalculation(
         DamageCalculationSequence sequence,
         System.Action onCaptureVisual,
         System.Action onDamageApplied
     )
     {
+        if (IsClassicChess) return;
         if (IsNetworkClientOnly && !isApplyingRemoteDamageCalculation)
         {
             Debug.Log(
@@ -1419,11 +1640,17 @@ public class LogicManager : MonoBehaviour
         EnqueueDamageBatch(new List<DamageCalculationRequest> { request });
     }
 
+    /// <summary>
+    /// 開始收集同一批傷害演出要求，支援巢狀批次。
+    /// </summary>
     private void BeginDamageCalculationBatch()
     {
         damageCalculationBatchDepth++;
     }
 
+    /// <summary>
+    /// 結束目前批次層級，最外層完成時提交收集的傷害演出。
+    /// </summary>
     private void EndDamageCalculationBatch()
     {
         if (damageCalculationBatchDepth <= 0)
@@ -1448,6 +1675,9 @@ public class LogicManager : MonoBehaviour
         EnqueueDamageBatch(batch);
     }
 
+    /// <summary>
+    /// 將一組傷害要求排入待播放佇列。
+    /// </summary>
     private void EnqueueDamageBatch(List<DamageCalculationRequest> requests)
     {
         if (requests == null || requests.Count == 0)
@@ -1464,8 +1694,12 @@ public class LogicManager : MonoBehaviour
         }
     }
 
+    /// <summary>
+    /// 解析遠端傷害演出資料並排入本機播放佇列。
+    /// </summary>
     public void PlayRemoteDamageCalculationBatch(string payload)
     {
+        if (IsClassicChess) return;
         NetworkDamageCalculationBatch networkBatch =
             DeserializeDamageCalculationBatch(payload);
         if (
@@ -1514,6 +1748,9 @@ public class LogicManager : MonoBehaviour
         }
     }
 
+    /// <summary>
+    /// 將遠端傷害序列加入本機操作紀錄。
+    /// </summary>
     private void LogRemoteDamageSequence(DamageCalculationSequence sequence)
     {
         if (sequence == null || sequence.finalDamage <= 0)
@@ -1538,6 +1775,9 @@ public class LogicManager : MonoBehaviour
         }
     }
 
+    /// <summary>
+    /// 目前端具有主機權限時廣播傷害演出批次。
+    /// </summary>
     private void BroadcastDamageCalculationBatchIfAuthority(
         List<DamageCalculationRequest> requests
     )
@@ -1560,6 +1800,9 @@ public class LogicManager : MonoBehaviour
         Multiplayer.BroadcastDamageCalculationBatch(payload);
     }
 
+    /// <summary>
+    /// 將傷害演出批次轉換為可傳送的資料字串。
+    /// </summary>
     private string SerializeDamageCalculationBatch(
         List<DamageCalculationRequest> requests
     )
@@ -1615,6 +1858,9 @@ public class LogicManager : MonoBehaviour
         return batch.sequences.Count > 0 ? JsonUtility.ToJson(batch) : string.Empty;
     }
 
+    /// <summary>
+    /// 解析收到的傷害演出批次資料。
+    /// </summary>
     private NetworkDamageCalculationBatch DeserializeDamageCalculationBatch(
         string payload
     )
@@ -1637,6 +1883,9 @@ public class LogicManager : MonoBehaviour
         }
     }
 
+    /// <summary>
+    /// 將網路傷害資料轉換成本機演出序列。
+    /// </summary>
     private DamageCalculationSequence BuildRemoteDamageCalculationSequence(
         NetworkDamageCalculationSequence networkSequence
     )
@@ -1689,6 +1938,9 @@ public class LogicManager : MonoBehaviour
         return sequence;
     }
 
+    /// <summary>
+    /// 取得棋子座標；無有效棋子時回傳無效座標標記。
+    /// </summary>
     private BoardCoordinate GetPieceCoordinateOrInvalid(Piece piece)
     {
         if (piece == null)
@@ -1721,6 +1973,9 @@ public class LogicManager : MonoBehaviour
         return new BoardCoordinate(-1, -1);
     }
 
+    /// <summary>
+    /// 依有效棋盤座標取得棋子。
+    /// </summary>
     private Piece FindPieceAt(BoardCoordinate coordinate)
     {
         if (!coordinate.IsValid)
@@ -1731,6 +1986,9 @@ public class LogicManager : MonoBehaviour
         return boardMap[coordinate.x, coordinate.y];
     }
 
+    /// <summary>
+    /// 依移動來源與目的地找出被吃棋子，包含特殊吃子情況。
+    /// </summary>
     private Piece FindCapturedPieceForMove(Piece mover, BoardCoordinate to)
     {
         if (mover == null || !to.IsValid)
@@ -1767,6 +2025,9 @@ public class LogicManager : MonoBehaviour
         return null;
     }
 
+    /// <summary>
+    /// 等待遠端吃子演出後確認棋子已從畫面移除。
+    /// </summary>
     private IEnumerator EnsureRemoteCapturedPieceRemoved(Piece capturedPiece)
     {
         int capturedInstanceId = capturedPiece != null
@@ -1806,6 +2067,9 @@ public class LogicManager : MonoBehaviour
         );
     }
 
+    /// <summary>
+    /// 依遠端傷害序列播放吃子視覺效果。
+    /// </summary>
     private void PlayRemoteCaptureVisual(DamageCalculationSequence sequence)
     {
         if (sequence == null)
@@ -1828,6 +2092,9 @@ public class LogicManager : MonoBehaviour
         }
     }
 
+    /// <summary>
+    /// 依佇列順序啟動下一批傷害演出。
+    /// </summary>
     private void PlayNextDamageCalculation()
     {
         if (damageVisualizer == null)
@@ -1902,6 +2169,9 @@ public class LogicManager : MonoBehaviour
         public readonly System.Action onCaptureVisual;
         public readonly System.Action onDamageApplied;
 
+        /// <summary>
+        /// 保存傷害序列與吃子、套用傷害時的回呼。
+        /// </summary>
         public DamageCalculationRequest(
             DamageCalculationSequence sequence,
             System.Action onCaptureVisual,
@@ -1924,6 +2194,9 @@ public class LogicManager : MonoBehaviour
         public readonly List<System.Action> DamageApplied =
             new List<System.Action>();
 
+        /// <summary>
+        /// 收集批次要求並整理傷害序列與回呼清單。
+        /// </summary>
         public DamageCalculationBatch(List<DamageCalculationRequest> requests)
         {
             Requests = requests;
@@ -1940,6 +2213,9 @@ public class LogicManager : MonoBehaviour
             get { return Requests != null ? Requests.Count : 0; }
         }
 
+        /// <summary>
+        /// 依序執行批次中的吃子演出回呼。
+        /// </summary>
         public void InvokeCaptureVisuals()
         {
             foreach (System.Action action in CaptureVisuals)
@@ -1948,6 +2224,9 @@ public class LogicManager : MonoBehaviour
             }
         }
 
+        /// <summary>
+        /// 依序執行批次中的傷害套用回呼。
+        /// </summary>
         public void InvokeDamageApplied()
         {
             foreach (System.Action action in DamageApplied)
@@ -1957,6 +2236,9 @@ public class LogicManager : MonoBehaviour
         }
     }
 
+    /// <summary>
+    /// 結算對棋子的傷害及相關技能，建立對應的傷害演出。
+    /// </summary>
     public void DealDamageToPiece(
         Piece source,
         Piece target,
@@ -1965,6 +2247,7 @@ public class LogicManager : MonoBehaviour
         DamageTag damageTags = DamageTag.None
     )
     {
+        if (IsClassicChess) return;
         CardBattle.DealDamageToPiece(
             source,
             target,
@@ -1974,6 +2257,9 @@ public class LogicManager : MonoBehaviour
         );
     }
 
+    /// <summary>
+    /// 以固定基礎傷害建立結算，依現有規則處理後續效果。
+    /// </summary>
     public void DealFixedDamageToPiece(
         Piece source,
         Piece target,
@@ -1982,6 +2268,7 @@ public class LogicManager : MonoBehaviour
         DamageTag damageTags = DamageTag.None
     )
     {
+        if (IsClassicChess) return;
         CardBattle.DealFixedDamageToPiece(
             source,
             target,
@@ -1991,34 +2278,53 @@ public class LogicManager : MonoBehaviour
         );
     }
 
+    /// <summary>
+    /// 處理事件卡對棋子造成的傷害。
+    /// </summary>
     public void DealEventDamageToPiece(
         CardDefinition card,
         Piece target,
         int damage
     )
     {
+        if (IsClassicChess) return;
         CardBattle.DealEventDamageToPiece(card, target, damage);
     }
 
+    /// <summary>
+    /// 處理事件卡對玩家的治療與相關修正。
+    /// </summary>
     public void HealPlayerFromEvent(
         CardDefinition card,
         Piece target,
         int amount
     )
     {
+        if (IsClassicChess) return;
         CardBattle.HealPlayerFromEvent(card, target, amount);
     }
 
+    /// <summary>
+    /// 處理指定玩家的治療，套用相關效果並更新血量呈現。
+    /// </summary>
     public void HealPlayer(bool isWhitePlayer, int amount)
     {
+        if (IsClassicChess) return;
         CardBattle.HealPlayer(isWhitePlayer, amount);
     }
 
+    /// <summary>
+    /// 結算指定玩家承受的傷害並更新血量。
+    /// </summary>
     public void DamagePlayer(bool isWhitePlayer, int amount)
     {
+        if (IsClassicChess) return;
         CardBattle.DamagePlayer(isWhitePlayer, amount);
     }
 
+    /// <summary>
+    /// 支付卡牌要求的血量代價，並處理對應的結算與勝負檢查。
+    /// </summary>
     public void PayHealthCost(
         bool isWhitePlayer,
         int amount,
@@ -2026,6 +2332,7 @@ public class LogicManager : MonoBehaviour
         Piece visualSource = null
     )
     {
+        if (IsClassicChess) return;
         CardBattle.PayHealthCost(
             isWhitePlayer,
             amount,
@@ -2034,6 +2341,9 @@ public class LogicManager : MonoBehaviour
         );
     }
 
+    /// <summary>
+    /// 將卡牌加入指定玩家的待發放清單。
+    /// </summary>
     public bool QueueCardForPlayer(
         bool isWhitePlayer,
         CardDefinition card,
@@ -2048,6 +2358,9 @@ public class LogicManager : MonoBehaviour
             );
     }
 
+    /// <summary>
+    /// 取得指定陣營累計被吃棋子的數量。
+    /// </summary>
     public int GetCapturedPieceCount(bool isWhitePlayer)
     {
         return isWhitePlayer
@@ -2055,6 +2368,9 @@ public class LogicManager : MonoBehaviour
             : blackCapturedPieceCount;
     }
 
+    /// <summary>
+    /// 登錄棋子被吃事件並更新對應計數。
+    /// </summary>
     public void RegisterPieceCaptured(Piece capturedPiece)
     {
         if (capturedPiece == null)
@@ -2078,8 +2394,12 @@ public class LogicManager : MonoBehaviour
         );
     }
 
+    /// <summary>
+    /// 依卡牌規則移除指定陣營的國王。
+    /// </summary>
     public void RemoveKingForCard(bool isWhitePlayer, string reason)
     {
+        if (IsClassicChess) return;
         UpdatePiecesOnBoard();
 
         foreach (Piece piece in piecesOnBoard.ToArray())
@@ -2106,11 +2426,17 @@ public class LogicManager : MonoBehaviour
         }
     }
 
+    /// <summary>
+    /// 從指定陣營目前可用的棋子中隨機選取一枚。
+    /// </summary>
     public Piece GetRandomPiece(bool isWhitePlayer)
     {
         return CardBattle.GetRandomPiece(isWhitePlayer);
     }
 
+    /// <summary>
+    /// 檢查欄位與場地規則後嘗試放置場地卡。
+    /// </summary>
     public bool TryPlayFieldCard(CardDefinition card)
     {
         Debug.Log(
@@ -2121,8 +2447,12 @@ public class LogicManager : MonoBehaviour
         return false;
     }
 
+    /// <summary>
+    /// 檢查欄位與場地規則後嘗試放置場地卡。
+    /// </summary>
     public bool TryPlayFieldCard(CardDefinition card, FieldCardPlace place)
     {
+        if (IsClassicChess) return false;
         if (card == null || card.cardType != CardType.Field)
         {
             GameFlowUI.Show("???臬?啣");
@@ -2204,6 +2534,9 @@ public class LogicManager : MonoBehaviour
         return true;
     }
 
+    /// <summary>
+    /// 計算目前指定卡號的有效場地數量。
+    /// </summary>
     public int GetActiveFieldCount(string cardId)
     {
         if (string.IsNullOrEmpty(cardId))
@@ -2223,16 +2556,25 @@ public class LogicManager : MonoBehaviour
         return count;
     }
 
+    /// <summary>
+    /// 取得目前場地提供的攻擊加成。
+    /// </summary>
     public int GetFieldAttackBonus()
     {
         return GetActiveFieldCount("F07") + GetActiveFieldCount("F08") * 5;
     }
 
+    /// <summary>
+    /// 取得目前場地提供的棋子價值修正。
+    /// </summary>
     public int GetFieldValueModifier()
     {
         return GetActiveFieldCount("F04") * -1;
     }
 
+    /// <summary>
+    /// 依有效場地套用造成傷害的修正。
+    /// </summary>
     public int ApplyFieldDamageDealtModifiers(
         DamageContext damageContext,
         int baseDamage,
@@ -2277,6 +2619,9 @@ public class LogicManager : MonoBehaviour
         return result;
     }
 
+    /// <summary>
+    /// 依有效場地套用治療量修正。
+    /// </summary>
     public int ApplyFieldHealModifiers(
         bool healedWhitePlayer,
         int baseHeal,
@@ -2310,6 +2655,9 @@ public class LogicManager : MonoBehaviour
         return result;
     }
 
+    /// <summary>
+    /// 依有效場地套用玩家承傷修正。
+    /// </summary>
     public int ApplyFieldPlayerDamageTakenModifiers(
         bool damagedWhitePlayer,
         int baseDamage,
@@ -2343,16 +2691,25 @@ public class LogicManager : MonoBehaviour
         return result;
     }
 
+    /// <summary>
+    /// 取得棋子套用目前卡牌、狀態與場地修正後的攻擊力。
+    /// </summary>
     public int GetEffectiveAttack(Piece piece)
     {
         return CardBattle.GetEffectiveAttack(piece);
     }
 
+    /// <summary>
+    /// 取得棋子套用目前效果後的價值。
+    /// </summary>
     public int GetEffectiveValue(Piece piece)
     {
         return CardBattle.GetEffectiveValue(piece);
     }
 
+    /// <summary>
+    /// 依棋盤座標取得對應格子元件。
+    /// </summary>
     public Square GetSquareAtPosition(Vector2 position)
     {
         int x = Mathf.RoundToInt(position.x);
@@ -2367,7 +2724,8 @@ public class LogicManager : MonoBehaviour
     }
 
     /// <summary>
-    /// ?撱箇???餅??啣???    /// 隞颱?璉?蝘餃???霈霈宏????嚗?閬??啗?蝞?    /// </summary>
+    /// 重新建立雙方棋子的攻擊範圍圖。
+    /// </summary>
     public void UpdateCheckMap()
     {
         ResetCheckMap();
@@ -2403,6 +2761,9 @@ public class LogicManager : MonoBehaviour
         }
     }
 
+    /// <summary>
+    /// 清空雙方攻擊範圍圖。
+    /// </summary>
     public void ResetCheckMap()
     {
         for (int x = 0; x < 8; x++)
@@ -2415,6 +2776,9 @@ public class LogicManager : MonoBehaviour
         }
     }
 
+    /// <summary>
+    /// 檢查目前回合國王是否受到攻擊。
+    /// </summary>
     public bool CheckKingStatus()
     {
         UpdatePiecesOnBoard();
@@ -2430,6 +2794,9 @@ public class LogicManager : MonoBehaviour
         return false;
     }
 
+    /// <summary>
+    /// 依目前棋盤內容更新有效棋子清單。
+    /// </summary>
     public void UpdatePiecesOnBoard()
     {
         piecesOnBoard.Clear();
@@ -2447,7 +2814,8 @@ public class LogicManager : MonoBehaviour
     }
 
     /// <summary>
-    /// 镼踵?璉?鞎炎?乓?    /// EndTurn ?銝?雿摰嗅??澆嚗?甇斗炎?亦??舐?摰嗆?西◤撠香?澆???    /// </summary>
+    /// 依目前棋局與血量檢查遊戲是否結束。
+    /// </summary>
     public void CheckGameOver()
     {
         if (IsNetworkClientOnly)
@@ -2494,6 +2862,9 @@ public class LogicManager : MonoBehaviour
             : "Draw");
     }
 
+    /// <summary>
+    /// 依國王受攻擊狀態更新將軍提示。
+    /// </summary>
     private void SetCheckAlarm(bool currentKingInCheck)
     {
         string side = isWhiteTurn ? "白方" : "黑方";
@@ -2504,6 +2875,9 @@ public class LogicManager : MonoBehaviour
         );
     }
 
+    /// <summary>
+    /// 處理兵抵達升變位置後的選擇流程。
+    /// </summary>
     public void HandlePromotion(Pawn pawn)
     {
         if (promotionUI == null)
@@ -2538,6 +2912,9 @@ public class LogicManager : MonoBehaviour
         }
     }
 
+    /// <summary>
+    /// 將兵替換為選擇的升變棋子並更新棋局。
+    /// </summary>
     public bool ApplyPromotionChoice(
         BoardCoordinate coordinate,
         bool isWhitePlayer,
@@ -2630,6 +3007,9 @@ public class LogicManager : MonoBehaviour
         return true;
     }
 
+    /// <summary>
+    /// 將升變棋子名稱對應到既有 Prefab 索引。
+    /// </summary>
     private bool TryGetPromotionPrefabIndex(
         string pieceName,
         bool isWhitePlayer,
@@ -2662,11 +3042,17 @@ public class LogicManager : MonoBehaviour
         }
     }
 
+    /// <summary>
+    /// 設定是否在回合切換時旋轉相機。
+    /// </summary>
     public void ToggleCameraRotation(bool enabled)
     {
         isCameraRotationEnabled = enabled;
     }
 
+    /// <summary>
+    /// 設定是否播放遊戲音效。
+    /// </summary>
     public void ToggleSound(bool enabled)
     {
         isSoundEnabled = enabled;
@@ -2682,6 +3068,9 @@ public class LogicManager : MonoBehaviour
         }
     }
 
+    /// <summary>
+    /// 套用音效音量設定。
+    /// </summary>
     public void SetSoundVolume(float volume)
     {
         soundVolume = Mathf.Clamp01(volume);
@@ -2697,6 +3086,9 @@ public class LogicManager : MonoBehaviour
         }
     }
 
+    /// <summary>
+    /// 依目前玩家血量更新相關 UI。
+    /// </summary>
     public void RefreshHealthUi()
     {
         if (EnsureCardHandManager())
@@ -2707,9 +3099,12 @@ public class LogicManager : MonoBehaviour
         BroadcastNetworkStateIfAuthority();
     }
 
+    /// <summary>
+    /// 檢查是否有玩家因血量耗盡而結束遊戲。
+    /// </summary>
     public bool CheckHealthGameOver()
     {
-        if (IsNetworkClientOnly)
+        if (IsClassicChess || IsNetworkClientOnly)
         {
             return false;
         }
@@ -2729,14 +3124,21 @@ public class LogicManager : MonoBehaviour
         return false;
     }
 
+    /// <summary>
+    /// 依卡牌效果指定的結果結束對局並留下原因紀錄。
+    /// </summary>
     public void EndGameByCard(string result, string reason)
     {
+        if (IsClassicChess) return;
         Debug.Log(
             $"[CardDebug][CardGameOver] Result={result} | Reason={reason}"
         );
         ShowGameOver(result);
     }
 
+    /// <summary>
+    /// 依目前實作的剩餘棋子條件檢查子力不足和局。
+    /// </summary>
     private void CheckInsufficientMaterial()
     {
         int nonKingPieces = 0;
@@ -2755,6 +3157,9 @@ public class LogicManager : MonoBehaviour
         }
     }
 
+    /// <summary>
+    /// 顯示遊戲結束結果並套用相關介面狀態。
+    /// </summary>
     private void ShowGameOver(string result)
     {
         if (IsNetworkClientOnly)
@@ -2766,6 +3171,9 @@ public class LogicManager : MonoBehaviour
         ShowGameOverLocal(result);
     }
 
+    /// <summary>
+    /// 在本機套用遊戲結束畫面與停止狀態。
+    /// </summary>
     private void ShowGameOverLocal(string result)
     {
         Debug.Log($"[CardDebug][GameOver] Result={result}");
@@ -2782,11 +3190,17 @@ public class LogicManager : MonoBehaviour
         Time.timeScale = 0f;
     }
 
+    /// <summary>
+    /// 具有主機權限時廣播目前對局狀態。
+    /// </summary>
     private void BroadcastNetworkStateIfAuthority()
     {
         Multiplayer?.BroadcastState(isWhiteTurn, whiteHealth, blackHealth);
     }
 
+    /// <summary>
+    /// 依回合與設定更新棋盤觀看方向。
+    /// </summary>
     private void RotateCameraForCurrentTurn()
     {
         if (!isCameraRotationEnabled || cameraController == null)
@@ -2797,6 +3211,9 @@ public class LogicManager : MonoBehaviour
         cameraController.ApplyLocalPlayerPerspective();
     }
 
+    /// <summary>
+    /// 確保取得並初始化卡牌手牌管理器。
+    /// </summary>
     private bool EnsureCardHandManager()
     {
         if (cardHandManager == null)
@@ -2818,6 +3235,9 @@ public class LogicManager : MonoBehaviour
         return true;
     }
 
+    /// <summary>
+    /// 訂閱抽牌與回收事件，供場地及技能效果處理。
+    /// </summary>
     private void SubscribeCardHandEvents()
     {
         if (cardHandManager == null || isSubscribedToCardHandEvents)
@@ -2830,6 +3250,9 @@ public class LogicManager : MonoBehaviour
         isSubscribedToCardHandEvents = true;
     }
 
+    /// <summary>
+    /// 解除手牌抽取與回收事件的訂閱。
+    /// </summary>
     private void OnDestroy()
     {
         if (cardHandManager != null && isSubscribedToCardHandEvents)
@@ -2839,8 +3262,12 @@ public class LogicManager : MonoBehaviour
         }
     }
 
+    /// <summary>
+    /// 依回收事件處理相關場地或卡牌效果。
+    /// </summary>
     private void OnCardRecycled(CardRecycleEvent recycleEvent)
     {
+        if (IsClassicChess) return;
         if (recycleEvent == null || GetActiveFieldCount("F09") <= 0)
         {
             return;
@@ -2862,8 +3289,12 @@ public class LogicManager : MonoBehaviour
         );
     }
 
+    /// <summary>
+    /// 依抽牌事件處理相關場地或卡牌效果。
+    /// </summary>
     private void OnCardsDrawn(CardDrawEvent drawEvent)
     {
+        if (IsClassicChess) return;
         if (drawEvent == null || GetActiveFieldCount("F10") <= 0)
         {
             return;
@@ -2907,6 +3338,9 @@ public class LogicManager : MonoBehaviour
         }
     }
 
+    /// <summary>
+    /// 處理指定陣營回合結束時的場地效果。
+    /// </summary>
     private void ResolveFieldTurnEndedEffects(bool endingWhiteTurn)
     {
         if (GetActiveFieldCount("F02") > 0)
@@ -2934,6 +3368,9 @@ public class LogicManager : MonoBehaviour
         }
     }
 
+    /// <summary>
+    /// 檢查目前場地組合並嘗試進行場地合成。
+    /// </summary>
     private bool ResolveFieldFusion()
     {
         if (activeFieldCards.Count != 2)
@@ -2972,6 +3409,9 @@ public class LogicManager : MonoBehaviour
         return true;
     }
 
+    /// <summary>
+    /// 播放場地合成流程並在完成後更新狀態。
+    /// </summary>
     private IEnumerator PlayFieldFusionRoutine(CardDefinition fused)
     {
         isFieldFusionPlaying = true;
@@ -3021,6 +3461,9 @@ public class LogicManager : MonoBehaviour
         }
     }
 
+    /// <summary>
+    /// 增加外部操作鎖計數，阻止演出期間的玩家操作。
+    /// </summary>
     public void PushOperationLock(string reason)
     {
         externalOperationLockCount++;
@@ -3029,6 +3472,9 @@ public class LogicManager : MonoBehaviour
         );
     }
 
+    /// <summary>
+    /// 釋放一層外部操作鎖，並保留其餘尚未完成的鎖定。
+    /// </summary>
     public void PopOperationLock(string reason)
     {
         externalOperationLockCount =
@@ -3038,16 +3484,25 @@ public class LogicManager : MonoBehaviour
         );
     }
 
+    /// <summary>
+    /// 將完整重新開局延後到出牌演出完成。
+    /// </summary>
     public void DeferFullGameRestartUntilUsingCard()
     {
         deferFullGameRestartUntilUsingCard = true;
     }
 
+    /// <summary>
+    /// 清除延後重新開局的旗標。
+    /// </summary>
     public void ClearFullGameRestartDeferral()
     {
         deferFullGameRestartUntilUsingCard = false;
     }
 
+    /// <summary>
+    /// 完成出牌演出後執行先前延後的重新開局要求。
+    /// </summary>
     public void CompleteDeferredFullGameRestart()
     {
         if (!deferredFullGameRestartPending)
@@ -3058,14 +3513,12 @@ public class LogicManager : MonoBehaviour
 
         deferredFullGameRestartPending = false;
         deferFullGameRestartUntilUsingCard = false;
-        hideCardGameUiAfterFullRestart = true;
-        if (EnsureCardHandManager())
-        {
-            cardHandManager.SetCardGameUiActive(false);
-        }
         RequestFullGameRestart();
     }
 
+    /// <summary>
+    /// 依目前延後設定與連線模式提出完整重新開局要求。
+    /// </summary>
     public void RequestFullGameRestart()
     {
         if (deferFullGameRestartUntilUsingCard)
@@ -3079,11 +3532,17 @@ public class LogicManager : MonoBehaviour
 
         if (GetActiveFieldCount("F12") > 0)
         {
-            hideCardGameUiAfterFullRestart = true;
-            if (EnsureCardHandManager())
+            if (Multiplayer != null)
             {
-                cardHandManager.SetCardGameUiActive(false);
+                // 遠端只重播 F12；模式同步與重載由主機統一執行。
+                Multiplayer.RequestClassicChessRestart();
             }
+            else
+            {
+                SetNextGameMode(true);
+                SceneManager.LoadScene("ChessScene");
+            }
+            return;
         }
 
         if (Multiplayer != null)
@@ -3095,6 +3554,9 @@ public class LogicManager : MonoBehaviour
         SceneManager.LoadScene("ChessScene");
     }
 
+    /// <summary>
+    /// 補齊棋盤上的場地卡欄位引用。
+    /// </summary>
     private void ResolveFieldCardPlaces()
     {
         if (fieldCardPlaces == null || fieldCardPlaces.Length == 0)
@@ -3111,6 +3573,9 @@ public class LogicManager : MonoBehaviour
         }
     }
 
+    /// <summary>
+    /// 取得場地合成使用的棋盤動畫元件。
+    /// </summary>
     private Animation ResolveBoardAnimation()
     {
         if (boardAnimation != null)
@@ -3127,6 +3592,9 @@ public class LogicManager : MonoBehaviour
         return boardAnimation;
     }
 
+    /// <summary>
+    /// 清空所有已登錄的場地卡欄位。
+    /// </summary>
     private void ClearFieldCardPlaces()
     {
         if (fieldCardPlaces == null)
@@ -3143,6 +3611,9 @@ public class LogicManager : MonoBehaviour
         }
     }
 
+    /// <summary>
+    /// 判斷指定欄位是否屬於本局登錄的場地欄位。
+    /// </summary>
     private bool IsKnownFieldPlace(FieldCardPlace place)
     {
         if (fieldCardPlaces == null)
@@ -3161,6 +3632,9 @@ public class LogicManager : MonoBehaviour
         return false;
     }
 
+    /// <summary>
+    /// 計算目前空白的場地欄位數量。
+    /// </summary>
     private int GetEmptyFieldPlaceCount()
     {
         int count = 0;
@@ -3180,6 +3654,9 @@ public class LogicManager : MonoBehaviour
         return count;
     }
 
+    /// <summary>
+    /// 依兩張場地卡的卡號取得合成結果卡號。
+    /// </summary>
     private string GetFieldFusionId(string first, string second)
     {
         if (IsFieldPair(first, second, "F01", "F01")) return "F02";
@@ -3192,6 +3669,9 @@ public class LogicManager : MonoBehaviour
         return null;
     }
 
+    /// <summary>
+    /// 判斷兩張場地卡是否符合指定配對，不限制排列順序。
+    /// </summary>
     private bool IsFieldPair(
         string first,
         string second,
@@ -3203,6 +3683,9 @@ public class LogicManager : MonoBehaviour
             first == requiredB && second == requiredA;
     }
 
+    /// <summary>
+    /// 計算目前場地卡占用的欄位數量。
+    /// </summary>
     private int GetActiveFieldSlotCount()
     {
         int slots = 0;
@@ -3215,11 +3698,17 @@ public class LogicManager : MonoBehaviour
         return slots;
     }
 
+    /// <summary>
+    /// 取得指定場地卡占用的欄位數量。
+    /// </summary>
     private int GetFieldSlotCost(CardDefinition field)
     {
         return field != null && IsAdvancedField(field.id) ? 2 : 1;
     }
 
+    /// <summary>
+    /// 依卡號判斷是否為進階場地卡。
+    /// </summary>
     private bool IsAdvancedField(string fieldId)
     {
         switch (fieldId)
@@ -3237,6 +3726,9 @@ public class LogicManager : MonoBehaviour
         }
     }
 
+    /// <summary>
+    /// 取得指定場地對造成傷害的修正值。
+    /// </summary>
     private int GetFieldDamageDealtModifier(
         CardDefinition field,
         DamageContext damageContext
@@ -3270,6 +3762,9 @@ public class LogicManager : MonoBehaviour
         }
     }
 
+    /// <summary>
+    /// 依卡號取得目前有效的場地卡。
+    /// </summary>
     private CardDefinition GetActiveField(string cardId)
     {
         foreach (CardDefinition field in activeFieldCards)
@@ -3283,6 +3778,9 @@ public class LogicManager : MonoBehaviour
         return null;
     }
 
+    /// <summary>
+    /// 複製目前棋子清單，避免效果執行中增刪棋子影響列舉。
+    /// </summary>
     private List<Piece> GetAllPiecesSnapshot()
     {
         UpdatePiecesOnBoard();
@@ -3298,6 +3796,9 @@ public class LogicManager : MonoBehaviour
         return result;
     }
 
+    /// <summary>
+    /// 收集指定棋子周圍九宮格內的有效棋子。
+    /// </summary>
     private List<Piece> GetPiecesInNineGrid(Piece center)
     {
         List<Piece> result = new List<Piece>();
@@ -3330,6 +3831,9 @@ public class LogicManager : MonoBehaviour
         return result;
     }
 
+    /// <summary>
+    /// 將場地效果的修正加入傷害計算顯示步驟。
+    /// </summary>
     private void AddFieldCalculationStep(
         DamageCalculationSequence sequence,
         CardDefinition field,
@@ -3360,6 +3864,9 @@ public class LogicManager : MonoBehaviour
         });
     }
 
+    /// <summary>
+    /// 取得場地計算步驟使用的顯示位置。
+    /// </summary>
     private Vector3 GetFieldStepPosition(DamageCalculationSequence sequence)
     {
         if (sequence != null)

@@ -9,6 +9,9 @@ public static class DisplaySettingsController
     public const string ResolutionIndexKey = "ResolutionIndex";
     public const string WindowedKey = "WindowedMode";
 
+    /// <summary>
+    /// 建立解析度選項與對應的顯示文字。
+    /// </summary>
     public static Resolution[] BuildResolutionOptions()
     {
         return Screen.resolutions
@@ -26,6 +29,9 @@ public static class DisplaySettingsController
             .ToArray();
     }
 
+    /// <summary>
+    /// 將可用解析度填入下拉選單並選取目前設定。
+    /// </summary>
     public static Resolution[] PopulateResolutionDropdown(
         TMP_Dropdown dropdown
     )
@@ -57,6 +63,9 @@ public static class DisplaySettingsController
         return resolutions;
     }
 
+    /// <summary>
+    /// 讀取並套用已儲存的畫面設定。
+    /// </summary>
     public static void ApplySavedSettings()
     {
         Resolution[] resolutions = BuildResolutionOptions();
@@ -72,6 +81,9 @@ public static class DisplaySettingsController
         ApplyResolution(index, resolutions, IsWindowed(), false);
     }
 
+    /// <summary>
+    /// 套用指定解析度與視窗模式，依參數決定是否保存。
+    /// </summary>
     public static void ApplyResolution(
         int index,
         Resolution[] resolutions,
@@ -105,6 +117,9 @@ public static class DisplaySettingsController
         );
     }
 
+    /// <summary>
+    /// 綁定視窗模式切換控制項。
+    /// </summary>
     public static void BindWindowedToggle(Toggle toggle)
     {
         if (toggle != null)
@@ -113,6 +128,9 @@ public static class DisplaySettingsController
         }
     }
 
+    /// <summary>
+    /// 取得目前設定是否使用視窗模式。
+    /// </summary>
     public static bool IsWindowed()
     {
         return PlayerPrefs.GetInt(
@@ -121,6 +139,9 @@ public static class DisplaySettingsController
         ) == 1;
     }
 
+    /// <summary>
+    /// 找出目前解析度在選項清單中的索引。
+    /// </summary>
     private static int GetCurrentResolutionIndex(Resolution[] resolutions)
     {
         if (resolutions == null || resolutions.Length == 0)

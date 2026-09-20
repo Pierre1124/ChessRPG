@@ -26,6 +26,9 @@ public class CardInfoUI : MonoBehaviour
     private readonly List<GameObject> spawnedStatusIcons =
         new List<GameObject>();
 
+    /// <summary>
+    /// 設定對局引用並隱藏初始資訊及狀態提示。
+    /// </summary>
     public void Initialize(LogicManager owner)
     {
         logicManager = owner;
@@ -39,9 +42,12 @@ public class CardInfoUI : MonoBehaviour
         Hide();
     }
 
+    /// <summary>
+    /// 顯示指定棋子的裝備、狀態與有效屬性。
+    /// </summary>
     public void Show(Piece piece)
     {
-        if (piece == null)
+        if (piece == null || (logicManager != null && logicManager.IsClassicChess))
         {
             Hide();
             return;
@@ -71,6 +77,9 @@ public class CardInfoUI : MonoBehaviour
         infoRoot.gameObject.SetActive(true);
     }
 
+    /// <summary>
+    /// 清除預覽及狀態圖示並隱藏棋子資訊面板。
+    /// </summary>
     public void Hide()
     {
         HideStatusTooltip();
@@ -83,6 +92,9 @@ public class CardInfoUI : MonoBehaviour
         }
     }
 
+    /// <summary>
+    /// 更新棋子裝備卡牌的預覽資訊。
+    /// </summary>
     private void ApplyCardEquip(CardDefinition equippedCard)
     {
         ClearCardPreview();
@@ -125,6 +137,9 @@ public class CardInfoUI : MonoBehaviour
         }
     }
 
+    /// <summary>
+    /// 清除目前卡牌預覽的顯示內容。
+    /// </summary>
     private void ClearCardPreview()
     {
         if (cardPreviewObject != null)
@@ -134,6 +149,9 @@ public class CardInfoUI : MonoBehaviour
         }
     }
 
+    /// <summary>
+    /// 將卡牌資料套用到資訊面板的預覽物件。
+    /// </summary>
     private void ApplyCardPreviewData(
         GameObject cardObject,
         CardDefinition card
@@ -179,6 +197,9 @@ public class CardInfoUI : MonoBehaviour
         ApplyTags(cardObject.transform, card.tags);
     }
 
+    /// <summary>
+    /// 將卡牌標籤套用到對應的 UI 文字。
+    /// </summary>
     private void ApplyTags(Transform root, List<string> tags)
     {
         Transform tagGroup = FindChildRecursive(root, "CardTagGroup");
@@ -231,6 +252,9 @@ public class CardInfoUI : MonoBehaviour
         }
     }
 
+    /// <summary>
+    /// 停用預覽卡片的拖曳與操作元件。
+    /// </summary>
     private void DisablePreviewInteraction(GameObject cardObject)
     {
         CardDragHandler dragHandler =
@@ -248,6 +272,9 @@ public class CardInfoUI : MonoBehaviour
         }
     }
 
+    /// <summary>
+    /// 依棋子種類更新資訊面板的顯示。
+    /// </summary>
     private void ApplyChessType(Piece piece)
     {
         if (chessTypeImage == null)
@@ -263,6 +290,9 @@ public class CardInfoUI : MonoBehaviour
         chessTypeImage.enabled = sprite != null;
     }
 
+    /// <summary>
+    /// 依棋子目前可見狀態建立狀態圖示。
+    /// </summary>
     private void RenderStatusIcons(List<StatusRuntime> statuses)
     {
         ClearStatusIcons();
@@ -318,6 +348,9 @@ public class CardInfoUI : MonoBehaviour
         }
     }
 
+    /// <summary>
+    /// 顯示指定狀態的詳細提示。
+    /// </summary>
     public void ShowStatusTooltip(
         StatusRuntime status,
         Vector2 screenPosition
@@ -335,6 +368,9 @@ public class CardInfoUI : MonoBehaviour
         );
     }
 
+    /// <summary>
+    /// 隱藏狀態詳細提示。
+    /// </summary>
     public void HideStatusTooltip()
     {
         if (statusTooltip != null)
@@ -343,6 +379,9 @@ public class CardInfoUI : MonoBehaviour
         }
     }
 
+    /// <summary>
+    /// 組合狀態名稱、來源與效果的提示文字。
+    /// </summary>
     private string BuildStatusTooltipContent(StatusRuntime status)
     {
         CardDefinition card = GetStatusSourceCard(status);
@@ -381,6 +420,9 @@ public class CardInfoUI : MonoBehaviour
         return builder.ToString();
     }
 
+    /// <summary>
+    /// 取得狀態目前對應的效果資料。
+    /// </summary>
     private string GetCurrentStatusEffect(
         StatusRuntime status,
         CardDefinition card
@@ -423,6 +465,9 @@ public class CardInfoUI : MonoBehaviour
         return builder.ToString();
     }
 
+    /// <summary>
+    /// 將效果類型與數值轉成可閱讀的說明。
+    /// </summary>
     private string DescribeEffect(CardEffectData effect)
     {
         if (effect == null) return string.Empty;
@@ -458,6 +503,9 @@ public class CardInfoUI : MonoBehaviour
         }
     }
 
+    /// <summary>
+    /// 取得狀態所屬的來源卡牌。
+    /// </summary>
     private CardDefinition GetStatusSourceCard(StatusRuntime status)
     {
         if (status == null || status.definition == null) return null;
@@ -479,6 +527,9 @@ public class CardInfoUI : MonoBehaviour
             : null;
     }
 
+    /// <summary>
+    /// 產生狀態來源的顯示文字。
+    /// </summary>
     private string GetStatusSourceText(StatusRuntime status)
     {
         if (status.hasSourcePlayer)
@@ -499,6 +550,9 @@ public class CardInfoUI : MonoBehaviour
             $"({coordinates.x:0},{coordinates.y:0})";
     }
 
+    /// <summary>
+    /// 取得棋子種類的顯示名稱。
+    /// </summary>
     private string GetPieceTypeName(Piece piece)
     {
         if (piece is Pawn) return "\u5c0f\u5175";
@@ -512,11 +566,17 @@ public class CardInfoUI : MonoBehaviour
             : piece.PieceType;
     }
 
+    /// <summary>
+    /// 將數值格式化為包含正負號的文字。
+    /// </summary>
     private string FormatSigned(int value)
     {
         return value >= 0 ? $"+{value}" : value.ToString();
     }
 
+    /// <summary>
+    /// 取得應顯示於棋子資訊面板的狀態清單。
+    /// </summary>
     private List<StatusRuntime> GetVisibleStatuses(Piece piece)
     {
         List<StatusRuntime> statuses = new List<StatusRuntime>();
@@ -566,6 +626,9 @@ public class CardInfoUI : MonoBehaviour
         return statuses;
     }
 
+    /// <summary>
+    /// 判斷指定狀態是否為光環效果。
+    /// </summary>
     private bool IsAuraStatus(StatusRuntime status)
     {
         if (status == null || status.definition == null)
@@ -592,6 +655,9 @@ public class CardInfoUI : MonoBehaviour
         return false;
     }
 
+    /// <summary>
+    /// 依陣營與效果條件判斷光環是否影響目標棋子。
+    /// </summary>
     private bool DoesAuraAffectPiece(Piece source, Piece target)
     {
         CardDefinition sourceCard = source != null && source.CardRuntime != null
@@ -606,6 +672,9 @@ public class CardInfoUI : MonoBehaviour
         return true;
     }
 
+    /// <summary>
+    /// 判斷指定狀態是否應呈現在資訊面板。
+    /// </summary>
     private bool IsVisibleStatus(StatusRuntime status)
     {
         return
@@ -614,6 +683,9 @@ public class CardInfoUI : MonoBehaviour
             status.HasCharges;
     }
 
+    /// <summary>
+    /// 清除先前建立的狀態圖示。
+    /// </summary>
     private void ClearStatusIcons()
     {
         HideStatusTooltip();
@@ -628,6 +700,9 @@ public class CardInfoUI : MonoBehaviour
         spawnedStatusIcons.Clear();
     }
 
+    /// <summary>
+    /// 依名稱尋找子物件，再取得所需類型的元件。
+    /// </summary>
     private T FindChildComponent<T>(
         Transform root,
         string childName
@@ -646,6 +721,9 @@ public class CardInfoUI : MonoBehaviour
             : child.GetComponentInChildren<T>(true);
     }
 
+    /// <summary>
+    /// 依階層順序遞迴尋找指定名稱的 Transform；回傳第一個符合的物件。
+    /// </summary>
     private Transform FindChildRecursive(
         Transform root,
         string childName
@@ -669,6 +747,9 @@ public class CardInfoUI : MonoBehaviour
         return null;
     }
 
+    /// <summary>
+    /// 取得棋子套用目前卡牌、狀態與場地修正後的攻擊力。
+    /// </summary>
     private int GetEffectiveAttack(Piece piece)
     {
         if (logicManager == null)
@@ -679,6 +760,9 @@ public class CardInfoUI : MonoBehaviour
         return logicManager.GetEffectiveAttack(piece);
     }
 
+    /// <summary>
+    /// 取得棋子套用目前效果後的價值。
+    /// </summary>
     private int GetEffectiveValue(Piece piece)
     {
         if (logicManager == null)
@@ -689,6 +773,9 @@ public class CardInfoUI : MonoBehaviour
         return logicManager.GetEffectiveValue(piece);
     }
 
+    /// <summary>
+    /// 將基礎值與有效值組合成屬性顯示文字。
+    /// </summary>
     private string FormatStatText(
         string label,
         int baseValue,
@@ -704,6 +791,9 @@ public class CardInfoUI : MonoBehaviour
         return $"{label}: <color=#{color}>{effectiveValue}</color>";
     }
 
+    /// <summary>
+    /// 尋找指定文字元件並更新其顯示內容。
+    /// </summary>
     private void SetText(TMP_Text text, string value)
     {
         if (text != null)
@@ -712,6 +802,9 @@ public class CardInfoUI : MonoBehaviour
         }
     }
 
+    /// <summary>
+    /// 產生物件的辨識文字，供紀錄或偵錯訊息使用。
+    /// </summary>
     private string Describe(Piece piece)
     {
         if (piece == null)

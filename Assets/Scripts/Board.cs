@@ -1,4 +1,4 @@
-﻿using UnityEngine;
+using UnityEngine;
 
 //==============================
 // 棋盤管理類別 Board
@@ -47,6 +47,9 @@ public class Board : MonoBehaviour
     //==============================
     // Unity 生命週期：遊戲開始
     //==============================
+    /// <summary>
+    /// 取得對局控制器、初始化對局，再依既有順序建立棋盤與棋子。
+    /// </summary>
     void Start()
     {
         // 找到場景中的 LogicManager
@@ -65,6 +68,9 @@ public class Board : MonoBehaviour
     //==============================
     // 建立棋盤格子
     //==============================
+    /// <summary>
+    /// 建立棋盤格子，設定座標、材質與棋盤索引。
+    /// </summary>
     public void GenerateBoard()
     {
         for (int i = 0; i < Width; i++)
@@ -99,6 +105,9 @@ public class Board : MonoBehaviour
     //==============================
     // 放置初始棋子
     //==============================
+    /// <summary>
+    /// 依標準開局配置放置雙方棋子。
+    /// </summary>
     public void PlaceStartingPosition()
     {
         float pieceHeight = 0.12f;   // 棋子高度
@@ -154,6 +163,9 @@ public class Board : MonoBehaviour
     //==============================
     // 建立棋子方法
     //==============================
+    /// <summary>
+    /// 建立指定種類與陣營的棋子，初始化座標並登錄到棋盤。
+    /// </summary>
     public Piece InstantiatePiece(
         GameObject piecePrefab,
         Vector3 position,

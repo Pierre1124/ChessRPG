@@ -21,6 +21,9 @@ public class InputManager : MonoBehaviour
     private Vector2 holdStartScreenPosition;
     private Piece heldPiece;
 
+    /// <summary>
+    /// 以目前滑鼠位置執行 UI 射線檢查。
+    /// </summary>
     public static bool IsPointerOverUiStatic()
     {
         if (EventSystem.current == null || Mouse.current == null)
@@ -38,6 +41,9 @@ public class InputManager : MonoBehaviour
         return results.Count > 0;
     }
 
+    /// <summary>
+    /// 補齊多人控制器並初始化棋子資訊介面。
+    /// </summary>
     private void Start()
     {
         if (multiplayerGameController == null)
@@ -58,6 +64,9 @@ public class InputManager : MonoBehaviour
         }
     }
 
+    /// <summary>
+    /// 依操作鎖狀態處理滑鼠按下、放開與長按顯示資訊。
+    /// </summary>
     private void Update()
     {
         if (
@@ -89,6 +98,7 @@ public class InputManager : MonoBehaviour
             isHoldingMouse &&
             Mouse.current.leftButton.isPressed &&
             !didShowPieceInfo &&
+            (logicManager == null || !logicManager.IsClassicChess) &&
             heldPiece != null &&
             Time.unscaledTime - holdStartedAt >= pieceInfoHoldSeconds
         )
@@ -104,6 +114,9 @@ public class InputManager : MonoBehaviour
         }
     }
 
+    /// <summary>
+    /// 記錄滑鼠按下的位置、時間與棋子，準備點擊或長按操作。
+    /// </summary>
     private void BeginHold(Vector2 screenPosition)
     {
         isHoldingMouse = true;
@@ -115,6 +128,9 @@ public class InputManager : MonoBehaviour
             : GetPieceAtScreenPosition(screenPosition);
     }
 
+    /// <summary>
+    /// 結束按壓並依位移與長按狀態決定是否執行點擊。
+    /// </summary>
     private void EndHold(Vector2 screenPosition)
     {
         bool shouldHandleClick =
@@ -138,6 +154,9 @@ public class InputManager : MonoBehaviour
         HandleClick(screenPosition);
     }
 
+    /// <summary>
+    /// 解析棋盤點擊位置並處理選取或移動操作。
+    /// </summary>
     private void HandleClick(Vector2 screenPosition)
     {
         if (
@@ -192,6 +211,9 @@ public class InputManager : MonoBehaviour
         }
     }
 
+    /// <summary>
+    /// 檢查操作權限後選取棋子並標示合法走法。
+    /// </summary>
     private bool TrySelectPiece(Piece piece)
     {
         if (
@@ -231,6 +253,9 @@ public class InputManager : MonoBehaviour
         return true;
     }
 
+    /// <summary>
+    /// 嘗試將已選棋子移往被點擊棋子的位置。
+    /// </summary>
     private bool TryMoveSelectedToPiece(Piece targetPiece)
     {
         if (selectedPiece == null || targetPiece == null)
@@ -259,6 +284,9 @@ public class InputManager : MonoBehaviour
         return true;
     }
 
+    /// <summary>
+    /// 嘗試將已選棋子移往指定棋盤格。
+    /// </summary>
     private bool TryMoveSelectedToSquare(Square targetSquare)
     {
         if (
@@ -285,6 +313,9 @@ public class InputManager : MonoBehaviour
         return true;
     }
 
+    /// <summary>
+    /// 執行選取棋子的移動；連線時提交移動命令。
+    /// </summary>
     private void MoveSelectedPiece(Vector2 targetCoordinates)
     {
         if (
@@ -338,6 +369,9 @@ public class InputManager : MonoBehaviour
         }
     }
 
+    /// <summary>
+    /// 從螢幕座標投射射線並取得命中的棋子。
+    /// </summary>
     private Piece GetPieceAtScreenPosition(Vector2 screenPosition)
     {
         if (Camera.main == null || logicManager == null)
@@ -363,6 +397,9 @@ public class InputManager : MonoBehaviour
         return square != null ? GetPieceOnSquare(square) : null;
     }
 
+    /// <summary>
+    /// 取得指定棋盤格上的棋子。
+    /// </summary>
     private Piece GetPieceOnSquare(Square square)
     {
         Vector2 squareCoordinates =
@@ -377,6 +414,9 @@ public class InputManager : MonoBehaviour
         ];
     }
 
+    /// <summary>
+    /// 標示目前選取棋子的所在格。
+    /// </summary>
     private void HighlightSelectedSquare()
     {
         UnhighlightSelectedSquare();
@@ -395,6 +435,9 @@ public class InputManager : MonoBehaviour
         }
     }
 
+    /// <summary>
+    /// 標示目前選取棋子的合法移動格。
+    /// </summary>
     private void HighlightLegalMoves(List<Vector2> legalMoves)
     {
         UnhighlightLegalMoves();
@@ -418,6 +461,9 @@ public class InputManager : MonoBehaviour
         }
     }
 
+    /// <summary>
+    /// 清除棋子選取與棋盤標示。
+    /// </summary>
     private void ClearSelection()
     {
         UnhighlightSelectedSquare();
@@ -425,6 +471,9 @@ public class InputManager : MonoBehaviour
         selectedPiece = null;
     }
 
+    /// <summary>
+    /// 移除選取格的高亮顯示。
+    /// </summary>
     private void UnhighlightSelectedSquare()
     {
         if (currentlyHighlightedSquare != null)
@@ -434,6 +483,9 @@ public class InputManager : MonoBehaviour
         }
     }
 
+    /// <summary>
+    /// 移除所有合法走法的高亮顯示。
+    /// </summary>
     private void UnhighlightLegalMoves()
     {
         foreach (Square square in highlightedSquares)
@@ -447,6 +499,9 @@ public class InputManager : MonoBehaviour
         highlightedSquares.Clear();
     }
 
+    /// <summary>
+    /// 依音效設定播放移動音效。
+    /// </summary>
     private void PlayMoveSound(bool isCapture, bool isEnPassant)
     {
         if (isCapture || isEnPassant)
@@ -464,6 +519,9 @@ public class InputManager : MonoBehaviour
         }
     }
 
+    /// <summary>
+    /// 判斷指定螢幕位置是否命中 UI。
+    /// </summary>
     private bool IsPointerOverUi(Vector2 screenPosition)
     {
         if (EventSystem.current == null)
@@ -483,6 +541,9 @@ public class InputManager : MonoBehaviour
         return results.Count > 0;
     }
 
+    /// <summary>
+    /// 顯示操作或對局提示訊息。
+    /// </summary>
     private void ShowAlarm(string message)
     {
         GameFlowUI.Show(message);

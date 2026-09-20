@@ -1,4 +1,4 @@
-﻿using System.Collections;
+using System.Collections;
 using ExitGames.Client.Photon;
 using System.Collections.Generic;
 using Photon.Pun;
@@ -27,6 +27,17 @@ public class MultiplayerGameController :
     private const byte EventRestartRequest = 14;
     private const byte EventSideAssignment = 15;
     private const string RoomPropertyMasterWhite = "MasterWhite";
+    private const string RoomPropertyClassicChess = "ClassicChess";
+
+    public static bool IsClassicChessRoom
+    {
+        get
+        {
+            return PhotonNetwork.InRoom && PhotonNetwork.CurrentRoom != null &&
+                PhotonNetwork.CurrentRoom.CustomProperties.TryGetValue(RoomPropertyClassicChess, out object value) &&
+                value is bool classicChess && classicChess;
+        }
+    }
 
     [Header("Mode")]
     [SerializeField] private MultiplayerMode mode = MultiplayerMode.Local;
@@ -101,7 +112,7 @@ public class MultiplayerGameController :
                 PhotonNetwork.IsMasterClient &&
                 PhotonNetwork.CurrentRoom != null &&
                 PhotonNetwork.CurrentRoom.PlayerCount >= requiredPlayerCount &&
-                (!sideAssignmentReady || !hasFirstRemoteClientDeck);
+                (!sideAssignmentReady || (!IsClassicChessRoom && !hasFirstRemoteClientDeck));
         }
     }
 
@@ -131,6 +142,9 @@ public class MultiplayerGameController :
         get { return !PhotonNetwork.InRoom || PhotonNetwork.IsMasterClient; }
     }
 
+    /// <summary>
+    /// 取得對局引用、啟用 Photon 場景同步並讀取陣營設定。
+    /// </summary>
     private void Awake()
     {
         ResolveReferences();
@@ -138,6 +152,9 @@ public class MultiplayerGameController :
         TryReadSideAssignmentFromRoom();
     }
 
+    /// <summary>
+    /// 登錄 Photon 與場景回呼，並恢復目前房間狀態。
+    /// </summary>
     private void OnEnable()
     {
         PhotonNetwork.AddCallbackTarget(this);
@@ -151,22 +168,34 @@ public class MultiplayerGameController :
         }
     }
 
+    /// <summary>
+    /// 解除 Photon 與場景回呼，避免停用後繼續接收事件。
+    /// </summary>
     private void OnDisable()
     {
         PhotonNetwork.RemoveCallbackTarget(this);
         SceneManager.sceneLoaded -= HandleSceneLoaded;
     }
 
+    /// <summary>
+    /// 編輯器重設元件時補齊對局引用。
+    /// </summary>
     private void Reset()
     {
         ResolveReferences();
     }
 
+    /// <summary>
+    /// 加入房間後更新連線狀態，並依角色啟動場景或對局準備流程。
+    /// </summary>
     public override void OnJoinedRoom()
     {
         HandleJoinedRoomState();
     }
 
+    /// <summary>
+    /// 玩家加入時更新陣營分配，並由主機同步可用的對局狀態。
+    /// </summary>
     public override void OnPlayerEnteredRoom(Player newPlayer)
     {
         RefreshModeFromPhoton();
@@ -181,6 +210,9 @@ public class MultiplayerGameController :
         RefreshLocalCardUi();
     }
 
+    /// <summary>
+    /// 主機偵測玩家離房後重設牌組準備狀態並重新開局。
+    /// </summary>
     public override void OnPlayerLeftRoom(Player otherPlayer)
     {
         if (!PhotonNetwork.IsMasterClient)
@@ -196,8 +228,20 @@ public class MultiplayerGameController :
         RestartGameAsAuthority();
     }
 
+    /// <summary>
+    /// 房間陣營屬性更新時，套用本機陣營並調整提示與視角。
+    /// </summary>
     public override void OnRoomPropertiesUpdate(Hashtable propertiesThatChanged)
     {
+        if (propertiesThatChanged != null && propertiesThatChanged.ContainsKey(RoomPropertyClassicChess))
+        {
+            ResolveReferences();
+            if (IsClassicChessRoom && logicManager != null && !logicManager.IsClassicChess)
+            {
+                logicManager.ApplyClassicChessMode();
+            }
+            BroadcastCurrentStateIfReady();
+        }
         if (
             propertiesThatChanged == null ||
             !propertiesThatChanged.ContainsKey(RoomPropertyMasterWhite)
@@ -221,6 +265,9 @@ public class MultiplayerGameController :
         }
     }
 
+    /// <summary>
+    /// 處理 Photon 斷線通知，依目前離場流程更新本機狀態。
+    /// </summary>
     public override void OnDisconnected(DisconnectCause cause)
     {
         if (!isReturningToStartScene && !isRestartingGame)
@@ -230,6 +277,9 @@ public class MultiplayerGameController :
         }
     }
 
+    /// <summary>
+    /// 場景載入後重新取得引用並更新連線對局狀態。
+    /// </summary>
     private void HandleSceneLoaded(Scene scene, LoadSceneMode loadMode)
     {
         ResolveReferences();
@@ -242,6 +292,9 @@ public class MultiplayerGameController :
         }
     }
 
+    /// <summary>
+    /// 處理房間已加入狀態，準備陣營分配與牌組提交。
+    /// </summary>
     private void HandleJoinedRoomState()
     {
         TryReadSideAssignmentFromRoom();
@@ -255,7 +308,7 @@ public class MultiplayerGameController :
                 PhotonNetwork.CurrentRoom.PlayerCount < requiredPlayerCount;
             TryAssignSidesIfReady();
         }
-        else if (!submittedLocalDeck)
+        else if (!IsClassicChessRoom && !submittedLocalDeck)
         {
             TryReadSideAssignmentFromRoom();
             StartCoroutine(SubmitLocalDeckWhenReady());
@@ -266,6 +319,9 @@ public class MultiplayerGameController :
         ApplyLocalPlayerCameraPerspective();
     }
 
+    /// <summary>
+    /// 本機是主機時重新開局，否則向主機傳送重新開始要求。
+    /// </summary>
     public void RequestRestartGame()
     {
         Time.timeScale = 1f;
@@ -273,6 +329,7 @@ public class MultiplayerGameController :
 
         if (!IsOnline)
         {
+            LogicManager.SetNextGameMode(false);
             LoadSceneLocal(gameSceneName);
             return;
         }
@@ -287,6 +344,20 @@ public class MultiplayerGameController :
         RaiseToMaster(EventRestartRequest, string.Empty);
     }
 
+    /// <summary>
+    /// F12 觸發後由主機同步普通西洋棋模式並重載；客戶端只等待主機結果。
+    /// </summary>
+    public void RequestClassicChessRestart()
+    {
+        RefreshModeFromPhoton();
+        if (IsOnline && !PhotonNetwork.IsMasterClient) return;
+        Time.timeScale = 1f;
+        RestartGameAsAuthority(true);
+    }
+
+    /// <summary>
+    /// 依連線狀態通知玩家返回主選單並啟動離場流程。
+    /// </summary>
     public void RequestReturnToStart()
     {
         Time.timeScale = 1f;
@@ -306,6 +377,9 @@ public class MultiplayerGameController :
         StartCoroutine(ShutdownAndLoadStartSceneRoutine());
     }
 
+    /// <summary>
+    /// 依 Photon 房間與主機狀態更新本機模式及陣營。
+    /// </summary>
     private void RefreshModeFromPhoton()
     {
         if (!followPhotonState)
@@ -342,6 +416,9 @@ public class MultiplayerGameController :
         }
     }
 
+    /// <summary>
+    /// 依連線準備狀態與回合陣營判斷本機玩家能否操作。
+    /// </summary>
     public bool CanLocalPlayerAct(bool isWhiteTurn)
     {
         if (!CanGameplayOperate)
@@ -362,6 +439,9 @@ public class MultiplayerGameController :
         return (localSide == PlayerSide.White) == isWhiteTurn;
     }
 
+    /// <summary>
+    /// 判斷指定陣營是否屬於本機玩家。
+    /// </summary>
     private bool IsLocalPlayerSide(bool isWhitePlayer)
     {
         RefreshModeFromPhoton();
@@ -369,6 +449,9 @@ public class MultiplayerGameController :
             (localSide == PlayerSide.White) == isWhitePlayer;
     }
 
+    /// <summary>
+    /// 建立包含序號、陣營及起訖座標的移動命令。
+    /// </summary>
     public NetworkGameCommand CreateMoveCommand(
         Piece piece,
         Vector2 targetCoordinates
@@ -384,6 +467,9 @@ public class MultiplayerGameController :
         );
     }
 
+    /// <summary>
+    /// 建立對棋子出牌的連線命令。
+    /// </summary>
     public NetworkGameCommand CreatePlayCardOnPieceCommand(
         CardDefinition card,
         Piece target
@@ -400,6 +486,9 @@ public class MultiplayerGameController :
         );
     }
 
+    /// <summary>
+    /// 建立指定場地欄位的出牌命令。
+    /// </summary>
     public NetworkGameCommand CreatePlayFieldCardCommand(
         CardDefinition card,
         FieldCardPlace place
@@ -413,6 +502,9 @@ public class MultiplayerGameController :
         );
     }
 
+    /// <summary>
+    /// 建立目前玩家的抽牌命令。
+    /// </summary>
     public NetworkGameCommand CreateDrawCardCommand()
     {
         return NetworkGameCommand.Simple(
@@ -422,6 +514,9 @@ public class MultiplayerGameController :
         );
     }
 
+    /// <summary>
+    /// 建立指定卡牌的回收命令。
+    /// </summary>
     public NetworkGameCommand CreateRecycleCardCommand(CardDefinition card)
     {
         return NetworkGameCommand.Simple(
@@ -432,6 +527,9 @@ public class MultiplayerGameController :
         );
     }
 
+    /// <summary>
+    /// 判斷升變選擇是否應由本機玩家操作。
+    /// </summary>
     public bool ShouldLocalChoosePromotion(bool isWhitePlayer)
     {
         RefreshModeFromPhoton();
@@ -445,6 +543,9 @@ public class MultiplayerGameController :
             (localSide == PlayerSide.White) == isWhitePlayer;
     }
 
+    /// <summary>
+    /// 將兵的升變選擇交由主機執行，或在本機直接套用。
+    /// </summary>
     public void SubmitPromotionChoice(Pawn pawn, string pieceName)
     {
         if (pawn == null || string.IsNullOrEmpty(pieceName))
@@ -497,6 +598,9 @@ public class MultiplayerGameController :
         );
     }
 
+    /// <summary>
+    /// 依目前連線角色將操作交給主機；離線呼叫僅留下命令紀錄。
+    /// </summary>
     public void SubmitCommand(NetworkGameCommand command)
     {
         RefreshModeFromPhoton();
@@ -519,6 +623,9 @@ public class MultiplayerGameController :
         RaiseToMaster(EventCommandRequest, JsonUtility.ToJson(command));
     }
 
+    /// <summary>
+    /// 取得目前回合與血量的簡要快照；卡牌欄位維持既有空值格式。
+    /// </summary>
     public NetworkGameSnapshot CaptureSnapshot()
     {
         return new NetworkGameSnapshot
@@ -532,6 +639,9 @@ public class MultiplayerGameController :
         };
     }
 
+    /// <summary>
+    /// 主機在玩家與牌組準備完成後廣播回合、血量及卡牌狀態。
+    /// </summary>
     public void BroadcastState(bool isWhiteTurn, int whiteHealth, int blackHealth)
     {
         RefreshModeFromPhoton();
@@ -571,8 +681,12 @@ public class MultiplayerGameController :
         );
     }
 
+    /// <summary>
+    /// 由主機廣播已序列化的傷害演出批次。
+    /// </summary>
     public void BroadcastDamageCalculationBatch(string payload)
     {
+        if (IsClassicChessRoom || (logicManager != null && logicManager.IsClassicChess)) return;
         RefreshModeFromPhoton();
 
         if (
@@ -596,8 +710,12 @@ public class MultiplayerGameController :
         RaiseToOthers(EventDamageBatch, payload);
     }
 
+    /// <summary>
+    /// 由主機廣播回合階段提示。
+    /// </summary>
     public void BroadcastPhaseChange(string message)
     {
+        if (IsClassicChessRoom || (logicManager != null && logicManager.IsClassicChess)) return;
         RefreshModeFromPhoton();
 
         if (
@@ -614,6 +732,9 @@ public class MultiplayerGameController :
         RaiseToOthers(EventPhaseChange, message);
     }
 
+    /// <summary>
+    /// 由主機廣播遊戲結束結果。
+    /// </summary>
     public void BroadcastGameOver(string result)
     {
         RefreshModeFromPhoton();
@@ -626,6 +747,9 @@ public class MultiplayerGameController :
         RaiseToOthers(EventGameOver, result);
     }
 
+    /// <summary>
+    /// 依 Photon 事件代碼分派命令、狀態及演出通知。
+    /// </summary>
     public void OnEvent(EventData photonEvent)
     {
         switch (photonEvent.Code)
@@ -689,6 +813,9 @@ public class MultiplayerGameController :
         }
     }
 
+    /// <summary>
+    /// 玩家人數足夠時由主機分配白黑陣營並同步結果。
+    /// </summary>
     private void TryAssignSidesIfReady()
     {
         if (
@@ -719,6 +846,9 @@ public class MultiplayerGameController :
         RaiseToOthers(EventSideAssignment, payload);
     }
 
+    /// <summary>
+    /// 嘗試讀取房間中保存的陣營分配。
+    /// </summary>
     private void TryReadSideAssignmentFromRoom()
     {
         if (
@@ -739,6 +869,9 @@ public class MultiplayerGameController :
         sideAssignmentReady = true;
     }
 
+    /// <summary>
+    /// 套用收到的陣營分配並依需要顯示提示。
+    /// </summary>
     private void ApplySideAssignment(object[] data, bool showAlarm)
     {
         if (data == null || data.Length < 2)
@@ -769,8 +902,12 @@ public class MultiplayerGameController :
         );
     }
 
+    /// <summary>
+    /// 將遠端階段提示排入本機播放佇列。
+    /// </summary>
     private void EnqueueRemotePhaseChange(string message)
     {
+        if (IsClassicChessRoom || (logicManager != null && logicManager.IsClassicChess)) return;
         if (string.IsNullOrWhiteSpace(message))
         {
             return;
@@ -784,6 +921,9 @@ public class MultiplayerGameController :
         }
     }
 
+    /// <summary>
+    /// 依序播放遠端階段提示，避免提示演出互相覆蓋。
+    /// </summary>
     private IEnumerator PlayRemotePhaseQueue()
     {
         isRemotePhaseQueuePlaying = true;
@@ -813,6 +953,9 @@ public class MultiplayerGameController :
         isRemotePhaseQueuePlaying = false;
     }
 
+    /// <summary>
+    /// 等待階段提示介面具備播放條件。
+    /// </summary>
     private IEnumerator WaitForPhaseUiReady()
     {
         for (int frame = 0; frame < 120; frame++)
@@ -830,6 +973,9 @@ public class MultiplayerGameController :
         );
     }
 
+    /// <summary>
+    /// 主機解析收到的操作命令並交由權限與規則驗證流程處理。
+    /// </summary>
     private void HandleCommandRequest(EventData photonEvent)
     {
         if (!PhotonNetwork.IsMasterClient)
@@ -848,6 +994,9 @@ public class MultiplayerGameController :
         ExecuteCommandAsAuthority(command, photonEvent.Sender);
     }
 
+    /// <summary>
+    /// 主機解析升變要求並執行既有升變驗證流程。
+    /// </summary>
     private void HandlePromotionRequest(EventData photonEvent)
     {
         if (!PhotonNetwork.IsMasterClient)
@@ -870,9 +1019,12 @@ public class MultiplayerGameController :
         );
     }
 
+    /// <summary>
+    /// 主機依發送者陣營套用提交的牌組，成功後同步對局狀態。
+    /// </summary>
     private void HandleDeckSubmit(EventData photonEvent)
     {
-        if (!PhotonNetwork.IsMasterClient)
+        if (!PhotonNetwork.IsMasterClient || IsClassicChessRoom)
         {
             return;
         }
@@ -927,10 +1079,14 @@ public class MultiplayerGameController :
         }
     }
 
+    /// <summary>
+    /// 等待對局元件與陣營準備完成後提交本機牌組。
+    /// </summary>
     private IEnumerator SubmitLocalDeckWhenReady()
     {
         for (int frame = 0; frame < 120; frame++)
         {
+            if (IsClassicChessRoom) yield break;
             ResolveReferences();
 
             if (
@@ -964,6 +1120,9 @@ public class MultiplayerGameController :
         );
     }
 
+    /// <summary>
+    /// 主機驗證升變要求，套用選擇並廣播結果。
+    /// </summary>
     private void ExecutePromotionAsAuthority(
         int sequence,
         bool isWhitePlayer,
@@ -1022,6 +1181,9 @@ public class MultiplayerGameController :
         );
     }
 
+    /// <summary>
+    /// 主機驗證發送者與回合，執行對應操作並回報結果。
+    /// </summary>
     private void ExecuteCommandAsAuthority(
         NetworkGameCommand command,
         int senderActorNumber
@@ -1217,12 +1379,21 @@ public class MultiplayerGameController :
         );
     }
 
+    /// <summary>
+    /// 檢查命令發送者的陣營與目前回合是否相符。
+    /// </summary>
     private bool IsSenderAllowed(
         NetworkGameCommand command,
         int senderActorNumber,
         out string reason
     )
     {
+        if ((IsClassicChessRoom || (logicManager != null && logicManager.IsClassicChess)) &&
+            command.kind != NetworkGameCommandKind.MovePiece)
+        {
+            reason = "普通西洋棋模式不能使用卡牌";
+            return false;
+        }
         PlayerSide senderSide = GetSideForActor(senderActorNumber);
         bool senderIsWhite = senderSide == PlayerSide.White;
 
@@ -1252,6 +1423,9 @@ public class MultiplayerGameController :
         return true;
     }
 
+    /// <summary>
+    /// 在非主機端套用收到的移動結果及附帶狀態。
+    /// </summary>
     private void ApplyMoveResult(object[] data)
     {
         if (PhotonNetwork.IsMasterClient || data == null || data.Length < 11)
@@ -1298,6 +1472,9 @@ public class MultiplayerGameController :
         );
     }
 
+    /// <summary>
+    /// 在非主機端套用收到的升變結果。
+    /// </summary>
     private void ApplyPromotionResult(object[] data)
     {
         if (PhotonNetwork.IsMasterClient || data == null || data.Length < 5)
@@ -1330,6 +1507,9 @@ public class MultiplayerGameController :
         }
     }
 
+    /// <summary>
+    /// 在非主機端重播對棋子的出牌效果；手牌由另外的狀態同步更新。
+    /// </summary>
     private void ApplyCardOnPieceResult(object[] data)
     {
         if (PhotonNetwork.IsMasterClient || data == null || data.Length < 5)
@@ -1376,6 +1556,9 @@ public class MultiplayerGameController :
         }
     }
 
+    /// <summary>
+    /// 在非主機端重播場地卡效果；手牌由另外的狀態同步更新。
+    /// </summary>
     private void ApplyFieldCardResult(object[] data)
     {
         if (PhotonNetwork.IsMasterClient || data == null || data.Length < 4)
@@ -1421,6 +1604,9 @@ public class MultiplayerGameController :
         }
     }
 
+    /// <summary>
+    /// 在非主機端接收初始或更新狀態，並套用回合、血量及卡牌資料。
+    /// </summary>
     private void ApplyState(object[] data)
     {
         if (PhotonNetwork.IsMasterClient || data == null || data.Length < 5)
@@ -1439,6 +1625,9 @@ public class MultiplayerGameController :
         );
     }
 
+    /// <summary>
+    /// 處理命令接受或拒絕結果，必要時顯示操作提示。
+    /// </summary>
     private void ApplyCommandResult(object[] data)
     {
         if (data == null || data.Length < 4)
@@ -1466,6 +1655,9 @@ public class MultiplayerGameController :
         }
     }
 
+    /// <summary>
+    /// 將命令序號、執行結果與訊息回報給本機及其他玩家。
+    /// </summary>
     private void AnnounceCommandResult(
         NetworkGameCommandKind kind,
         int sequence,
@@ -1486,6 +1678,9 @@ public class MultiplayerGameController :
         }
     }
 
+    /// <summary>
+    /// 依命令種類與拒絕原因取得玩家提示文字。
+    /// </summary>
     private string GetAlarmMessageForRejectedCommand(
         NetworkGameCommandKind kind,
         string message
@@ -1502,6 +1697,9 @@ public class MultiplayerGameController :
         };
     }
 
+    /// <summary>
+    /// 依 Photon 玩家編號取得分配的棋方。
+    /// </summary>
     private PlayerSide GetSideForActor(int actorNumber)
     {
         if (!PhotonNetwork.InRoom)
@@ -1522,6 +1720,9 @@ public class MultiplayerGameController :
             : firstRemoteClientSide;
     }
 
+    /// <summary>
+    /// 補齊此元件所需的場景與 UI 引用。
+    /// </summary>
     private void ResolveReferences()
     {
         if (logicManager == null)
@@ -1535,6 +1736,9 @@ public class MultiplayerGameController :
         }
     }
 
+    /// <summary>
+    /// 依目前對局資料刷新本機卡牌介面。
+    /// </summary>
     private void RefreshLocalCardUi()
     {
         if (cardHandManager != null && logicManager != null)
@@ -1544,6 +1748,9 @@ public class MultiplayerGameController :
         }
     }
 
+    /// <summary>
+    /// 依本機陣營更新相機觀看方向。
+    /// </summary>
     private void ApplyLocalPlayerCameraPerspective()
     {
         CameraController cameraController =
@@ -1554,6 +1761,9 @@ public class MultiplayerGameController :
         }
     }
 
+    /// <summary>
+    /// 當主機與對局資料就緒時廣播目前狀態。
+    /// </summary>
     private void BroadcastCurrentStateIfReady()
     {
         ResolveReferences();
@@ -1570,7 +1780,10 @@ public class MultiplayerGameController :
         );
     }
 
-    private void RestartGameAsAuthority()
+    /// <summary>
+    /// 由主機重設對局準備狀態並重新載入遊戲場景。
+    /// </summary>
+    private void RestartGameAsAuthority(bool classicChess = false)
     {
         if (isRestartingGame)
         {
@@ -1578,6 +1791,7 @@ public class MultiplayerGameController :
         }
 
         isRestartingGame = true;
+        LogicManager.SetNextGameMode(classicChess);
         sideAssignmentReady = false;
         receivedInitialNetworkState = PhotonNetwork.IsMasterClient;
         hasFirstRemoteClientDeck =
@@ -1598,10 +1812,38 @@ public class MultiplayerGameController :
         }
 
         TryAssignSidesIfReady();
-        PhotonNetwork.LoadLevel(gameSceneName);
-        Debug.Log($"[NetworkGame][Restart] Photon loading scene: {gameSceneName}");
+        PhotonNetwork.CurrentRoom.SetCustomProperties(new Hashtable
+        {
+            { RoomPropertyClassicChess, classicChess }
+        });
+        StartCoroutine(ReloadSceneAfterModeSync(classicChess));
     }
 
+    /// <summary>
+    /// 等待房間模式由 Photon 確認後再同步載入場景，讓雙方初始化相同的規則。
+    /// </summary>
+    private IEnumerator ReloadSceneAfterModeSync(bool classicChess)
+    {
+        while (PhotonNetwork.InRoom && PhotonNetwork.IsMasterClient &&
+            IsClassicChessRoom != classicChess)
+        {
+            yield return null;
+        }
+
+        if (!PhotonNetwork.InRoom)
+        {
+            LogicManager.SetNextGameMode(false);
+            LoadSceneLocal(startSceneName);
+            yield break;
+        }
+        if (!PhotonNetwork.IsMasterClient) yield break;
+        PhotonNetwork.LoadLevel(gameSceneName);
+        Debug.Log($"[NetworkGame][Restart] ClassicChess={classicChess} | Scene={gameSceneName}");
+    }
+
+    /// <summary>
+    /// 等待 Photon 離線後載入起始場景。
+    /// </summary>
     private IEnumerator ShutdownAndLoadStartSceneRoutine()
     {
         if (isReturningToStartScene)
@@ -1622,6 +1864,9 @@ public class MultiplayerGameController :
         LoadSceneLocal(startSceneName);
     }
 
+    /// <summary>
+    /// 在本機載入指定場景。
+    /// </summary>
     private static void LoadSceneLocal(string sceneName)
     {
         if (string.IsNullOrWhiteSpace(sceneName))
@@ -1632,25 +1877,34 @@ public class MultiplayerGameController :
         SceneManager.LoadScene(sceneName);
     }
 
+    /// <summary>
+    /// 以可靠傳送方式將事件送給 Photon Master Client。
+    /// </summary>
     private void RaiseToMaster(byte eventCode, object payload)
     {
-        RaiseEventOptions options = new RaiseEventOptions
-        {
-            Receivers = ReceiverGroup.MasterClient
-        };
-        PhotonNetwork.RaiseEvent(
-            eventCode,
-            payload,
-            options,
-            SendOptions.SendReliable
-        );
+        RaiseReliableEvent(eventCode, payload, ReceiverGroup.MasterClient);
     }
 
+    /// <summary>
+    /// 以可靠傳送方式將事件送給房間內其他玩家。
+    /// </summary>
     private void RaiseToOthers(byte eventCode, object payload)
+    {
+        RaiseReliableEvent(eventCode, payload, ReceiverGroup.Others);
+    }
+
+    /// <summary>
+    /// 依指定接收群組傳送可靠 Photon 事件，保留原有事件碼與資料格式。
+    /// </summary>
+    private static void RaiseReliableEvent(
+        byte eventCode,
+        object payload,
+        ReceiverGroup receivers
+    )
     {
         RaiseEventOptions options = new RaiseEventOptions
         {
-            Receivers = ReceiverGroup.Others
+            Receivers = receivers
         };
         PhotonNetwork.RaiseEvent(
             eventCode,
@@ -1660,11 +1914,17 @@ public class MultiplayerGameController :
         );
     }
 
+    /// <summary>
+    /// 依現有網路資料格式將物件轉換成整數。
+    /// </summary>
     private static int ToInt(object value)
     {
         return value is int intValue ? intValue : System.Convert.ToInt32(value);
     }
 
+    /// <summary>
+    /// 依現有網路資料格式將物件轉換成布林值。
+    /// </summary>
     private static bool ToBool(object value)
     {
         return value is bool boolValue
@@ -1672,6 +1932,9 @@ public class MultiplayerGameController :
             : System.Convert.ToBoolean(value);
     }
 
+    /// <summary>
+    /// 取得下一個本機命令序號並推進計數器。
+    /// </summary>
     private int ConsumeSequence()
     {
         int sequence = nextSequence;
@@ -1679,6 +1942,9 @@ public class MultiplayerGameController :
         return sequence;
     }
 
+    /// <summary>
+    /// 啟用命令紀錄時輸出模式、序號與命令內容。
+    /// </summary>
     private void LogCommand(string label, NetworkGameCommand command)
     {
         if (!logCommands)

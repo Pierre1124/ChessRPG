@@ -28,11 +28,17 @@ public static class ChessPieceAnimationSetup
     private const string CapturedClipPath =
         AnimationFolder + "/PieceCaptured.anim";
 
+    /// <summary>
+    /// 在編輯器載入類別時登錄延後執行的動畫設定工作。
+    /// </summary>
     static ChessPieceAnimationSetup()
     {
         EditorApplication.delayCall += RunOnce;
     }
 
+    /// <summary>
+    /// 從編輯器選單執行棋子動畫設定並記錄本次工作階段已完成。
+    /// </summary>
     [MenuItem("Tools/Chess/Setup Piece Animations")]
     public static void RunManually()
     {
@@ -40,6 +46,9 @@ public static class ChessPieceAnimationSetup
         SessionState.SetBool(SetupFlag, true);
     }
 
+    /// <summary>
+    /// 在編輯器工作階段尚未設定動畫時執行一次設定。
+    /// </summary>
     private static void RunOnce()
     {
         if (SessionState.GetBool(SetupFlag, false))
@@ -51,6 +60,9 @@ public static class ChessPieceAnimationSetup
         SessionState.SetBool(SetupFlag, true);
     }
 
+    /// <summary>
+    /// 建立共用棋子動畫資產並套用到符合條件的 Prefab。
+    /// </summary>
     private static void Setup()
     {
         EnsureFolder(AnimationFolder);
@@ -77,6 +89,9 @@ public static class ChessPieceAnimationSetup
         AssetDatabase.Refresh();
     }
 
+    /// <summary>
+    /// 取得既有動畫片段，缺少時透過建立函式產生資產。
+    /// </summary>
     private static AnimationClip EnsureClip(
         string path,
         System.Func<AnimationClip> createClip
@@ -95,6 +110,9 @@ public static class ChessPieceAnimationSetup
         return clip;
     }
 
+    /// <summary>
+    /// 建立棋子待機動畫片段。
+    /// </summary>
     private static AnimationClip CreateIdleClip()
     {
         AnimationClip clip = new AnimationClip
@@ -114,6 +132,9 @@ public static class ChessPieceAnimationSetup
         return clip;
     }
 
+    /// <summary>
+    /// 建立棋子移動動畫片段。
+    /// </summary>
     private static AnimationClip CreateMoveClip()
     {
         AnimationClip clip = new AnimationClip
@@ -136,6 +157,9 @@ public static class ChessPieceAnimationSetup
         return clip;
     }
 
+    /// <summary>
+    /// 建立棋子吃子動畫片段。
+    /// </summary>
     private static AnimationClip CreateCaptureClip()
     {
         AnimationClip clip = new AnimationClip
@@ -169,6 +193,9 @@ public static class ChessPieceAnimationSetup
         return clip;
     }
 
+    /// <summary>
+    /// 建立棋子被吃動畫片段。
+    /// </summary>
     private static AnimationClip CreateCapturedClip()
     {
         AnimationClip clip = new AnimationClip
@@ -208,6 +235,9 @@ public static class ChessPieceAnimationSetup
         return clip;
     }
 
+    /// <summary>
+    /// 建立先放大再回復的縮放動畫曲線。
+    /// </summary>
     private static AnimationCurve PulseScaleCurve()
     {
         return new AnimationCurve(
@@ -217,6 +247,9 @@ public static class ChessPieceAnimationSetup
         );
     }
 
+    /// <summary>
+    /// 建立固定數值的動畫曲線。
+    /// </summary>
     private static AnimationCurve ConstantCurve(float value)
     {
         return new AnimationCurve(
@@ -225,6 +258,9 @@ public static class ChessPieceAnimationSetup
         );
     }
 
+    /// <summary>
+    /// 取得或建立共用棋子 Animator Controller 並補齊狀態設定。
+    /// </summary>
     private static AnimatorController EnsureController(
         AnimationClip idleClip,
         AnimationClip moveClip,
@@ -284,6 +320,9 @@ public static class ChessPieceAnimationSetup
         return controller;
     }
 
+    /// <summary>
+    /// 將動畫控制器及播放元件套用到符合條件的棋子 Prefab。
+    /// </summary>
     private static void ApplyToPiecePrefabs(
         AnimatorController controller
     )
@@ -384,6 +423,9 @@ public static class ChessPieceAnimationSetup
         }
     }
 
+    /// <summary>
+    /// 將棋子視覺元件移到子物件，讓動畫與棋盤根物件定位分離。
+    /// </summary>
     private static bool MoveVisualComponentsToChild(
         GameObject root,
         GameObject visualRoot
@@ -398,6 +440,9 @@ public static class ChessPieceAnimationSetup
         return changed;
     }
 
+    /// <summary>
+    /// 將指定元件資料搬移到目標物件。
+    /// </summary>
     private static bool MoveComponent<T>(
         GameObject source,
         GameObject target
@@ -420,6 +465,9 @@ public static class ChessPieceAnimationSetup
         return true;
     }
 
+    /// <summary>
+    /// 透過 SerializedObject 設定編輯器中的物件引用欄位。
+    /// </summary>
     private static bool AssignSerializedObjectReference(
         Object target,
         string propertyName,
@@ -447,6 +495,9 @@ public static class ChessPieceAnimationSetup
         return true;
     }
 
+    /// <summary>
+    /// 判斷 Prefab 名稱是否屬於棋子資產。
+    /// </summary>
     private static bool IsPiecePrefabName(string name)
     {
         return
@@ -464,6 +515,9 @@ public static class ChessPieceAnimationSetup
             name == "Black King";
     }
 
+    /// <summary>
+    /// 取得或建立指定 Animator 狀態並設定動畫片段。
+    /// </summary>
     private static AnimatorState EnsureState(
         AnimatorStateMachine stateMachine,
         string stateName,
@@ -484,6 +538,9 @@ public static class ChessPieceAnimationSetup
         return state;
     }
 
+    /// <summary>
+    /// 確認 Animator Controller 包含指定觸發參數。
+    /// </summary>
     private static void EnsureTrigger(
         AnimatorController controller,
         string triggerName
@@ -503,6 +560,9 @@ public static class ChessPieceAnimationSetup
         );
     }
 
+    /// <summary>
+    /// 建立或更新由 Any State 進入指定動畫的轉移。
+    /// </summary>
     private static void EnsureAnyStateTransition(
         AnimatorStateMachine stateMachine,
         AnimatorState targetState,
@@ -540,6 +600,9 @@ public static class ChessPieceAnimationSetup
         );
     }
 
+    /// <summary>
+    /// 建立或更新動畫播放後返回待機的轉移。
+    /// </summary>
     private static void EnsureReturnTransition(
         AnimatorState fromState,
         AnimatorState toState,
@@ -561,6 +624,9 @@ public static class ChessPieceAnimationSetup
         newTransition.duration = duration;
     }
 
+    /// <summary>
+    /// 將指定屬性的動畫曲線寫入動畫片段。
+    /// </summary>
     private static void SetCurve(
         AnimationClip clip,
         string path,
@@ -573,6 +639,9 @@ public static class ChessPieceAnimationSetup
         EditorUtility.SetDirty(clip);
     }
 
+    /// <summary>
+    /// 設定動畫片段是否循環播放。
+    /// </summary>
     private static void SetLooping(AnimationClip clip, bool looping)
     {
         SerializedObject serializedClip = new SerializedObject(clip);
@@ -594,6 +663,9 @@ public static class ChessPieceAnimationSetup
         EditorUtility.SetDirty(clip);
     }
 
+    /// <summary>
+    /// 確認指定資產資料夾存在，缺少時建立。
+    /// </summary>
     private static void EnsureFolder(string folderPath)
     {
         if (AssetDatabase.IsValidFolder(folderPath))

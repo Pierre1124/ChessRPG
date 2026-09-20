@@ -61,6 +61,18 @@ public class DamageCalculationStep
 [RequireComponent(typeof(RectTransform))]
 public class DamageCalculationVisualizer : MonoBehaviour
 {
+    /// <summary>
+    /// 停止傷害演出並隱藏所有步驟及結果物件，供普通西洋棋模式使用。
+    /// </summary>
+    public void DisableForClassicChess()
+    {
+        StopAllCoroutines();
+        HideDamageCalcSteps();
+        HideDamageResultFlies();
+        HidePrebuiltObjects();
+        gameObject.SetActive(false);
+    }
+
     [Header("References")]
     [SerializeField] private Canvas canvas;
     [SerializeField] private RectTransform root;
@@ -108,12 +120,18 @@ public class DamageCalculationVisualizer : MonoBehaviour
     private readonly List<DamageResultFlyView> damageResultFlyPool =
         new List<DamageResultFlyView>();
 
+    /// <summary>
+    /// 補齊傷害演出所需的 UI 引用及數值圖示。
+    /// </summary>
     private void Awake()
     {
         AutoBindReferences();
         AutoBindCountingIcons();
     }
 
+    /// <summary>
+    /// 重設元件時補齊引用與圖示，並隱藏預建樣板。
+    /// </summary>
     private void Reset()
     {
         AutoBindReferences();
@@ -121,12 +139,18 @@ public class DamageCalculationVisualizer : MonoBehaviour
         HidePrebuiltObjects();
     }
 
+    /// <summary>
+    /// Inspector 資料變更時補齊演出引用及圖示。
+    /// </summary>
     private void OnValidate()
     {
         AutoBindReferences();
         AutoBindCountingIcons();
     }
 
+    /// <summary>
+    /// 依既有命名與階層規則補齊 UI 或動畫引用。
+    /// </summary>
     [ContextMenu("Auto Bind References")]
     private void AutoBindReferences()
     {
@@ -180,6 +204,9 @@ public class DamageCalculationVisualizer : MonoBehaviour
         }
     }
 
+    /// <summary>
+    /// 啟動單一傷害演出；缺少必要引用時仍呼叫結算回呼。
+    /// </summary>
     public void Play(
         DamageCalculationSequence sequence,
         Action onCaptureVisual,
@@ -209,6 +236,9 @@ public class DamageCalculationVisualizer : MonoBehaviour
         StartCoroutine(PlayRoutine(sequence, onCaptureVisual, onDamageApplied));
     }
 
+    /// <summary>
+    /// 啟動一批傷害計算序列的演出。
+    /// </summary>
     public void PlayBatch(
         IReadOnlyList<DamageCalculationSequence> sequences,
         IReadOnlyList<Action> onCaptureVisuals,
@@ -247,6 +277,9 @@ public class DamageCalculationVisualizer : MonoBehaviour
         );
     }
 
+    /// <summary>
+    /// 依序執行此元件的演出步驟，完成後處理回呼與清理。
+    /// </summary>
     private IEnumerator PlayRoutine(
         DamageCalculationSequence sequence,
         Action onCaptureVisual,
@@ -303,6 +336,9 @@ public class DamageCalculationVisualizer : MonoBehaviour
         onDamageApplied?.Invoke();
     }
 
+    /// <summary>
+    /// 依序呈現批次計算步驟及結果，完成後執行回呼。
+    /// </summary>
     private IEnumerator PlayBatchRoutine(
         IReadOnlyList<DamageCalculationSequence> sequences,
         IReadOnlyList<Action> onCaptureVisuals,
@@ -390,6 +426,9 @@ public class DamageCalculationVisualizer : MonoBehaviour
         onComplete?.Invoke();
     }
 
+    /// <summary>
+    /// 顯示單一步驟的數值、圖示與位置。
+    /// </summary>
     private void ShowDamageCalcStep(
         RectTransform view,
         DamageCalculationStep step,
@@ -439,6 +478,9 @@ public class DamageCalculationVisualizer : MonoBehaviour
         view.gameObject.SetActive(true);
     }
 
+    /// <summary>
+    /// 隱藏本次傷害計算使用的步驟物件。
+    /// </summary>
     private void HideDamageCalcSteps()
     {
         foreach (RectTransform view in damageCalcStepPool)
@@ -448,6 +490,9 @@ public class DamageCalculationVisualizer : MonoBehaviour
         activeStepViews.Clear();
     }
 
+    /// <summary>
+    /// 取得可重用的計算步驟視圖，必要時建立新物件。
+    /// </summary>
     private RectTransform GetOrCreateStepView(int index)
     {
         while (damageCalcStepPool.Count <= index)
@@ -476,6 +521,9 @@ public class DamageCalculationVisualizer : MonoBehaviour
         return damageCalcStepPool[index];
     }
 
+    /// <summary>
+    /// 將計算步驟視圖還原到記錄的版面配置。
+    /// </summary>
     private void RestoreStepLayout(RectTransform view)
     {
         int index = damageCalcStepPool.IndexOf(view);
@@ -487,6 +535,9 @@ public class DamageCalculationVisualizer : MonoBehaviour
         damageCalcStepLayouts[index].ApplyTo(view);
     }
 
+    /// <summary>
+    /// 播放傷害計算中雙方碰撞的視覺效果。
+    /// </summary>
     private IEnumerator PlayClash(
         DamageCalculationSequence sequence,
         Action onCaptureVisual
@@ -539,11 +590,17 @@ public class DamageCalculationVisualizer : MonoBehaviour
         }
     }
 
+    /// <summary>
+    /// 建立或顯示飛向血條的傷害或治療結果。
+    /// </summary>
     private void ShowDamageResultFly(DamageCalculationSequence sequence)
     {
         ShowDamageResultFly(sequence, GetOrCreateResultFlyView(0));
     }
 
+    /// <summary>
+    /// 建立或顯示飛向血條的傷害或治療結果。
+    /// </summary>
     private void ShowDamageResultFly(
         DamageCalculationSequence sequence,
         DamageResultFlyView view
@@ -572,6 +629,9 @@ public class DamageCalculationVisualizer : MonoBehaviour
         view.root.gameObject.SetActive(true);
     }
 
+    /// <summary>
+    /// 隱藏指定的結果飛行視圖。
+    /// </summary>
     private void HideDamageResultFly()
     {
         DamageResultFlyView view = GetOrCreateResultFlyView(0);
@@ -581,6 +641,9 @@ public class DamageCalculationVisualizer : MonoBehaviour
         }
     }
 
+    /// <summary>
+    /// 隱藏所有結果飛行視圖。
+    /// </summary>
     private void HideDamageResultFlies()
     {
         if (damageResultFlyPool.Count == 0 && damageResultFly != null)
@@ -601,6 +664,9 @@ public class DamageCalculationVisualizer : MonoBehaviour
         }
     }
 
+    /// <summary>
+    /// 將單一結果視圖移向對應玩家的血條目標。
+    /// </summary>
     private IEnumerator FlyToHealthTarget(
         DamageCalculationSequence sequence
     )
@@ -632,6 +698,9 @@ public class DamageCalculationVisualizer : MonoBehaviour
         }
     }
 
+    /// <summary>
+    /// 將批次結果視圖移向各自的血條目標。
+    /// </summary>
     private IEnumerator FlyBatchToHealthTargets(
         List<DamageCalculationSequence> sequences,
         List<DamageResultFlyView> views
@@ -671,6 +740,9 @@ public class DamageCalculationVisualizer : MonoBehaviour
         }
     }
 
+    /// <summary>
+    /// 取得可重用的結果飛行視圖，必要時建立新物件。
+    /// </summary>
     private DamageResultFlyView GetOrCreateResultFlyView(int index)
     {
         while (damageResultFlyPool.Count <= index)
@@ -712,6 +784,9 @@ public class DamageCalculationVisualizer : MonoBehaviour
         return damageResultFlyPool[index];
     }
 
+    /// <summary>
+    /// 將世界座標轉換為 Canvas 使用的位置。
+    /// </summary>
     private Vector3 WorldToCanvasPosition(Vector3 worldPosition)
     {
         Camera camera = Camera.main;
@@ -723,6 +798,9 @@ public class DamageCalculationVisualizer : MonoBehaviour
         return camera.WorldToScreenPoint(worldPosition);
     }
 
+    /// <summary>
+    /// 將世界座標轉換為指定 UI 根物件的錨點位置。
+    /// </summary>
     private Vector2 WorldToRootAnchoredPosition(Vector3 worldPosition)
     {
         Vector2 screenPosition = WorldToCanvasPosition(worldPosition);
@@ -747,6 +825,9 @@ public class DamageCalculationVisualizer : MonoBehaviour
         return localPoint;
     }
 
+    /// <summary>
+    /// 取得指定玩家血條在目前顯示空間中的目標位置。
+    /// </summary>
     private Vector3 GetHealthTargetPosition(bool isWhitePlayer)
     {
         Transform target = isWhitePlayer ? whiteHealthTarget : blackHealthTarget;
@@ -760,6 +841,9 @@ public class DamageCalculationVisualizer : MonoBehaviour
             : new Vector3(Screen.width * 0.82f, Screen.height * 0.88f, 0f);
     }
 
+    /// <summary>
+    /// 檢查演出所需的 UI 與動畫引用是否齊全。
+    /// </summary>
     private bool HasRequiredReferences()
     {
         return
@@ -773,6 +857,9 @@ public class DamageCalculationVisualizer : MonoBehaviour
             damageResultFlyText != null;
     }
 
+    /// <summary>
+    /// 依計算步驟資料選取棋子或數值圖示。
+    /// </summary>
     private Sprite ResolveIcon(
         DamageCalculationStep step,
         DamageCalculationSequence sequence
@@ -807,6 +894,9 @@ public class DamageCalculationVisualizer : MonoBehaviour
         return step.icon;
     }
 
+    /// <summary>
+    /// 依計算項目取得對應的數值圖示。
+    /// </summary>
     private Sprite GetCountingIcon(DamageCountingIcon icon)
     {
         switch (icon)
@@ -824,6 +914,9 @@ public class DamageCalculationVisualizer : MonoBehaviour
         }
     }
 
+    /// <summary>
+    /// 補齊傷害計算使用的數值分類圖示。
+    /// </summary>
     private void AutoBindCountingIcons()
     {
 #if UNITY_EDITOR
@@ -886,6 +979,9 @@ public class DamageCalculationVisualizer : MonoBehaviour
 #endif
     }
 
+    /// <summary>
+    /// 依計算步驟產生最終顯示文字。
+    /// </summary>
     private string ResolveDisplayText(DamageCalculationStep step)
     {
         if (!string.IsNullOrEmpty(step.displayText))
@@ -906,6 +1002,9 @@ public class DamageCalculationVisualizer : MonoBehaviour
         return $"{step.title}\n{step.detail}";
     }
 
+    /// <summary>
+    /// 依序呼叫清單中的完成回呼。
+    /// </summary>
     private void InvokeAll(IReadOnlyList<Action> actions)
     {
         if (actions == null)
@@ -919,12 +1018,18 @@ public class DamageCalculationVisualizer : MonoBehaviour
         }
     }
 
+    /// <summary>
+    /// 依名稱查找 UI 階層中的目標物件。
+    /// </summary>
     private Transform FindNamedTransform(string objectName)
     {
         GameObject found = GameObject.Find(objectName);
         return found != null ? found.transform : null;
     }
 
+    /// <summary>
+    /// 依名稱尋找子物件，再取得所需類型的元件。
+    /// </summary>
     private T FindChildComponent<T>(
         Transform searchRoot,
         string childName
@@ -934,6 +1039,9 @@ public class DamageCalculationVisualizer : MonoBehaviour
         return child != null ? child.GetComponent<T>() : null;
     }
 
+    /// <summary>
+    /// 依階層順序遞迴尋找指定名稱的 Transform；回傳第一個符合的物件。
+    /// </summary>
     private Transform FindChildRecursive(
         Transform searchRoot,
         string childName
@@ -961,6 +1069,9 @@ public class DamageCalculationVisualizer : MonoBehaviour
         return null;
     }
 
+    /// <summary>
+    /// 隱藏場景中作為演出樣板的預建物件。
+    /// </summary>
     private void HidePrebuiltObjects()
     {
         HideDamageCalcSteps();
@@ -983,6 +1094,9 @@ public class DamageCalculationVisualizer : MonoBehaviour
         private readonly Vector2 sizeDelta;
         private readonly Vector3 localScale;
 
+        /// <summary>
+        /// 記錄 RectTransform 的版面配置，供演出後還原。
+        /// </summary>
         public DamageStepLayout(RectTransform rectTransform)
         {
             anchorMin = rectTransform.anchorMin;
@@ -992,6 +1106,9 @@ public class DamageCalculationVisualizer : MonoBehaviour
             localScale = rectTransform.localScale;
         }
 
+        /// <summary>
+        /// 將保存的版面配置套用到指定 RectTransform。
+        /// </summary>
         public void ApplyTo(RectTransform rectTransform)
         {
             rectTransform.anchorMin = anchorMin;

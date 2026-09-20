@@ -1,4 +1,4 @@
-﻿using UnityEngine;
+using UnityEngine;
 
 public class PromotionUI : MonoBehaviour
 {
@@ -8,6 +8,9 @@ public class PromotionUI : MonoBehaviour
     private LogicManager logicManager;
     private MultiplayerGameController multiplayerGameController;
 
+    /// <summary>
+    /// 取得對局及多人控制器，並隱藏初始升變面板。
+    /// </summary>
     private void Start()
     {
         logicManager = FindFirstObjectByType<LogicManager>();
@@ -17,6 +20,9 @@ public class PromotionUI : MonoBehaviour
         Hide();
     }
 
+    /// <summary>
+    /// 保存待升變的兵並顯示選擇面板。
+    /// </summary>
     public void Show(Pawn pawn)
     {
         promotingPawn = pawn;
@@ -27,6 +33,9 @@ public class PromotionUI : MonoBehaviour
         }
     }
 
+    /// <summary>
+    /// 隱藏升變選擇面板並清除待處理棋子。
+    /// </summary>
     public void Hide()
     {
         if (panel != null)
@@ -37,6 +46,9 @@ public class PromotionUI : MonoBehaviour
         promotingPawn = null;
     }
 
+    /// <summary>
+    /// 提交目前選擇的升變棋子種類。
+    /// </summary>
     public void PromotePawn(string pieceName)
     {
         if (promotingPawn == null)

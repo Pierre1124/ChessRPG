@@ -1,4 +1,4 @@
-﻿using System.Collections.Generic;
+using System.Collections.Generic;
 using TMPro;
 using System.Collections;
 using UnityEngine;
@@ -14,6 +14,9 @@ public sealed class CardRecycleEvent
     public bool isWhitePlayer;
     public int frame;
 
+    /// <summary>
+    /// 建立包含回收卡牌、玩家陣營與影格的事件資料。
+    /// </summary>
     public CardRecycleEvent(
         CardDefinition recycledCard,
         bool recycledByWhitePlayer,
@@ -32,6 +35,9 @@ public sealed class CardDrawEvent
     public int cardsDrawn;
     public int frame;
 
+    /// <summary>
+    /// 建立包含抽牌玩家、實際張數與影格的事件資料。
+    /// </summary>
     public CardDrawEvent(
         bool drawnByWhitePlayer,
         int drawnCount,
@@ -127,7 +133,56 @@ public class CardHandManager : MonoBehaviour
 
     public bool CanDrawThisTurn
     {
-        get { return canDrawThisTurn; }
+        get { return !IsRpgDisabled && canDrawThisTurn; }
+    }
+
+    private bool rpgDisabled;
+    private bool IsRpgDisabled
+    {
+        get { return rpgDisabled || (logicManager != null && logicManager.IsClassicChess); }
+    }
+
+    /// <summary>
+    /// 清空牌堆與手牌並關閉 RPG 介面，包含棋盤上獨立的對手牌背容器。
+    /// </summary>
+    public void DisableRpgElements()
+    {
+        rpgDisabled = true;
+        StopAllCoroutines();
+        canDrawThisTurn = false;
+        whiteDeck.Clear();
+        blackDeck.Clear();
+        whiteHand.Clear();
+        blackHand.Clear();
+        pendingCards.Clear();
+        ResolveCardGameUiReferences();
+        ResolveOpponentHandReferences();
+        ClearOpponentHandCards();
+        HideOpponentHandDisplay(whiteViewOpponentHandRoot);
+        HideOpponentHandDisplay(blackViewOpponentHandRoot);
+        if (usingCardRoot != null) usingCardRoot.SetActive(false);
+        if (drawButton != null) drawButton.interactable = false;
+        SetCardGameUiActive(false);
+        enabled = false;
+    }
+
+    /// <summary>
+    /// 從正規化後的 Panel 找回手牌展示根物件，一併隱藏牌背外框與其他裝飾。
+    /// </summary>
+    private static void HideOpponentHandDisplay(Transform root)
+    {
+        if (root == null) return;
+        for (Transform current = root; current != null; current = current.parent)
+        {
+            if (current.name == "WhiteHandCard" || current.name == "BlackHandCard" ||
+                current.name == "MatchHandCard" || current.name == "BlackViewMatchHandCard" ||
+                current.name == "WhiteMatchHandCard")
+            {
+                current.gameObject.SetActive(false);
+                return;
+            }
+        }
+        root.gameObject.SetActive(false);
     }
 
     public Transform LastPlayedCardTargetTransform
@@ -135,12 +190,15 @@ public class CardHandManager : MonoBehaviour
         get { return lastPlayedCardTargetTransform; }
     }
 
+    /// <summary>
+    /// 設定卡牌遊戲介面的顯示狀態。
+    /// </summary>
     public void SetCardGameUiActive(bool active)
     {
         ResolveCardGameUiReferences();
         if (cardGameUiRoot != null)
         {
-            cardGameUiRoot.gameObject.SetActive(active);
+            cardGameUiRoot.gameObject.SetActive(active && !IsRpgDisabled);
         }
     }
 
@@ -165,6 +223,9 @@ public class CardHandManager : MonoBehaviour
         }
     }
 
+    /// <summary>
+    /// 保存對局引用、補齊 UI 與卡牌資源並綁定抽牌操作。
+    /// </summary>
     public void Initialize(LogicManager owner)
     {
         logicManager = owner;
@@ -180,6 +241,9 @@ public class CardHandManager : MonoBehaviour
         isInitialized = true;
     }
 
+    /// <summary>
+    /// 監看連線等待狀態，更新等待提示並在準備完成時刷新手牌。
+    /// </summary>
     private void Update()
     {
         bool isWaiting =
@@ -208,13 +272,19 @@ public class CardHandManager : MonoBehaviour
         }
     }
 
+    /// <summary>
+    /// 判斷目前是否因結算、升變或對局狀態而禁止卡牌操作。
+    /// </summary>
     private bool IsGameplayLocked()
     {
-        return IsMultiplayerWaiting() ||
+        return IsRpgDisabled || IsMultiplayerWaiting() ||
             isUsingCardAnimationPlaying ||
             (logicManager != null && logicManager.IsOperationLocked);
     }
 
+    /// <summary>
+    /// 判斷多人對局是否仍在等待玩家或必要資料。
+    /// </summary>
     private bool IsMultiplayerWaiting()
     {
         if (multiplayerGameController == null)
@@ -227,6 +297,9 @@ public class CardHandManager : MonoBehaviour
             !multiplayerGameController.CanGameplayOperate;
     }
 
+    /// <summary>
+    /// 依多人連線等待狀態更新提示文字。
+    /// </summary>
     private void RefreshWaitingForPlayerText(bool force = false)
     {
         ResolveCardGameUiReferences();
@@ -252,8 +325,12 @@ public class CardHandManager : MonoBehaviour
             "\u7B49\u5F85\u73A9\u5BB6\u52A0\u5165" + new string('.', waitingTextDotCount);
     }
 
+    /// <summary>
+    /// 重建雙方牌堆與起始手牌，並重設抽牌狀態。
+    /// </summary>
     public void ResetHands(bool isWhiteTurn)
     {
+        if (IsRpgDisabled) return;
         ResolveDefaults();
 
         whiteDeck.Clear();
@@ -274,12 +351,16 @@ public class CardHandManager : MonoBehaviour
         RefreshHealth();
     }
 
+    /// <summary>
+    /// 套用指定玩家提交的牌組，洗牌並建立起始手牌。
+    /// </summary>
     public bool SetDeckForPlayerAsAuthority(
         bool isWhitePlayer,
         string serializedDeckIds,
         bool keepFirstCard
     )
     {
+        if (IsRpgDisabled) return false;
         ResolveDefaults();
 
         List<CardDefinition> targetDeck =
@@ -315,8 +396,12 @@ public class CardHandManager : MonoBehaviour
         return true;
     }
 
+    /// <summary>
+    /// 在棋盤回合切換時發放待領卡牌並更新抽牌與手牌介面。
+    /// </summary>
     public void OnChessTurnChanged(bool isWhiteTurn)
     {
+        if (IsRpgDisabled) return;
         if (!isInitialized)
         {
             Initialize(logicManager);
@@ -328,6 +413,9 @@ public class CardHandManager : MonoBehaviour
         Refresh(isWhiteTurn);
     }
 
+    /// <summary>
+    /// 停用本回合抽牌操作並更新介面。
+    /// </summary>
     public void DisableDrawForCurrentTurn()
     {
         if (!canDrawThisTurn)
@@ -342,12 +430,16 @@ public class CardHandManager : MonoBehaviour
         }
     }
 
+    /// <summary>
+    /// 將卡牌加入指定玩家的待發放清單。
+    /// </summary>
     public bool QueueCardForPlayer(
         bool isWhitePlayer,
         CardDefinition card,
         int ownerTurnsDelay
     )
     {
+        if (IsRpgDisabled) return false;
         if (card == null) return false;
 
         pendingCards.Add(new PendingCard
@@ -366,6 +458,9 @@ public class CardHandManager : MonoBehaviour
         return true;
     }
 
+    /// <summary>
+    /// 將符合發放時機的待領卡牌加入玩家手牌。
+    /// </summary>
     private void ReleasePendingCards(bool isWhitePlayer)
     {
         List<CardDefinition> hand =
@@ -392,6 +487,9 @@ public class CardHandManager : MonoBehaviour
         }
     }
 
+    /// <summary>
+    /// 處理目前玩家的抽牌操作；連線時送交主機執行。
+    /// </summary>
     public void DrawForCurrentPlayer()
     {
         if (
@@ -428,6 +526,9 @@ public class CardHandManager : MonoBehaviour
         DrawForPlayerAsAuthority(logicManager.isWhiteTurn);
     }
 
+    /// <summary>
+    /// 檢查抽牌條件後抽取卡牌，觸發抽牌事件並更新本回合狀態。
+    /// </summary>
     public bool DrawForPlayerAsAuthority(bool isWhitePlayer)
     {
         if (
@@ -457,6 +558,9 @@ public class CardHandManager : MonoBehaviour
         return true;
     }
 
+    /// <summary>
+    /// 嘗試回收卡牌；連線時轉成主機命令。
+    /// </summary>
     public bool TryRecycleCard(CardDefinition card)
     {
         if (logicManager == null || card == null || IsGameplayLocked())
@@ -489,6 +593,9 @@ public class CardHandManager : MonoBehaviour
         return RecycleCardForPlayerAsAuthority(logicManager.isWhiteTurn, card.id);
     }
 
+    /// <summary>
+    /// 從指定玩家手牌移除回收卡，恢復抽牌資格並觸發回收事件。
+    /// </summary>
     public bool RecycleCardForPlayerAsAuthority(
         bool isWhitePlayer,
         string cardId
@@ -538,8 +645,12 @@ public class CardHandManager : MonoBehaviour
         return true;
     }
 
+    /// <summary>
+    /// 依目前雙方血量更新卡牌介面的血條與文字。
+    /// </summary>
     public void RefreshHealth()
     {
+        if (IsRpgDisabled) return;
         if (logicManager == null)
         {
             return;
@@ -558,8 +669,12 @@ public class CardHandManager : MonoBehaviour
         );
     }
 
+    /// <summary>
+    /// 依目前資料刷新此物件的顯示內容。
+    /// </summary>
     public void Refresh(bool isWhiteTurn)
     {
+        if (IsRpgDisabled) return;
         ResolveCardGameUiReferences();
 
         if (IsMultiplayerWaiting())
@@ -601,8 +716,12 @@ public class CardHandManager : MonoBehaviour
         }
     }
 
+    /// <summary>
+    /// 依既有協定序列化雙方牌堆及手牌；此格式包含完整卡牌 ID。
+    /// </summary>
     public string SerializeNetworkCardState()
     {
+        if (IsRpgDisabled) return string.Empty;
         return string.Join(
             ";",
             SerializeCardList(whiteDeck),
@@ -612,12 +731,16 @@ public class CardHandManager : MonoBehaviour
         );
     }
 
+    /// <summary>
+    /// 解析主機傳來的牌堆與手牌資料，更新抽牌資格及顯示。
+    /// </summary>
     public void ApplyNetworkCardState(
         string serializedState,
         bool remoteCanDrawThisTurn,
         bool currentWhiteTurn
     )
     {
+        if (IsRpgDisabled) return;
         ResolveDefaults();
 
         string[] sections = string.IsNullOrEmpty(serializedState)
@@ -646,6 +769,9 @@ public class CardHandManager : MonoBehaviour
         );
     }
 
+    /// <summary>
+    /// 依牌堆順序將指定數量的卡牌移入手牌，回傳實際抽取數量。
+    /// </summary>
     private int DrawCards(bool isWhitePlayer, int amount)
     {
         List<CardDefinition> deck =
@@ -676,8 +802,12 @@ public class CardHandManager : MonoBehaviour
         return drawnCount;
     }
 
+    /// <summary>
+    /// 判斷本機玩家是否可操作目前回合的卡牌控制項。
+    /// </summary>
     private bool CanLocalPlayerUseCurrentTurnControls()
     {
+        if (IsRpgDisabled) return false;
         if (logicManager == null)
         {
             return false;
@@ -694,11 +824,15 @@ public class CardHandManager : MonoBehaviour
             multiplayerGameController.CanLocalPlayerAct(logicManager.isWhiteTurn);
     }
 
+    /// <summary>
+    /// 啟動指定卡牌的出牌顯示動畫。
+    /// </summary>
     public void PlayUsingCardAnimation(
         CardDefinition card,
         GameObject cardObject
     )
     {
+        if (IsRpgDisabled) return;
         if (card == null)
         {
             if (cardObject != null)
@@ -713,11 +847,15 @@ public class CardHandManager : MonoBehaviour
         );
     }
 
+    /// <summary>
+    /// 以指定棋子位置為目標播放出牌動畫。
+    /// </summary>
     public bool PlayUsingCardAnimationOnPiece(
         string cardId,
         BoardCoordinate targetCoordinate
     )
     {
+        if (IsRpgDisabled) return false;
         if (
             logicManager == null ||
             cardLibrary == null ||
@@ -741,11 +879,15 @@ public class CardHandManager : MonoBehaviour
         return true;
     }
 
+    /// <summary>
+    /// 以指定場地欄位為目標播放出牌動畫。
+    /// </summary>
     public bool PlayUsingCardAnimationOnField(
         string cardId,
         string fieldPlaceName
     )
     {
+        if (IsRpgDisabled) return false;
         if (
             cardLibrary == null ||
             string.IsNullOrEmpty(cardId) ||
@@ -767,11 +909,17 @@ public class CardHandManager : MonoBehaviour
         return true;
     }
 
+    /// <summary>
+    /// 記錄最後出牌的目標，供後續動畫定位使用。
+    /// </summary>
     private void SetLastPlayedCardTarget(Transform target)
     {
         lastPlayedCardTargetTransform = target;
     }
 
+    /// <summary>
+    /// 將卡牌清單轉成既有分隔格式的卡號字串。
+    /// </summary>
     private string SerializeCardList(List<CardDefinition> cards)
     {
         if (cards == null || cards.Count == 0)
@@ -788,6 +936,9 @@ public class CardHandManager : MonoBehaviour
         return string.Join(",", ids);
     }
 
+    /// <summary>
+    /// 以收到的卡號清單取代本機卡牌清單。
+    /// </summary>
     private void ApplyCardListState(
         List<CardDefinition> target,
         string serializedIds
@@ -797,6 +948,9 @@ public class CardHandManager : MonoBehaviour
         AddCardsFromIds(target, serializedIds);
     }
 
+    /// <summary>
+    /// 依序解析卡號並將卡牌庫中存在的卡牌加入清單。
+    /// </summary>
     private void AddCardsFromIds(
         List<CardDefinition> target,
         string serializedIds
@@ -832,6 +986,9 @@ public class CardHandManager : MonoBehaviour
         }
     }
 
+    /// <summary>
+    /// 依目前可見的手牌清單重建手牌介面。
+    /// </summary>
     private void RenderHand(bool isWhiteTurn)
     {
         if (handRoot == null)
@@ -855,6 +1012,9 @@ public class CardHandManager : MonoBehaviour
         }
     }
 
+    /// <summary>
+    /// 依對手手牌數量更新牌背顯示。
+    /// </summary>
     private void RefreshOpponentHandDisplay(bool currentWhiteTurn)
     {
         ResolveOpponentHandReferences();
@@ -889,6 +1049,9 @@ public class CardHandManager : MonoBehaviour
         }
     }
 
+    /// <summary>
+    /// 若牌背樣板是場景物件，將其隱藏以免與複製出的牌背重疊。
+    /// </summary>
     private void HideOpponentCardBackTemplateIfSceneObject()
     {
         if (
@@ -909,12 +1072,18 @@ public class CardHandManager : MonoBehaviour
         }
     }
 
+    /// <summary>
+    /// 清除對手手牌顯示物件。
+    /// </summary>
     private void ClearOpponentHandCards()
     {
         ClearOpponentHandCardsInRoot(whiteViewOpponentHandRoot);
         ClearOpponentHandCardsInRoot(blackViewOpponentHandRoot);
     }
 
+    /// <summary>
+    /// 清除指定手牌容器內建立的對手牌背。
+    /// </summary>
     private void ClearOpponentHandCardsInRoot(Transform opponentHandRoot)
     {
         if (opponentHandRoot == null)
@@ -937,6 +1106,9 @@ public class CardHandManager : MonoBehaviour
         }
     }
 
+    /// <summary>
+    /// 依本機視角選擇目前使用的對手手牌容器。
+    /// </summary>
     private Transform ResolveActiveOpponentHandRoot(bool currentWhiteTurn)
     {
         if (multiplayerGameController == null)
@@ -972,6 +1144,9 @@ public class CardHandManager : MonoBehaviour
             );
     }
 
+    /// <summary>
+    /// 嘗試取得目前應顯示牌背的對手陣營。
+    /// </summary>
     private bool TryGetOpponentHandSide(
         bool currentWhiteTurn,
         out bool opponentWhiteHand
@@ -1009,6 +1184,9 @@ public class CardHandManager : MonoBehaviour
         return false;
     }
 
+    /// <summary>
+    /// 嘗試取得目前可顯示手牌正面的玩家陣營。
+    /// </summary>
     private bool TryGetVisibleHandSide(
         bool currentWhiteTurn,
         out bool visibleWhiteHand
@@ -1046,6 +1224,9 @@ public class CardHandManager : MonoBehaviour
         return false;
     }
 
+    /// <summary>
+    /// 依卡牌定義建立卡片物件並套用顯示資料。
+    /// </summary>
     private void SpawnCard(CardDefinition card)
     {
         if (cardPrefab == null || handRoot == null || card == null)
@@ -1075,6 +1256,9 @@ public class CardHandManager : MonoBehaviour
         dragHandler.Initialize(this, card);
     }
 
+    /// <summary>
+    /// 依序播放出牌展示及目標收束動畫，並處理完成後清理。
+    /// </summary>
     private IEnumerator PlayUsingCardRoutine(
         CardDefinition card,
         GameObject cardObject
@@ -1147,11 +1331,7 @@ public class CardHandManager : MonoBehaviour
 
             if (logicManager != null && logicManager.HasDeferredFullGameRestart)
             {
-                if (cardGameUiRoot != null)
-                {
-                    cardGameUiRoot.gameObject.SetActive(false);
-                }
-
+                // 先完成模式切換與重載，避免停用自身物件使這個協程提前中止。
                 logicManager.CompleteDeferredFullGameRestart();
             }
             else
@@ -1175,6 +1355,9 @@ public class CardHandManager : MonoBehaviour
         }
     }
 
+    /// <summary>
+    /// 播放出牌展示根物件的動畫。
+    /// </summary>
     private float PlayUsingCardRoot(CardDefinition card)
     {
         if (usingCardRoot == null)
@@ -1211,6 +1394,9 @@ public class CardHandManager : MonoBehaviour
         );
     }
 
+    /// <summary>
+    /// 建立移往出牌目標的卡片顯示副本。
+    /// </summary>
     private GameObject CreateUsingCardTargetClone(CardDefinition card)
     {
         Transform targetParent =
@@ -1249,6 +1435,9 @@ public class CardHandManager : MonoBehaviour
         return clone;
     }
 
+    /// <summary>
+    /// 播放卡片朝目標縮小的動畫。
+    /// </summary>
     private IEnumerator PlayUsingCardShrinkOnTarget(GameObject targetClone)
     {
         if (targetClone == null)
@@ -1290,6 +1479,9 @@ public class CardHandManager : MonoBehaviour
         }
     }
 
+    /// <summary>
+    /// 設定出牌卡片使用的世界空間 Canvas。
+    /// </summary>
     private Canvas ConfigureUsingCardWorldCanvas(GameObject targetClone)
     {
         if (targetClone == null)
@@ -1340,6 +1532,9 @@ public class CardHandManager : MonoBehaviour
         return targetCanvas;
     }
 
+    /// <summary>
+    /// 調整出牌卡片的階層與排序，使其顯示於前方。
+    /// </summary>
     private void BringUsingCardToFront(GameObject target)
     {
         if (target == null)
@@ -1359,6 +1554,9 @@ public class CardHandManager : MonoBehaviour
         canvas.sortingOrder = usingCardSortingOrder;
     }
 
+    /// <summary>
+    /// 在出牌動畫期間持續調整卡面朝向相機。
+    /// </summary>
     private IEnumerator FaceUsingCardCameraRoutine(Canvas targetCanvas)
     {
         while (targetCanvas != null)
@@ -1368,6 +1566,9 @@ public class CardHandManager : MonoBehaviour
         }
     }
 
+    /// <summary>
+    /// 依設定將出牌卡片轉向目前相機。
+    /// </summary>
     private void FaceUsingCardCamera(Canvas targetCanvas)
     {
         if (!usingCardFaceCameraInWorldSpace || targetCanvas == null)
@@ -1392,6 +1593,9 @@ public class CardHandManager : MonoBehaviour
         }
     }
 
+    /// <summary>
+    /// 取得出牌卡片世界空間顯示使用的相機。
+    /// </summary>
     private Camera ResolveUsingCardCamera()
     {
         Camera mainCamera = Camera.main;
@@ -1417,6 +1621,9 @@ public class CardHandManager : MonoBehaviour
         return null;
     }
 
+    /// <summary>
+    /// 從指定動畫狀態的起點播放 Animator。
+    /// </summary>
     private float PlayAnimatorStateFromStart(
         Animator animator,
         string stateName,
@@ -1453,6 +1660,9 @@ public class CardHandManager : MonoBehaviour
         return state.length > 0f ? state.length : 0f;
     }
 
+    /// <summary>
+    /// 解析 Animator 可用的狀態雜湊值。
+    /// </summary>
     private int ResolveAnimatorStateHash(
         Animator animator,
         string stateName
@@ -1482,6 +1692,9 @@ public class CardHandManager : MonoBehaviour
         return 0;
     }
 
+    /// <summary>
+    /// 選取出牌目標動畫的父物件。
+    /// </summary>
     private Transform ResolveUsingCardTargetParent(Transform target)
     {
         if (target == null)
@@ -1498,6 +1711,9 @@ public class CardHandManager : MonoBehaviour
         return target;
     }
 
+    /// <summary>
+    /// 停用顯示副本中會干擾出牌動畫的元件。
+    /// </summary>
     private void DisableCloneAnimationComponents(GameObject clone)
     {
         Animation legacyAnimation = clone.GetComponent<Animation>();
@@ -1514,6 +1730,9 @@ public class CardHandManager : MonoBehaviour
         }
     }
 
+    /// <summary>
+    /// 逐步將卡片副本移向父物件原點並縮小。
+    /// </summary>
     private IEnumerator ShrinkUsingCardCloneToLocalZero(
         GameObject cardObject
     )
@@ -1563,6 +1782,9 @@ public class CardHandManager : MonoBehaviour
         }
     }
 
+    /// <summary>
+    /// 檢查拖牌目標並嘗試對棋子出牌；連線時送交主機。
+    /// </summary>
     public bool TryApplyCardToPiece(
         CardDefinition card,
         Vector2 screenPosition
@@ -1677,6 +1899,9 @@ public class CardHandManager : MonoBehaviour
         return true;
     }
 
+    /// <summary>
+    /// 檢查場地卡目標並嘗試放置；連線時送交主機。
+    /// </summary>
     public bool TryApplyFieldCardToPlace(
         CardDefinition card,
         FieldCardPlace place
@@ -1749,6 +1974,9 @@ public class CardHandManager : MonoBehaviour
         return true;
     }
 
+    /// <summary>
+    /// 依事件卡的目標條件嘗試執行技能。
+    /// </summary>
     private bool TryResolveEventCard(
         CardDefinition card,
         Vector2 screenPosition
@@ -1836,6 +2064,9 @@ public class CardHandManager : MonoBehaviour
         return true;
     }
 
+    /// <summary>
+    /// 依卡號與座標套用出牌效果；遠端重播可指定不再次移除手牌。
+    /// </summary>
     public bool PlayCardOnPieceAsAuthority(
         bool isWhitePlayer,
         string cardId,
@@ -1843,6 +2074,7 @@ public class CardHandManager : MonoBehaviour
         bool removeFromHand = true
     )
     {
+        if (IsRpgDisabled) return false;
         if (
             logicManager == null ||
             string.IsNullOrEmpty(cardId) ||
@@ -1919,6 +2151,9 @@ public class CardHandManager : MonoBehaviour
         return true;
     }
 
+    /// <summary>
+    /// 依卡號與欄位名稱套用場地卡；遠端重播可指定不再次移除手牌。
+    /// </summary>
     public bool PlayFieldCardAsAuthority(
         bool isWhitePlayer,
         string cardId,
@@ -1926,6 +2161,7 @@ public class CardHandManager : MonoBehaviour
         bool removeFromHand = true
     )
     {
+        if (IsRpgDisabled) return false;
         if (
             logicManager == null ||
             string.IsNullOrEmpty(cardId) ||
@@ -1975,6 +2211,9 @@ public class CardHandManager : MonoBehaviour
         return true;
     }
 
+    /// <summary>
+    /// 依既有欄位名稱尋找場地卡放置元件。
+    /// </summary>
     private FieldCardPlace FindFieldCardPlace(string fieldPlaceName)
     {
         FieldCardPlace[] places =
@@ -1994,6 +2233,9 @@ public class CardHandManager : MonoBehaviour
         return null;
     }
 
+    /// <summary>
+    /// 將卡牌圖像、文字與相關資訊套用到卡片 UI。
+    /// </summary>
     private void ApplyCardData(GameObject cardObject, CardDefinition card)
     {
         Image image = cardObject.GetComponent<Image>();
@@ -2020,6 +2262,9 @@ public class CardHandManager : MonoBehaviour
         ApplyTags(cardObject.transform, card.tags);
     }
 
+    /// <summary>
+    /// 將卡牌標籤套用到對應的 UI 文字。
+    /// </summary>
     private void ApplyTags(Transform root, List<string> tags)
     {
         Transform tagGroup = FindChildRecursive(root, "CardTagGroup");
@@ -2069,6 +2314,9 @@ public class CardHandManager : MonoBehaviour
         }
     }
 
+    /// <summary>
+    /// 補齊卡牌介面所需的容器與控制項引用。
+    /// </summary>
     private void ResolveCardGameUiReferences()
     {
         if (cardGameUiRoot == null)
@@ -2135,6 +2383,9 @@ public class CardHandManager : MonoBehaviour
         ResolveOpponentHandReferences();
     }
 
+    /// <summary>
+    /// 補齊雙方視角下的對手手牌顯示引用。
+    /// </summary>
     private void ResolveOpponentHandReferences()
     {
         if (whiteViewOpponentHandRoot == null)
@@ -2212,6 +2463,9 @@ public class CardHandManager : MonoBehaviour
         }
     }
 
+    /// <summary>
+    /// 將對手手牌引用解析為實際使用的容器。
+    /// </summary>
     private Transform NormalizeOpponentHandRoot(Transform root)
     {
         if (root == null || root.name == "Panel")
@@ -2223,6 +2477,9 @@ public class CardHandManager : MonoBehaviour
         return panel != null ? panel : root;
     }
 
+    /// <summary>
+    /// 判斷指定物件是否位於目標父物件之下。
+    /// </summary>
     private bool IsChildOf(Transform child, Transform parent)
     {
         if (child == null || parent == null)
@@ -2244,6 +2501,9 @@ public class CardHandManager : MonoBehaviour
         return false;
     }
 
+    /// <summary>
+    /// 載入對手手牌顯示所需的牌背 Prefab。
+    /// </summary>
     private GameObject LoadCardBackPrefab()
     {
 #if UNITY_EDITOR
@@ -2255,6 +2515,9 @@ public class CardHandManager : MonoBehaviour
 #endif
     }
 
+    /// <summary>
+    /// 缺少牌背樣板時建立替代顯示物件。
+    /// </summary>
     private GameObject CreateFallbackCardBackTemplate()
     {
         Transform parent = whiteViewOpponentHandRoot != null
@@ -2296,6 +2559,9 @@ public class CardHandManager : MonoBehaviour
         return template;
     }
 
+    /// <summary>
+    /// 補齊雙方血條及血量文字的引用。
+    /// </summary>
     private void ResolveHealthReferences(
         string rootName,
         ref Slider slider,
@@ -2324,6 +2590,9 @@ public class CardHandManager : MonoBehaviour
         }
     }
 
+    /// <summary>
+    /// 綁定抽牌按鈕的操作事件。
+    /// </summary>
     private void BindDrawButton()
     {
         if (drawButton == null)
@@ -2335,6 +2604,9 @@ public class CardHandManager : MonoBehaviour
         drawButton.onClick.AddListener(DrawForCurrentPlayer);
     }
 
+    /// <summary>
+    /// 將血量更新到指定血條與文字元件。
+    /// </summary>
     private void SetHealthUi(
         Slider slider,
         TMP_Text healthText,
@@ -2356,6 +2628,9 @@ public class CardHandManager : MonoBehaviour
         }
     }
 
+    /// <summary>
+    /// 補齊元件所需的預設資料或場景引用。
+    /// </summary>
     private void ResolveDefaults()
     {
         if (cardLibrary == null)
@@ -2383,6 +2658,9 @@ public class CardHandManager : MonoBehaviour
         }
     }
 
+    /// <summary>
+    /// 清除指定容器下的子物件。
+    /// </summary>
     private void ClearChildren(RectTransform root)
     {
         for (int i = root.childCount - 1; i >= 0; i--)
@@ -2391,6 +2669,9 @@ public class CardHandManager : MonoBehaviour
         }
     }
 
+    /// <summary>
+    /// 依現有隨機來源洗牌；指定保留首張時不移動起始卡牌。
+    /// </summary>
     private void Shuffle(List<CardDefinition> deck, bool keepFirstCard)
     {
         int firstShuffleIndex = keepFirstCard ? 1 : 0;
@@ -2403,6 +2684,9 @@ public class CardHandManager : MonoBehaviour
         }
     }
 
+    /// <summary>
+    /// 尋找指定文字元件並更新其顯示內容。
+    /// </summary>
     private void SetText(
         Transform root,
         string childName,
@@ -2416,6 +2700,9 @@ public class CardHandManager : MonoBehaviour
         }
     }
 
+    /// <summary>
+    /// 更新指定子階層中的文字元件。
+    /// </summary>
     private void SetNestedText(
         Transform root,
         string parentName,
@@ -2430,6 +2717,9 @@ public class CardHandManager : MonoBehaviour
         }
     }
 
+    /// <summary>
+    /// 依名稱尋找子物件，再取得所需類型的元件。
+    /// </summary>
     private T FindChildComponent<T>(
         Transform root,
         string childName
@@ -2439,6 +2729,9 @@ public class CardHandManager : MonoBehaviour
         return child != null ? child.GetComponent<T>() : null;
     }
 
+    /// <summary>
+    /// 依階層順序遞迴尋找指定名稱的 Transform；回傳第一個符合的物件。
+    /// </summary>
     private Transform FindChildRecursive(
         Transform root,
         string childName
@@ -2463,6 +2756,9 @@ public class CardHandManager : MonoBehaviour
         return null;
     }
 
+    /// <summary>
+    /// 依名稱尋找目前場景中的 Transform。
+    /// </summary>
     private Transform FindSceneTransform(string targetName)
     {
         GameObject[] roots =
@@ -2482,6 +2778,9 @@ public class CardHandManager : MonoBehaviour
         return null;
     }
 
+    /// <summary>
+    /// 顯示操作或對局提示訊息。
+    /// </summary>
     private void ShowAlarm(string message)
     {
         GameFlowUI.Show(message);

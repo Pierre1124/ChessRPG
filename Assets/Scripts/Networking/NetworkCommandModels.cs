@@ -32,6 +32,9 @@ public struct BoardCoordinate
     public int x;
     public int y;
 
+    /// <summary>
+    /// 建立整數棋盤座標。
+    /// </summary>
     public BoardCoordinate(int x, int y)
     {
         this.x = x;
@@ -43,11 +46,17 @@ public struct BoardCoordinate
         get { return x >= 0 && x < 8 && y >= 0 && y < 8; }
     }
 
+    /// <summary>
+    /// 將網路棋盤座標轉為 Unity 二維座標。
+    /// </summary>
     public Vector2 ToVector2()
     {
         return new Vector2(x, y);
     }
 
+    /// <summary>
+    /// 將 Unity 二維座標四捨五入為網路棋盤格座標。
+    /// </summary>
     public static BoardCoordinate FromVector2(Vector2 coordinates)
     {
         return new BoardCoordinate(
@@ -56,6 +65,9 @@ public struct BoardCoordinate
         );
     }
 
+    /// <summary>
+    /// 回傳棋盤座標的可讀文字表示。
+    /// </summary>
     public override string ToString()
     {
         return $"({x}, {y})";
@@ -74,6 +86,9 @@ public struct NetworkGameCommand
     public string targetObjectName;
     public string fieldPlaceName;
 
+    /// <summary>
+    /// 建立包含序號、玩家陣營及起訖座標的移動命令資料。
+    /// </summary>
     public static NetworkGameCommand Move(
         int sequence,
         bool isWhitePlayer,
@@ -91,6 +106,9 @@ public struct NetworkGameCommand
         };
     }
 
+    /// <summary>
+    /// 建立對指定棋子座標出牌的命令資料。
+    /// </summary>
     public static NetworkGameCommand CardOnPiece(
         int sequence,
         bool isWhitePlayer,
@@ -110,6 +128,9 @@ public struct NetworkGameCommand
         };
     }
 
+    /// <summary>
+    /// 建立對指定場地欄位出牌的命令資料。
+    /// </summary>
     public static NetworkGameCommand FieldCard(
         int sequence,
         bool isWhitePlayer,
@@ -127,6 +148,9 @@ public struct NetworkGameCommand
         };
     }
 
+    /// <summary>
+    /// 建立抽牌或回收等不需要棋盤起訖座標的命令。
+    /// </summary>
     public static NetworkGameCommand Simple(
         NetworkGameCommandKind kind,
         int sequence,

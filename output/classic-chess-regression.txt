@@ -1,0 +1,63 @@
+F12 local Play Mode regression
+PASS: Initial game uses RPG mode
+PASS: Direct F12 accepted
+PASS: F12 reload starts a classic game with white to move
+PASS: Card UI and drawing disabled
+PASS: No RPG card state is serialized
+PASS: Field slots hidden and empty
+PASS: Damage UI disabled
+PASS: All pieces have no RPG equipment or statuses
+PASS: Both opponent card-back containers hidden
+PASS: Late deck submission rejected
+PASS: Remote card replay rejected
+PASS: Remote field replay rejected
+PASS: Damage callbacks and remote batches stay disabled
+PASS: HP cannot end the classic game
+PASS: Classic e2-e4
+PASS: Classic d7-d5
+PASS: Classic e4xd5
+PASS: Capture removes one piece and advances turn
+PASS: Capture has no HP damage or damage wait
+PASS: Classic pawn reaches promotion rank
+PASS: Promotion choice remains available
+PASS: Classic promotion accepted
+PASS: Promotion finishes without RPG steps
+PASS: New game restores RPG hand and draw controls
+PASS: New game restores field slots
+PASS: New game restores damage visualizer
+PASS: First fusion field accepted
+PASS: Second fusion field accepted
+PASS: F12 reload starts a classic game with white to move
+PASS: Card UI and drawing disabled
+PASS: No RPG card state is serialized
+PASS: Field slots hidden and empty
+PASS: Damage UI disabled
+PASS: All pieces have no RPG equipment or statuses
+PASS: Both opponent card-back containers hidden
+PASS: Late deck submission rejected
+PASS: Remote card replay rejected
+PASS: Remote field replay rejected
+PASS: Damage callbacks and remote batches stay disabled
+PASS: HP cannot end the classic game
+PASS: RPG restored before deferred animation test
+PASS: Deferred F12 accepted
+PASS: F12 waits for card animation completion
+PASS: F12 reload starts a classic game with white to move
+PASS: Card UI and drawing disabled
+PASS: No RPG card state is serialized
+PASS: Field slots hidden and empty
+PASS: Damage UI disabled
+PASS: All pieces have no RPG equipment or statuses
+PASS: Both opponent card-back containers hidden
+PASS: Late deck submission rejected
+PASS: Remote card replay rejected
+PASS: Remote field replay rejected
+PASS: Damage callbacks and remote batches stay disabled
+PASS: HP cannot end the classic game
+PASS: Mate setup f2-f3
+PASS: Mate setup e7-e5
+PASS: Mate setup g2-g4
+PASS: Mate move Qd8-h4
+PASS: Checkmate ends the classic game with result UI
+PASS: Checkmate does not consume player HP
+PASS: all local regression checks completed

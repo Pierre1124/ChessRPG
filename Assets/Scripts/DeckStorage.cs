@@ -49,6 +49,9 @@ public static class DeckStorage
         public List<string> cardIds = new List<string>();
     }
 
+    /// <summary>
+    /// 載入牌組並轉成卡號清單；缺少有效設定時使用預設牌組。
+    /// </summary>
     public static List<string> LoadOrDefault(
         IReadOnlyList<CardDefinition> availableCards
     )
@@ -71,6 +74,9 @@ public static class DeckStorage
         return result;
     }
 
+    /// <summary>
+    /// 載入目前或舊版牌組設定，並依現有卡牌庫清理資料。
+    /// </summary>
     public static DeckConfig LoadConfigOrDefault(
         IReadOnlyList<CardDefinition> availableCards
     )
@@ -87,6 +93,9 @@ public static class DeckStorage
         return SanitizeConfig(config, availableCards);
     }
 
+    /// <summary>
+    /// 將牌組選擇整理成目前版本的存檔格式並寫入 PlayerPrefs。
+    /// </summary>
     public static void Save(
         Dictionary<string, int> selectedCounts,
         string openingCardId,
@@ -141,6 +150,9 @@ public static class DeckStorage
         );
     }
 
+    /// <summary>
+    /// 將牌組選擇整理成目前版本的存檔格式並寫入 PlayerPrefs。
+    /// </summary>
     public static void Save(
         IEnumerable<string> selectedIds,
         IReadOnlyList<CardDefinition> availableCards
@@ -158,6 +170,9 @@ public static class DeckStorage
         Save(counts, null, availableCards);
     }
 
+    /// <summary>
+    /// 尚未儲存牌組時建立並保存預設牌組。
+    /// </summary>
     public static void EnsureDefault(
         IReadOnlyList<CardDefinition> availableCards
     )
@@ -174,6 +189,9 @@ public static class DeckStorage
         Save(config.counts, config.openingCardId, availableCards);
     }
 
+    /// <summary>
+    /// 依牌組設定建立卡牌清單，將指定起手卡放在最前方。
+    /// </summary>
     public static List<CardDefinition> BuildDeck(
         IReadOnlyList<CardDefinition> availableCards
     )
@@ -224,6 +242,9 @@ public static class DeckStorage
         return result;
     }
 
+    /// <summary>
+    /// 依目前牌組設定產生卡號清單。
+    /// </summary>
     public static List<string> BuildDeckIds(
         IReadOnlyList<CardDefinition> availableCards
     )
@@ -240,6 +261,9 @@ public static class DeckStorage
         return result;
     }
 
+    /// <summary>
+    /// 將目前牌組轉成可提交給連線主機的卡號字串。
+    /// </summary>
     public static string BuildSerializedDeckIds(
         IReadOnlyList<CardDefinition> availableCards
     )
@@ -247,6 +271,9 @@ public static class DeckStorage
         return string.Join(",", BuildDeckIds(availableCards));
     }
 
+    /// <summary>
+    /// 判斷目前牌組是否設定有效的指定起手卡。
+    /// </summary>
     public static bool HasOpeningCard(
         IReadOnlyList<CardDefinition> availableCards
     )
@@ -257,6 +284,9 @@ public static class DeckStorage
             count > 0;
     }
 
+    /// <summary>
+    /// 讀取目前版本的牌組存檔。
+    /// </summary>
     private static DeckConfig LoadCurrentConfig()
     {
         try
@@ -290,6 +320,9 @@ public static class DeckStorage
         }
     }
 
+    /// <summary>
+    /// 讀取舊版牌組存檔並轉成目前設定結構。
+    /// </summary>
     private static DeckConfig LoadLegacyConfig()
     {
         if (!PlayerPrefs.HasKey(LegacyPlayerPrefsKey))
@@ -322,6 +355,9 @@ public static class DeckStorage
         }
     }
 
+    /// <summary>
+    /// 依可用卡牌建立預設牌組設定。
+    /// </summary>
     private static DeckConfig BuildDefaultConfig(
         IReadOnlyList<CardDefinition> availableCards
     )
@@ -335,6 +371,9 @@ public static class DeckStorage
         return config;
     }
 
+    /// <summary>
+    /// 移除不存在的卡號並依現有規則整理數量與起手卡設定。
+    /// </summary>
     private static DeckConfig SanitizeConfig(
         DeckConfig config,
         IReadOnlyList<CardDefinition> availableCards
@@ -370,6 +409,9 @@ public static class DeckStorage
         return result;
     }
 
+    /// <summary>
+    /// 依卡號尋找卡牌定義。
+    /// </summary>
     private static CardDefinition FindCard(
         IReadOnlyList<CardDefinition> availableCards,
         string cardId
@@ -388,6 +430,9 @@ public static class DeckStorage
         return null;
     }
 
+    /// <summary>
+    /// 收集卡牌庫中的有效卡號。
+    /// </summary>
     private static List<string> GetAvailableIds(
         IReadOnlyList<CardDefinition> availableCards
     )

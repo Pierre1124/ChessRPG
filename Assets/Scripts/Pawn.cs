@@ -1,23 +1,14 @@
 using System.Collections.Generic;
 using UnityEngine;
 
-//==============================
-// ???Pawn??
-// ?撖??秋????叟垓??????
-// ? ???
-// ? ???
-// ? ????謕?
-// ? ?????
-// ? ???
-//==============================
 public class Pawn : Piece
 {
-    //==============================
-    // ??????
-    //==============================
+    /// <summary>
+    /// 執行兵的移動，依既有規則處理吃過路兵及升變。
+    /// </summary>
     public override void Move(Vector2 newPosition)
     {
-        
+
         if (UsesDefinitionRules)
         {
             base.Move(newPosition);
@@ -30,36 +21,26 @@ public class Pawn : Piece
             return;
         }
 
-//==============================
-        // ????????
-        //==============================
-        // ?????剖??????
-        // ?選?謆?謕僱?蝞?
-        // ?????迎???????
         if (
             Mathf.Abs(newPosition.x - GetCoordinates().x) == 1 &&
             Mathf.Abs(newPosition.y - GetCoordinates().y) == 1
         )
         {
-            // ?謘??⊥???
+
             Piece capturedPiece =
                 logicManager.boardMap[
                     (int)newPosition.x,
                     (int)GetCoordinates().y
                 ];
 
-            //==============================
-            // ?????Pawn
-            // ??謢???豯??謜???? Pawn
-            //==============================
             if (
                 capturedPiece is Pawn &&
                 capturedPiece == logicManager.lastMovedPiece
             )
             {
-                
+
                 logicManager.OnPieceCaptured(this, capturedPiece);
-// ?謒?????
+
                 logicManager.boardMap[
                     (int)newPosition.x,
                     (int)GetCoordinates().y
@@ -68,22 +49,17 @@ public class Pawn : Piece
             }
         }
 
-        //==============================
-        // ?????蟡???
-        //==============================
         base.Move(newPosition);
 
-        //==============================
-        // ??????
-        //==============================
-        // ?鞈ｇ??斯8??
-        // ?綜???斯1??
         if (ShouldPromoteAt(newPosition))
         {
-            // ?瞉???UI
+
             logicManager.HandlePromotion(this);
         }
     }
+    /// <summary>
+    /// 判斷兵到達指定位置後是否需要升變。
+    /// </summary>
     private bool ShouldPromoteAt(Vector2 position)
     {
         bool reachesPromotionRank =
@@ -103,41 +79,29 @@ public class Pawn : Piece
         return cardDefinition.CanPromote(this);
     }
 
-    //==============================
-    // ?謘????????????
-    //==============================
+    /// <summary>
+    /// 依棋子的基本走法列出候選目的地；王受將軍的限制由合法走法檢查處理。
+    /// </summary>
     protected override List<Vector2> GetPotentialMoves()
     {
-        // ???????謅?
+
         List<Vector2> legalMoves =
             new List<Vector2>();
 
-        // ?獢??冽?
         Vector2 currentCoordinates =
             GetCoordinates();
 
-        //==============================
-        // ?鞈??甄??
-        // ?綜??甄??
-        //==============================
         int direction = IsWhite ? 1 : -1;
 
-        //==============================
-        // ????????
-        //==============================
         if (logicManager.lastMovedPiece is Pawn lastMovedPawn)
         {
-            // ???漸蝯脫?
+
             Vector2 lastMoveStart =
                 logicManager.lastMovedPieceStartPosition;
 
-            // ???漲???
             Vector2 lastMoveEnd =
                 logicManager.lastMovedPieceEndPosition;
 
-            //==============================
-            // ?????謘?????蝎??僱
-            //==============================
             if (
                 Mathf.Abs(
                     lastMoveStart.y -
@@ -148,9 +112,6 @@ public class Pawn : Piece
                 Vector2 ourPosition =
                     GetCoordinates();
 
-                //==============================
-                // ????????
-                //==============================
                 if (
                     Mathf.Abs(
                         ourPosition.x -
@@ -160,7 +121,7 @@ public class Pawn : Piece
                     ourPosition.y == lastMoveEnd.y
                 )
                 {
-                    // ????????赯?
+
                     Vector2 enPassantMove =
                         new Vector2(
                             lastMoveEnd.x,
@@ -173,16 +134,12 @@ public class Pawn : Piece
             }
         }
 
-        //==============================
-        // ??????
-        //==============================
         Vector2 forwardMove =
             new Vector2(
                 currentCoordinates.x,
                 currentCoordinates.y + direction
             );
 
-        // ????對??????
         if (
             IsPositionWithinBoard(forwardMove)
             &&
@@ -195,9 +152,6 @@ public class Pawn : Piece
             legalMoves.Add(forwardMove);
         }
 
-        //==============================
-        // ????謕?
-        //==============================
         if (HasMoved == 0)
         {
             Vector2 doubleForwardMove =
@@ -207,7 +161,6 @@ public class Pawn : Piece
                     (2 * direction)
                 );
 
-            // ???瞏殷??對??????
             if (
                 IsPositionWithinBoard(doubleForwardMove)
                 &&
@@ -226,27 +179,18 @@ public class Pawn : Piece
             }
         }
 
-        //==============================
-        // ??????
-        //==============================
         Vector2 captureLeft =
             new Vector2(
                 currentCoordinates.x - 1,
                 currentCoordinates.y + direction
             );
 
-        //==============================
-        // ??????
-        //==============================
         Vector2 captureRight =
             new Vector2(
                 currentCoordinates.x + 1,
                 currentCoordinates.y + direction
             );
 
-        //==============================
-        // ????????
-        //==============================
         if (
             IsPositionWithinBoard(captureLeft)
             &&
@@ -262,7 +206,6 @@ public class Pawn : Piece
                     (int)captureLeft.y
                 ];
 
-            // ??????
             if (
                 targetPiece != null &&
                 targetPiece.IsWhite != IsWhite
@@ -272,9 +215,6 @@ public class Pawn : Piece
             }
         }
 
-        //==============================
-        // ?????????
-        //==============================
         if (
             IsPositionWithinBoard(captureRight)
             &&
@@ -290,7 +230,6 @@ public class Pawn : Piece
                     (int)captureRight.y
                 ];
 
-            // ??????
             if (
                 targetPiece != null &&
                 targetPiece.IsWhite != IsWhite
@@ -303,44 +242,34 @@ public class Pawn : Piece
         return legalMoves;
     }
 
-    //==============================
-    // ?謘??擗??哨??
-    // ??踐??????
-    //==============================
+    /// <summary>
+    /// 列出棋子攻擊的格子，供將軍與王車易位判定使用；攻擊線保留第一個阻擋格。
+    /// </summary>
     public override List<Vector2> GetAttackedFields()
     {
-        
+
         if (UsesDefinitionRules)
         {
             return GetDefinitionAttackedFields();
         }
 
-// ?擗??哨???謅?
         List<Vector2> attackedFields =
             new List<Vector2>();
 
-        // ?鞈???蹓??甄??
         int direction = IsWhite ? 1 : -1;
 
-        //==============================
-        // ????擗?
-        //==============================
         Vector2 leftAttackMove =
             new Vector2(
                 transform.position.x - 1,
                 transform.position.z + direction
             );
 
-        //==============================
-        // ????擗?
-        //==============================
         Vector2 rightAttackMove =
             new Vector2(
                 transform.position.x + 1,
                 transform.position.z + direction
             );
 
-        // ??????????
         if (IsPositionWithinBoard(leftAttackMove))
         {
             attackedFields.Add(leftAttackMove);

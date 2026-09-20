@@ -1,19 +1,24 @@
-﻿using System.Collections.Generic;
+using System.Collections.Generic;
 using UnityEngine;
 
 /// <summary>
-/// ?葉蝞∠??∠??????圈洛蝯???/// 銋?閬??∠????uff?ebuff????摰喉??芸???研?/// </summary>
+/// 統一處理卡牌觸發、狀態修正與傷害計算，並建立結算顯示資料。
+/// </summary>
 public class CardBattleSystem
 {
     private readonly LogicManager logic;
 
+    /// <summary>
+    /// 保存對局邏輯引用，供卡牌效果與傷害計算使用。
+    /// </summary>
     public CardBattleSystem(LogicManager logicManager)
     {
         logic = logicManager;
     }
 
     /// <summary>
-    /// ?∠????璇辣?文???    /// CardDefinition ??恍ㄐ嚗?璇辣?摩銝???亦? Resolver??    /// </summary>
+    /// 檢查卡牌在指定時機的條件是否全部成立。
+    /// </summary>
     public static bool ConditionsPass(
         CardDefinition card,
         Piece owner,
@@ -54,7 +59,8 @@ public class CardBattleSystem
     }
 
     /// <summary>
-    /// 璉?蝘餃?敺??∠??亙??    /// ?桀??其???擳?撣怒??瑁??撌梁宏?????賬????    /// </summary>
+    /// 處理棋子移動後的卡牌、狀態與相關效果。
+    /// </summary>
     public void OnPieceMoved(Piece piece)
     {
         Debug.Log(
@@ -91,7 +97,8 @@ public class CardBattleSystem
     }
 
     /// <summary>
-    /// ?啣???憪?嚗???摰嗆???摮?????∠?????    /// </summary>
+    /// 處理指定陣營回合開始時的卡牌與狀態效果。
+    /// </summary>
     public void OnTurnStarted(bool isWhiteTurn)
     {
         logic.UpdatePiecesOnBoard();
@@ -146,8 +153,7 @@ public class CardBattleSystem
     }
 
     /// <summary>
-    /// Resolves end-of-turn effects for the side that just completed its turn,
-    /// then advances finite statuses owned by that side.
+    /// 處理指定陣營回合結束時的卡牌與狀態效果。
     /// </summary>
     public void OnTurnEnded(bool endingWhiteTurn)
     {
@@ -200,8 +206,7 @@ public class CardBattleSystem
     }
 
     /// <summary>
-    /// Sends one castling event after both the king and rook have moved.
-    /// Each participant can own a card or status that reacts to castling.
+    /// 處理國王與城堡完成王車易位後的效果。
     /// </summary>
     public void OnPiecesCastled(King king, Rook rook)
     {
@@ -219,6 +224,9 @@ public class CardBattleSystem
         TriggerCastlingEffects(rook, king);
     }
 
+    /// <summary>
+    /// 對參與王車易位的棋子觸發相關狀態與卡牌技能。
+    /// </summary>
     private void TriggerCastlingEffects(Piece owner, Piece partner)
     {
         TriggerStatusEffects(owner, CardEffectTrigger.AfterOwnerCastles);
@@ -251,7 +259,8 @@ public class CardBattleSystem
     }
 
     /// <summary>
-    /// ???瑕拿嚗◤??摮? Value + ?餅?????ATK嚗?憟鋡怠??寧??靽格迤??    /// </summary>
+    /// 處理吃子事件，計算相關效果並更新對局狀態。
+    /// </summary>
     public void OnPieceCaptured(Piece attacker, Piece target)
     {
         if (target == null)
@@ -321,6 +330,9 @@ public class CardBattleSystem
         );
     }
 
+    /// <summary>
+    /// 依吃子雙方與友軍的技能設定，處理吃子觸發事件。
+    /// </summary>
     private void ResolveCaptureSkillEvents(Piece attacker, Piece target)
     {
         if (target == null)
@@ -401,7 +413,9 @@ public class CardBattleSystem
             );
         }
     }
-    /// ?∠?????摰???摮??瑟?雿輻??    /// ?桀??瑕拿隞閰脫?摮?撅祉摰?HP??    /// </summary>
+    /// <summary>
+    /// 結算對棋子的傷害及相關技能，建立對應的傷害演出。
+    /// </summary>
     public void DealDamageToPiece(
         Piece source,
         Piece target,
@@ -422,6 +436,9 @@ public class CardBattleSystem
         );
     }
 
+    /// <summary>
+    /// 以固定基礎傷害建立結算，依現有規則處理後續效果。
+    /// </summary>
     public void DealFixedDamageToPiece(
         Piece source,
         Piece target,
@@ -471,6 +488,9 @@ public class CardBattleSystem
         );
     }
 
+    /// <summary>
+    /// 結算對棋子的傷害及相關技能，建立對應的傷害演出。
+    /// </summary>
     private void DealDamageToPiece(
         Piece source,
         Piece target,
@@ -548,6 +568,9 @@ public class CardBattleSystem
         );
     }
 
+    /// <summary>
+    /// 處理事件卡對棋子造成的傷害。
+    /// </summary>
     public void DealEventDamageToPiece(
         CardDefinition card,
         Piece target,
@@ -598,6 +621,9 @@ public class CardBattleSystem
         );
     }
 
+    /// <summary>
+    /// 處理事件卡對玩家的治療與相關修正。
+    /// </summary>
     public void HealPlayerFromEvent(
         CardDefinition card,
         Piece target,
@@ -646,6 +672,9 @@ public class CardBattleSystem
         );
     }
 
+    /// <summary>
+    /// 處理指定玩家的治療，套用相關效果並更新血量呈現。
+    /// </summary>
     public void HealPlayer(
         bool isWhitePlayer,
         int amount,
@@ -686,7 +715,9 @@ public class CardBattleSystem
         logic.RefreshHealthUi();
     }
 
-    //?冽??訾葉?格?
+    /// <summary>
+    /// 從指定陣營目前可用的棋子中隨機選取一枚。
+    /// </summary>
     public Piece GetRandomPiece(bool isWhitePlayer)
     {
         List<Piece> candidates = new List<Piece>();
@@ -724,7 +755,8 @@ public class CardBattleSystem
     }
 
     /// <summary>
-    /// 璉??桀????餅???= ?芾澈 ATK + ??? ATK??    /// </summary>
+    /// 取得棋子套用目前卡牌、狀態與場地修正後的攻擊力。
+    /// </summary>
     public int GetEffectiveAttack(Piece piece)
     {
         if (piece == null)
@@ -745,11 +777,17 @@ public class CardBattleSystem
         );
     }
 
+    /// <summary>
+    /// 取得棋子套用目前效果後的價值。
+    /// </summary>
     public int GetEffectiveValue(Piece piece)
     {
         return ResolveEffectiveValue(piece, null);
     }
 
+    /// <summary>
+    /// 計算棋子的有效價值，並記錄供畫面顯示的計算步驟。
+    /// </summary>
     private int GetEffectiveValueWithSteps(
         Piece piece,
         DamageCalculationSequence sequence
@@ -758,6 +796,9 @@ public class CardBattleSystem
         return ResolveEffectiveValue(piece, sequence);
     }
 
+    /// <summary>
+    /// 依目前效果計算棋子價值，必要時附加計算步驟。
+    /// </summary>
     private int ResolveEffectiveValue(
         Piece piece,
         DamageCalculationSequence sequence
@@ -846,6 +887,9 @@ public class CardBattleSystem
         return Mathf.Max(0, result);
     }
 
+    /// <summary>
+    /// 結算指定玩家承受的傷害並更新血量。
+    /// </summary>
     public void DamagePlayer(
         bool isWhitePlayer,
         int damage,
@@ -896,6 +940,9 @@ public class CardBattleSystem
         logic.CheckHealthGameOver();
     }
 
+    /// <summary>
+    /// 支付卡牌要求的血量代價，並處理對應的結算與勝負檢查。
+    /// </summary>
     public void PayHealthCost(
         bool isWhitePlayer,
         int amount,
@@ -966,6 +1013,9 @@ public class CardBattleSystem
         );
     }
 
+    /// <summary>
+    /// 計算友軍技能提供給指定棋子的攻擊加成。
+    /// </summary>
     private int GetFriendlyAttackBonus(bool isWhitePlayer)
     {
         int bonus = 0;
@@ -1004,6 +1054,9 @@ public class CardBattleSystem
         return Mathf.Max(0, bonus);
     }
 
+    /// <summary>
+    /// 依技能與場地修正計算最終治療量。
+    /// </summary>
     private int ResolveHealAmount(bool isWhitePlayer, int amount)
     {
         int result = Mathf.Max(0, amount);
@@ -1056,6 +1109,9 @@ public class CardBattleSystem
         return logic.ApplyFieldHealModifiers(isWhitePlayer, result, null);
     }
 
+    /// <summary>
+    /// 將治療修正加入計算步驟，供傷害視覺化使用。
+    /// </summary>
     private void AddHealModifierSteps(
         bool isWhitePlayer,
         int baseAmount,
@@ -1119,6 +1175,9 @@ public class CardBattleSystem
         logic.ApplyFieldHealModifiers(isWhitePlayer, result, sequence);
     }
 
+    /// <summary>
+    /// 建立吃子傷害的計算序列，包含攻擊與防禦修正。
+    /// </summary>
     private DamageCalculationSequence BuildCaptureDamageSequence(
         DamageContext damageContext
     )
@@ -1216,6 +1275,9 @@ public class CardBattleSystem
         return sequence;
     }
 
+    /// <summary>
+    /// 建立卡牌或狀態效果傷害的計算序列。
+    /// </summary>
     private DamageCalculationSequence BuildEffectDamageSequence(
         DamageContext damageContext
     )
@@ -1295,6 +1357,9 @@ public class CardBattleSystem
         return sequence;
     }
 
+    /// <summary>
+    /// 建立固定基礎傷害的計算序列。
+    /// </summary>
     private DamageCalculationSequence BuildFixedDamageSequence(
         DamageContext damageContext
     )
@@ -1372,6 +1437,9 @@ public class CardBattleSystem
         return sequence;
     }
 
+    /// <summary>
+    /// 套用友軍提供的承傷技能，並記錄計算步驟。
+    /// </summary>
     private int ResolveFriendlyDamageTakenSkillsWithSteps(
         Piece target,
         int baseDamage,
@@ -1443,6 +1511,9 @@ public class CardBattleSystem
         return result;
     }
 
+    /// <summary>
+    /// 套用玩家承傷修正，並記錄計算步驟。
+    /// </summary>
     public int ResolvePlayerDamageTakenWithSteps(
         bool damagedWhitePlayer,
         int baseDamage,
@@ -1485,6 +1556,9 @@ public class CardBattleSystem
         return Mathf.Max(0, result);
     }
 
+    /// <summary>
+    /// 建立治療計算序列及畫面所需的步驟資料。
+    /// </summary>
     private DamageCalculationSequence BuildHealSequence(
         Piece source,
         bool healedWhitePlayer,
@@ -1525,6 +1599,9 @@ public class CardBattleSystem
         return sequence;
     }
 
+    /// <summary>
+    /// 計算棋子攻擊力並記錄各項加成來源。
+    /// </summary>
     private int GetAttackWithSteps(
         Piece attacker,
         int friendlyBonus,
@@ -1546,6 +1623,9 @@ public class CardBattleSystem
         return Mathf.Max(0, attack);
     }
 
+    /// <summary>
+    /// 計算友軍攻擊加成並記錄其來源與數值。
+    /// </summary>
     private int GetFriendlyAttackBonusWithSteps(
         bool isWhitePlayer,
         DamageCalculationSequence sequence,
@@ -1595,6 +1675,9 @@ public class CardBattleSystem
         return Mathf.Max(0, bonus);
     }
 
+    /// <summary>
+    /// 計算指定友軍來源提供的攻擊修正與顯示步驟。
+    /// </summary>
     private int ResolveFriendlyAttackSourceWithSteps(
         Piece source,
         int baseBonus,
@@ -1620,6 +1703,9 @@ public class CardBattleSystem
         return ResolveSkillFriendlyAttack(source, bonus, sequence);
     }
 
+    /// <summary>
+    /// 依技能規則計算友軍攻擊修正。
+    /// </summary>
     private int ResolveSkillFriendlyAttack(
         Piece source,
         int baseBonus,
@@ -1671,6 +1757,9 @@ public class CardBattleSystem
         return result;
     }
 
+    /// <summary>
+    /// 取得卡牌第一個可用狀態圖示，供提示或結算顯示。
+    /// </summary>
     private Sprite GetFirstStatusIcon(CardDefinition card)
     {
         if (card == null || card.statusesToApply == null)
@@ -1689,6 +1778,9 @@ public class CardBattleSystem
         return null;
     }
 
+    /// <summary>
+    /// 計算棋子自身的攻擊修正並記錄步驟。
+    /// </summary>
     private int ResolveSelfAttackWithSteps(
         Piece owner,
         int baseAttack,
@@ -1762,6 +1854,9 @@ public class CardBattleSystem
         return totalAttack;
     }
 
+    /// <summary>
+    /// 套用卡牌的數值效果，並記錄供畫面顯示的計算步驟。
+    /// </summary>
     private int ResolveCardNumericWithSteps(
         Piece owner,
         CardEffectTrigger trigger,
@@ -1818,6 +1913,9 @@ public class CardBattleSystem
         return Mathf.Max(0, Mathf.RoundToInt(result));
     }
 
+    /// <summary>
+    /// 套用狀態的數值效果，並記錄供畫面顯示的計算步驟。
+    /// </summary>
     private int ResolveStatusNumericWithSteps(
         Piece owner,
         CardEffectTrigger trigger,
@@ -1873,6 +1971,9 @@ public class CardBattleSystem
         return Mathf.Max(0, Mathf.RoundToInt(result));
     }
 
+    /// <summary>
+    /// 計算造成傷害的修正並記錄各項來源。
+    /// </summary>
     public int ResolveDamageDealtWithSteps(
         Piece source,
         int baseValue,
@@ -1978,6 +2079,9 @@ public class CardBattleSystem
         return resolved;
     }
 
+    /// <summary>
+    /// 處理全域傷害設定效果，並記錄計算步驟。
+    /// </summary>
     private int ResolveGlobalDamageSetWithSteps(
         int baseValue,
         DamageCalculationSequence sequence
@@ -2031,6 +2135,9 @@ public class CardBattleSystem
         return Mathf.Max(0, baseValue);
     }
 
+    /// <summary>
+    /// 判斷傷害效果是否屬於目前的修正處理階段。
+    /// </summary>
     private static bool IsDamageDealtEffectForPass(
         CardEffectData effect,
         bool setOnly
@@ -2042,6 +2149,9 @@ public class CardBattleSystem
             (effect.operation == CardValueOperation.Set) == setOnly;
     }
 
+    /// <summary>
+    /// 加入一筆傷害計算顯示步驟。
+    /// </summary>
     private void AddCalculationStep(
         DamageCalculationSequence sequence,
         Sprite icon,
@@ -2099,6 +2209,9 @@ public class CardBattleSystem
         });
     }
 
+    /// <summary>
+    /// 將指定數值與標籤加入計算步驟。
+    /// </summary>
     private void AddValueStep(
         DamageCalculationSequence sequence,
         Sprite icon,
@@ -2126,6 +2239,9 @@ public class CardBattleSystem
         });
     }
 
+    /// <summary>
+    /// 加入以棋子圖示表示的價值計算步驟。
+    /// </summary>
     private void AddPieceValueStep(
         DamageCalculationSequence sequence,
         Piece iconPiece,
@@ -2144,6 +2260,9 @@ public class CardBattleSystem
         );
     }
 
+    /// <summary>
+    /// 依傷害標籤的既有優先順序取得數值圖示分類。
+    /// </summary>
     private static DamageCountingIcon GetCountingIcon(DamageTag tags)
     {
         if ((tags & DamageTag.Cost) != 0)
@@ -2169,11 +2288,17 @@ public class CardBattleSystem
         return DamageCountingIcon.None;
     }
 
+    /// <summary>
+    /// 將數值格式化成正值效果的顯示文字。
+    /// </summary>
     private string FormatPositiveValue(int value)
     {
         return value >= 0 ? $"+{value}" : value.ToString();
     }
 
+    /// <summary>
+    /// 依觸發時機補充棋子狀態的可用次數。
+    /// </summary>
     private void RechargeStatuses(Piece owner, CardEffectTrigger trigger)
     {
         if (owner == null)
@@ -2216,6 +2341,9 @@ public class CardBattleSystem
         }
     }
 
+    /// <summary>
+    /// 觸發棋子在指定時機可用的狀態效果。
+    /// </summary>
     private void TriggerStatusEffects(Piece owner, CardEffectTrigger trigger)
     {
         if (owner == null)
@@ -2277,6 +2405,9 @@ public class CardBattleSystem
         }
     }
 
+    /// <summary>
+    /// 觸發棋子裝備卡牌在指定時機的效果。
+    /// </summary>
     private void TriggerCardEffects(Piece owner, CardEffectTrigger trigger)
     {
         if (owner == null || owner.CardRuntime == null)
@@ -2332,6 +2463,9 @@ public class CardBattleSystem
         }
     }
 
+    /// <summary>
+    /// 依卡牌效果與條件套用數值修正。
+    /// </summary>
     private int ResolveCardNumeric(
         Piece owner,
         CardEffectTrigger trigger,
@@ -2411,6 +2545,9 @@ public class CardBattleSystem
         return Mathf.Max(0, Mathf.RoundToInt(result));
     }
 
+    /// <summary>
+    /// 依狀態效果與條件套用數值修正。
+    /// </summary>
     private int ResolveStatusNumeric(
         Piece owner,
         CardEffectTrigger trigger,
@@ -2478,6 +2615,9 @@ public class CardBattleSystem
         return Mathf.Max(0, Mathf.RoundToInt(result));
     }
 
+    /// <summary>
+    /// 執行單一效果，依效果類型處理數值、狀態或對局變化。
+    /// </summary>
     private void TriggerSingleEffect(
         Piece owner,
         StatusRuntime status,
@@ -2624,6 +2764,9 @@ public class CardBattleSystem
         }
     }
 
+    /// <summary>
+    /// 依目前棋盤與玩家狀態判斷單一效果條件。
+    /// </summary>
     private static bool EvaluateCondition(
         CardConditionType condition,
         Piece owner,
@@ -2656,6 +2799,9 @@ public class CardBattleSystem
         }
     }
 
+    /// <summary>
+    /// 依加算、指定或乘算方式套用數值效果。
+    /// </summary>
     private static float ApplyValueOperation(
         float currentValue,
         CardValueOperation operation,
@@ -2675,6 +2821,9 @@ public class CardBattleSystem
         }
     }
 
+    /// <summary>
+    /// 選取目前效果對應的卡牌，供動畫資源查詢使用。
+    /// </summary>
     private static CardDefinition GetAnimationCard(
         Piece owner,
         StatusRuntime status
@@ -2698,6 +2847,9 @@ public class CardBattleSystem
         return null;
     }
 
+    /// <summary>
+    /// 產生物件的辨識文字，供紀錄或偵錯訊息使用。
+    /// </summary>
     private static string Describe(Piece piece)
     {
         if (piece == null)
