@@ -79,7 +79,7 @@ Chess RPG 是一款把西洋棋、角色養成與卡牌效果結合在一起的�
 
 ## 專案架構
 
-專案使用 Unity `6000.2.6f2`，主要遊戲碼集中在 `Assets/Scripts`。遊戲資料目前不是獨立 `ScriptableObject` 資產，而是由一般 C# 資料類別與 Inspector 資源共同組成。
+專案使用 Unity `6000.0.26f1`，主要遊戲碼集中在 `Assets/Scripts`。遊戲資料目前不是獨立 `ScriptableObject` 資產，而是由一般 C# 資料類別與 Inspector 資源共同組成。
 
 ### 場景
 
@@ -144,7 +144,7 @@ Board + Piece       ChessCard + CardSkill
 
 ## 開發與執行
 
-1. 使用 Unity `6000.2.6f2` 開啟專案。
+1. 使用 Unity `6000.0.26f1` 開啟專案。
 2. 確認 `StartScene` 與 `ChessScene` 都存在於 Build Settings。
 3. 從 `StartScene` 進入本機或連線模式。
 4. 卡牌資源若顯示空白，檢查 `ChessScene > CardGameUI > ChessCard` 的 Inspector 引用。
@@ -159,3 +159,7 @@ Board + Piece       ChessCard + CardSkill
   <img src="Assets/images/s3.png" width="400" alt="Chess RPG screenshot 3"/>
   <img src="Assets/images/s4.png" width="400" alt="Chess RPG screenshot 4"/>
 </p>
+
+## 驗證與卡牌製作
+
+連線資料驗證、核心規則測試、F12 Play Mode 回歸與卡牌 Inspector 檢查的操作方式，請參考 [驗證說明](Tools/Verification/README.md)。

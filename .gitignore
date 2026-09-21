@@ -26,3 +26,6 @@ Builds/
 .DS_Store
 Thumbs.db
 
+!Tools/Verification/Verify.csproj
+Tools/Verification/bin/
+Tools/Verification/obj/

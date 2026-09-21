@@ -137,6 +137,7 @@ public class CardHandManager : MonoBehaviour
     }
 
     private bool rpgDisabled;
+    private int remoteOpponentHandCount = -1;
     private bool IsRpgDisabled
     {
         get { return rpgDisabled || (logicManager != null && logicManager.IsClassicChess); }
@@ -150,6 +151,7 @@ public class CardHandManager : MonoBehaviour
         rpgDisabled = true;
         StopAllCoroutines();
         canDrawThisTurn = false;
+        remoteOpponentHandCount = -1;
         whiteDeck.Clear();
         blackDeck.Clear();
         whiteHand.Clear();
@@ -321,8 +323,9 @@ public class CardHandManager : MonoBehaviour
             waitingTextDotCount = 1;
         }
 
-        turnText.text =
-            "\u7B49\u5F85\u73A9\u5BB6\u52A0\u5165" + new string('.', waitingTextDotCount);
+        string waitingReason = multiplayerGameController != null &&
+            !multiplayerGameController.IsWaitingForPlayer ? "正在同步牌組" : "等待玩家加入";
+        turnText.text = waitingReason + new string('.', waitingTextDotCount);
     }
 
     /// <summary>
@@ -333,6 +336,7 @@ public class CardHandManager : MonoBehaviour
         if (IsRpgDisabled) return;
         ResolveDefaults();
 
+        remoteOpponentHandCount = -1;
         whiteDeck.Clear();
         blackDeck.Clear();
         whiteHand.Clear();
@@ -368,17 +372,11 @@ public class CardHandManager : MonoBehaviour
         List<CardDefinition> targetHand =
             isWhitePlayer ? whiteHand : blackHand;
 
+        if (cardLibrary == null || !NetworkInputPolicy.TryParseDeck(serializedDeckIds,
+            cardLibrary.GetCard, cardLibrary.Cards.Count, out List<CardDefinition> validatedDeck)) return false;
         targetDeck.Clear();
         targetHand.Clear();
-        AddCardsFromIds(targetDeck, serializedDeckIds);
-
-        if (targetDeck.Count == 0)
-        {
-            Debug.LogWarning(
-                $"[NetworkGame][DeckRejected] Player={(isWhitePlayer ? "White" : "Black")} sent empty deck."
-            );
-            return false;
-        }
+        targetDeck.AddRange(validatedDeck);
 
         Shuffle(targetDeck, keepFirstCard);
         DrawCards(isWhitePlayer, openingHandSize);
@@ -693,13 +691,6 @@ public class CardHandManager : MonoBehaviour
         if (turnText != null)
         {
             turnText.text = isWhiteTurn
-                ? "?賣??"
-                : "暺??";
-        }
-
-        if (turnText != null)
-        {
-            turnText.text = isWhiteTurn
                 ? "\u767D\u65B9\u56DE\u5408"
                 : "\u9ED1\u65B9\u56DE\u5408";
         }
@@ -717,22 +708,18 @@ public class CardHandManager : MonoBehaviour
     }
 
     /// <summary>
-    /// 依既有協定序列化雙方牌堆及手牌；此格式包含完整卡牌 ID。
+    /// 序列化接收者手牌及對手張數，永不傳送牌堆順序。
     /// </summary>
-    public string SerializeNetworkCardState()
+    public string SerializeNetworkCardState(bool recipientWhite = false)
     {
         if (IsRpgDisabled) return string.Empty;
-        return string.Join(
-            ";",
-            SerializeCardList(whiteDeck),
-            SerializeCardList(blackDeck),
-            SerializeCardList(whiteHand),
-            SerializeCardList(blackHand)
-        );
+        return PrivateCardState.Encode(recipientWhite,
+            SerializeCardList(recipientWhite ? whiteHand : blackHand),
+            recipientWhite ? blackHand.Count : whiteHand.Count);
     }
 
     /// <summary>
-    /// 解析主機傳來的牌堆與手牌資料，更新抽牌資格及顯示。
+    /// 解析主機傳來的私有手牌與公開張數，驗證完畢後一次套用。
     /// </summary>
     public void ApplyNetworkCardState(
         string serializedState,
@@ -743,22 +730,25 @@ public class CardHandManager : MonoBehaviour
         if (IsRpgDisabled) return;
         ResolveDefaults();
 
-        string[] sections = string.IsNullOrEmpty(serializedState)
-            ? new string[0]
-            : serializedState.Split(';');
-
-        if (sections.Length < 4)
+        if (!PrivateCardState.TryDecode(serializedState, out PrivateCardState state)) return;
+        if (multiplayerGameController != null && multiplayerGameController.IsOnline &&
+            state.recipientWhite != (multiplayerGameController.LocalSide == PlayerSide.White)) return;
+        var receivedHand = new List<CardDefinition>();
+        if (!string.IsNullOrEmpty(state.handIds))
         {
-            Debug.LogWarning(
-                $"[NetworkGame][CardStateRejected] Invalid state={serializedState}"
-            );
-            return;
+            foreach (string id in state.handIds.Split(','))
+            {
+                CardDefinition card = cardLibrary.GetCard(id);
+                if (card == null) return;
+                receivedHand.Add(card);
+            }
         }
-
-        ApplyCardListState(whiteDeck, sections[0]);
-        ApplyCardListState(blackDeck, sections[1]);
-        ApplyCardListState(whiteHand, sections[2]);
-        ApplyCardListState(blackHand, sections[3]);
+        whiteDeck.Clear();
+        blackDeck.Clear();
+        whiteHand.Clear();
+        blackHand.Clear();
+        (state.recipientWhite ? whiteHand : blackHand).AddRange(receivedHand);
+        remoteOpponentHandCount = state.opponentHandCount;
         canDrawThisTurn = remoteCanDrawThisTurn;
         Refresh(currentWhiteTurn);
 
@@ -937,56 +927,6 @@ public class CardHandManager : MonoBehaviour
     }
 
     /// <summary>
-    /// 以收到的卡號清單取代本機卡牌清單。
-    /// </summary>
-    private void ApplyCardListState(
-        List<CardDefinition> target,
-        string serializedIds
-    )
-    {
-        target.Clear();
-        AddCardsFromIds(target, serializedIds);
-    }
-
-    /// <summary>
-    /// 依序解析卡號並將卡牌庫中存在的卡牌加入清單。
-    /// </summary>
-    private void AddCardsFromIds(
-        List<CardDefinition> target,
-        string serializedIds
-    )
-    {
-        if (target == null)
-        {
-            return;
-        }
-
-        if (string.IsNullOrEmpty(serializedIds))
-        {
-            return;
-        }
-
-        string[] ids = serializedIds.Split(',');
-        foreach (string id in ids)
-        {
-            CardDefinition card = cardLibrary != null
-                ? cardLibrary.GetCard(id)
-                : null;
-
-            if (card != null)
-            {
-                target.Add(card);
-            }
-            else
-            {
-                Debug.LogWarning(
-                    $"[NetworkGame][CardStateMissingCard] Id={id}"
-                );
-            }
-        }
-    }
-
-    /// <summary>
     /// 依目前可見的手牌清單重建手牌介面。
     /// </summary>
     private void RenderHand(bool isWhiteTurn)
@@ -1038,7 +978,8 @@ public class CardHandManager : MonoBehaviour
         }
 
         int opponentHandCount =
-            opponentWhiteHand ? whiteHand.Count : blackHand.Count;
+            remoteOpponentHandCount >= 0 ? remoteOpponentHandCount :
+            (opponentWhiteHand ? whiteHand.Count : blackHand.Count);
 
         for (int i = 0; i < opponentHandCount; i++)
         {
@@ -2238,80 +2179,7 @@ public class CardHandManager : MonoBehaviour
     /// </summary>
     private void ApplyCardData(GameObject cardObject, CardDefinition card)
     {
-        Image image = cardObject.GetComponent<Image>();
-        if (image == null)
-        {
-            image = FindChildComponent<Image>(
-                cardObject.transform,
-                "CardImage"
-            );
-        }
-
-        if (image != null && card.cardImage != null)
-        {
-            image.sprite = card.cardImage;
-        }
-
-        SetText(cardObject.transform, "CardNameText", card.cardName);
-        SetNestedText(
-            cardObject.transform,
-            "CardLord",
-            "CardLordText",
-            card.description
-        );
-        ApplyTags(cardObject.transform, card.tags);
-    }
-
-    /// <summary>
-    /// 將卡牌標籤套用到對應的 UI 文字。
-    /// </summary>
-    private void ApplyTags(Transform root, List<string> tags)
-    {
-        Transform tagGroup = FindChildRecursive(root, "CardTagGroup");
-        Transform template =
-            tagGroup != null
-                ? FindChildRecursive(tagGroup, "CardTag")
-                : FindChildRecursive(root, "CardTag");
-
-        if (template == null || template.parent == null)
-        {
-            return;
-        }
-
-        for (int i = template.parent.childCount - 1; i >= 0; i--)
-        {
-            Transform child = template.parent.GetChild(i);
-            if (child != template && child.name == "CardTag")
-            {
-                Destroy(child.gameObject);
-            }
-        }
-
-        if (tags == null || tags.Count == 0)
-        {
-            template.gameObject.SetActive(false);
-            return;
-        }
-
-        for (int i = 0; i < tags.Count; i++)
-        {
-            Transform tagTransform =
-                i == 0
-                    ? template
-                    : Instantiate(template.gameObject, template.parent)
-                        .transform;
-
-            tagTransform.name = "CardTag";
-            tagTransform.gameObject.SetActive(true);
-
-            TMP_Text text =
-                tagTransform.GetComponentInChildren<TMP_Text>(true);
-
-            if (text != null)
-            {
-                text.text = tags[i];
-            }
-        }
+        CardPresentation.ApplyCardData(cardObject, card);
     }
 
     /// <summary>
@@ -2687,36 +2555,6 @@ public class CardHandManager : MonoBehaviour
     /// <summary>
     /// 尋找指定文字元件並更新其顯示內容。
     /// </summary>
-    private void SetText(
-        Transform root,
-        string childName,
-        string value
-    )
-    {
-        TMP_Text text = FindChildComponent<TMP_Text>(root, childName);
-        if (text != null)
-        {
-            text.text = value;
-        }
-    }
-
-    /// <summary>
-    /// 更新指定子階層中的文字元件。
-    /// </summary>
-    private void SetNestedText(
-        Transform root,
-        string parentName,
-        string childName,
-        string value
-    )
-    {
-        Transform parent = FindChildRecursive(root, parentName);
-        if (parent != null)
-        {
-            SetText(parent, childName, value);
-        }
-    }
-
     /// <summary>
     /// 依名稱尋找子物件，再取得所需類型的元件。
     /// </summary>

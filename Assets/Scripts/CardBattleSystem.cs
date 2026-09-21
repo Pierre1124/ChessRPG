@@ -2808,17 +2808,7 @@ public class CardBattleSystem
         int modifier
     )
     {
-        switch (operation)
-        {
-            case CardValueOperation.Set:
-                return modifier;
-
-            case CardValueOperation.Multiply:
-                return currentValue * modifier;
-
-            default:
-                return currentValue + modifier;
-        }
+        return CardNumericRules.Apply(currentValue, operation, modifier);
     }
 
     /// <summary>

@@ -3659,28 +3659,7 @@ public class LogicManager : MonoBehaviour
     /// </summary>
     private string GetFieldFusionId(string first, string second)
     {
-        if (IsFieldPair(first, second, "F01", "F01")) return "F02";
-        if (IsFieldPair(first, second, "F03", "F03")) return "F04";
-        if (IsFieldPair(first, second, "F05", "F05")) return "F06";
-        if (IsFieldPair(first, second, "F07", "F07")) return "F08";
-        if (IsFieldPair(first, second, "F09", "F09")) return "F10";
-        if (IsFieldPair(first, second, "F01", "F03")) return "F11";
-        if (IsFieldPair(first, second, "F05", "F07")) return "F12";
-        return null;
-    }
-
-    /// <summary>
-    /// 判斷兩張場地卡是否符合指定配對，不限制排列順序。
-    /// </summary>
-    private bool IsFieldPair(
-        string first,
-        string second,
-        string requiredA,
-        string requiredB
-    )
-    {
-        return first == requiredA && second == requiredB ||
-            first == requiredB && second == requiredA;
+        return FieldCardRules.GetFusionId(first, second);
     }
 
     /// <summary>
@@ -3711,19 +3690,7 @@ public class LogicManager : MonoBehaviour
     /// </summary>
     private bool IsAdvancedField(string fieldId)
     {
-        switch (fieldId)
-        {
-            case "F02":
-            case "F04":
-            case "F06":
-            case "F08":
-            case "F10":
-            case "F11":
-            case "F12":
-                return true;
-            default:
-                return false;
-        }
+        return FieldCardRules.IsAdvancedField(fieldId);
     }
 
     /// <summary>

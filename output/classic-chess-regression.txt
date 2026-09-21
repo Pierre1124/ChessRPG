@@ -1,5 +1,14 @@
 F12 local Play Mode regression
 PASS: Initial game uses RPG mode
+PASS: Encode actual white hand
+PASS: Encode actual black hand
+PASS: Private packets target opposite player perspectives
+PASS: Invalid submitted deck is rejected
+PASS: Invalid deck leaves current hand unchanged
+PASS: Client stores only its own hand
+PASS: Client stores neither deck order
+PASS: Client applies authoritative draw permission
+PASS: Opponent backs use public count without card definitions
 PASS: Direct F12 accepted
 PASS: F12 reload starts a classic game with white to move
 PASS: Card UI and drawing disabled
@@ -42,6 +51,49 @@ PASS: HP cannot end the classic game
 PASS: RPG restored before deferred animation test
 PASS: Deferred F12 accepted
 PASS: F12 waits for card animation completion
+PASS: F12 reload starts a classic game with white to move
+PASS: Card UI and drawing disabled
+PASS: No RPG card state is serialized
+PASS: Field slots hidden and empty
+PASS: Damage UI disabled
+PASS: All pieces have no RPG equipment or statuses
+PASS: Both opponent card-back containers hidden
+PASS: Late deck submission rejected
+PASS: Remote card replay rejected
+PASS: Remote field replay rejected
+PASS: Damage callbacks and remote batches stay disabled
+PASS: HP cannot end the classic game
+PASS: Reject pawn three-square move
+PASS: EP e2-e4
+PASS: Reject moving wrong side
+PASS: EP a7-a6
+PASS: EP e4-e5
+PASS: EP d7-d5
+PASS: EP e5xd6
+PASS: En passant removes adjacent pawn and advances turn
+PASS: Restart classic rules fixture
+PASS: F12 reload starts a classic game with white to move
+PASS: Card UI and drawing disabled
+PASS: No RPG card state is serialized
+PASS: Field slots hidden and empty
+PASS: Damage UI disabled
+PASS: All pieces have no RPG equipment or statuses
+PASS: Both opponent card-back containers hidden
+PASS: Late deck submission rejected
+PASS: Remote card replay rejected
+PASS: Remote field replay rejected
+PASS: Damage callbacks and remote batches stay disabled
+PASS: HP cannot end the classic game
+PASS: Reject blocked castling
+PASS: Castle e2-e4
+PASS: Castle a7-a6
+PASS: Castle Ng1-f3
+PASS: Castle a6-a5
+PASS: Castle Bf1-e2
+PASS: Castle b7-b6
+PASS: Kingside castling accepted
+PASS: Castling relocates king and rook
+PASS: Restart classic rules fixture
 PASS: F12 reload starts a classic game with white to move
 PASS: Card UI and drawing disabled
 PASS: No RPG card state is serialized

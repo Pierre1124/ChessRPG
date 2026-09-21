@@ -55,6 +55,7 @@ public class MultiplayerGameController :
     [SerializeField] private CardHandManager cardHandManager;
 
     private int nextSequence = 1;
+    private readonly NetworkInputPolicy inputPolicy = new NetworkInputPolicy();
     private bool hasFirstRemoteClientDeck;
     private bool isReturningToStartScene;
     private bool isRestartingGame;
@@ -658,7 +659,7 @@ public class MultiplayerGameController :
         }
 
         string cardState = cardHandManager != null
-            ? cardHandManager.SerializeNetworkCardState()
+            ? cardHandManager.SerializeNetworkCardState(!masterPlaysWhite)
             : string.Empty;
         bool canDrawThisTurn =
             cardHandManager != null && cardHandManager.CanDrawThisTurn;
@@ -668,7 +669,7 @@ public class MultiplayerGameController :
             $"HP={whiteHealth}/{blackHealth} | CanDraw={canDrawThisTurn}"
         );
 
-        RaiseToOthers(
+        RaiseToOpponent(
             EventState,
             new object[]
             {
@@ -752,6 +753,15 @@ public class MultiplayerGameController :
     /// </summary>
     public void OnEvent(EventData photonEvent)
     {
+        if (!PhotonNetwork.InRoom || PhotonNetwork.CurrentRoom == null || PhotonNetwork.MasterClient == null) return;
+        if (!NetworkInputPolicy.IsTrustedSender(photonEvent.Code, photonEvent.Sender,
+            PhotonNetwork.MasterClient.ActorNumber, PhotonNetwork.IsMasterClient,
+            PhotonNetwork.CurrentRoom.Players.ContainsKey(photonEvent.Sender))) return;
+        if (!NetworkInputPolicy.IsValidPayload(photonEvent.Code, photonEvent.CustomData))
+        {
+            Debug.LogWarning($"[NetworkGame] Invalid payload, event={photonEvent.Code}");
+            return;
+        }
         switch (photonEvent.Code)
         {
             case EventCommandRequest:
@@ -989,8 +999,9 @@ public class MultiplayerGameController :
             return;
         }
 
-        NetworkGameCommand command =
-            JsonUtility.FromJson<NetworkGameCommand>(payload);
+        NetworkGameCommand command;
+        try { command = JsonUtility.FromJson<NetworkGameCommand>(payload); }
+        catch (System.ArgumentException) { return; }
         ExecuteCommandAsAuthority(command, photonEvent.Sender);
     }
 
@@ -1024,7 +1035,7 @@ public class MultiplayerGameController :
     /// </summary>
     private void HandleDeckSubmit(EventData photonEvent)
     {
-        if (!PhotonNetwork.IsMasterClient || IsClassicChessRoom)
+        if (!PhotonNetwork.IsMasterClient || IsClassicChessRoom || hasFirstRemoteClientDeck)
         {
             return;
         }
@@ -1038,7 +1049,7 @@ public class MultiplayerGameController :
         ResolveReferences();
 
         PlayerSide senderSide = GetSideForActor(photonEvent.Sender);
-        if (senderSide == PlayerSide.None)
+        if (senderSide == PlayerSide.None || photonEvent.Sender == PhotonNetwork.MasterClient.ActorNumber)
         {
             Debug.LogWarning(
                 $"[NetworkGame][DeckRejected] Unknown sender={photonEvent.Sender}"
@@ -1060,13 +1071,15 @@ public class MultiplayerGameController :
         if (!accepted)
         {
             Debug.LogWarning($"[NetworkGame][DeckRejected] Player={senderSide}");
+            PhotonNetwork.RaiseEvent(EventReturnToStart, "牌組資料無效，請重新儲存牌組後加入",
+                new RaiseEventOptions { TargetActors = new[] { photonEvent.Sender } }, SendOptions.SendReliable);
             return;
         }
 
         hasFirstRemoteClientDeck = true;
         Debug.Log(
             $"[NetworkGame][DeckReceived] Player={senderSide} | " +
-            $"Ids={serializedDeckIds}"
+            $"Cards validated"
         );
 
         if (logicManager != null)
@@ -1136,13 +1149,14 @@ public class MultiplayerGameController :
         PlayerSide senderSide = GetSideForActor(senderActorNumber);
         bool senderIsWhite = senderSide == PlayerSide.White;
 
-        if (senderSide == PlayerSide.None || senderIsWhite != isWhitePlayer)
+        if (!inputPolicy.TryConsume(senderActorNumber, sequence) || !coordinate.IsValid ||
+            senderSide == PlayerSide.None || senderIsWhite != isWhitePlayer)
         {
             AnnounceCommandResult(
                 NetworkGameCommandKind.MovePiece,
                 sequence,
                 false,
-                "Promotion rejected: sender side mismatch"
+                "Promotion rejected: sender side mismatch", senderActorNumber
             );
             return;
         }
@@ -1177,7 +1191,7 @@ public class MultiplayerGameController :
             accepted,
             accepted
                 ? $"Promotion applied: {pieceName}"
-                : $"Promotion rejected: {pieceName}"
+                : $"Promotion rejected: {pieceName}", senderActorNumber
         );
     }
 
@@ -1198,7 +1212,7 @@ public class MultiplayerGameController :
                 command.kind,
                 command.sequence,
                 false,
-                rejectReason
+                rejectReason, senderActorNumber
             );
             return;
         }
@@ -1219,7 +1233,7 @@ public class MultiplayerGameController :
                 message = accepted ? "Move applied" : "Move rejected by LogicManager";
                 if (accepted)
                 {
-                    RaiseToOthers(
+                    RaiseToOpponent(
                         EventMoveResult,
                         new object[]
                         {
@@ -1233,7 +1247,7 @@ public class MultiplayerGameController :
                             logicManager.whiteHealth,
                             logicManager.blackHealth,
                             cardHandManager != null
-                                ? cardHandManager.SerializeNetworkCardState()
+                                ? cardHandManager.SerializeNetworkCardState(!masterPlaysWhite)
                                 : string.Empty,
                             cardHandManager != null &&
                                 cardHandManager.CanDrawThisTurn
@@ -1375,7 +1389,7 @@ public class MultiplayerGameController :
             command.kind,
             command.sequence,
             accepted,
-            message
+            message, senderActorNumber
         );
     }
 
@@ -1388,6 +1402,17 @@ public class MultiplayerGameController :
         out string reason
     )
     {
+        if (!inputPolicy.TryConsume(senderActorNumber, command.sequence))
+        { reason = "操作已處理或已過期，請重新操作"; return false; }
+        if (!System.Enum.IsDefined(typeof(NetworkGameCommandKind), command.kind) ||
+            command.kind == NetworkGameCommandKind.EndTurn ||
+            (command.kind == NetworkGameCommandKind.MovePiece && (!command.from.IsValid || !command.to.IsValid)) ||
+            (command.kind == NetworkGameCommandKind.PlayCardOnPiece && !command.to.IsValid))
+        { reason = "操作資料無效"; return false; }
+        if (logicManager == null || IsWaitingForPlayer || IsWaitingForRemoteDeck || isRestartingGame ||
+            Time.timeScale == 0f || logicManager.IsOperationLocked || logicManager.isPromotionActive ||
+            logicManager.IsFieldFusionPlaying)
+        { reason = "請等待對局準備或目前演出完成"; return false; }
         if ((IsClassicChessRoom || (logicManager != null && logicManager.IsClassicChess)) &&
             command.kind != NetworkGameCommandKind.MovePiece)
         {
@@ -1656,26 +1681,17 @@ public class MultiplayerGameController :
     }
 
     /// <summary>
-    /// 將命令序號、執行結果與訊息回報給本機及其他玩家。
+    /// 將命令結果只回報給發起操作的玩家，避免對手看到錯誤提示。
     /// </summary>
     private void AnnounceCommandResult(
-        NetworkGameCommandKind kind,
-        int sequence,
-        bool accepted,
-        string message
-    )
+        NetworkGameCommandKind kind, int sequence, bool accepted, string message, int recipientActor)
     {
-        ApplyCommandResult(
-            new object[] { (int)kind, sequence, accepted, message }
-        );
-
-        if (IsOnline)
-        {
-            RaiseToOthers(
-                EventCommandResult,
-                new object[] { (int)kind, sequence, accepted, message }
-            );
-        }
+        object[] payload = { (int)kind, sequence, accepted, message };
+        if (!IsOnline || recipientActor == PhotonNetwork.LocalPlayer.ActorNumber)
+            ApplyCommandResult(payload);
+        else
+            PhotonNetwork.RaiseEvent(EventCommandResult, payload,
+                new RaiseEventOptions { TargetActors = new[] { recipientActor } }, SendOptions.SendReliable);
     }
 
     /// <summary>
@@ -1686,6 +1702,9 @@ public class MultiplayerGameController :
         string message
     )
     {
+        if (message == "請等待對局準備或目前演出完成" || message == "操作已處理或已過期，請重新操作" ||
+            message == "普通西洋棋模式不能使用卡牌") return message;
+        if (message == "Not this player's turn") return "尚未輪到你，請等待對手完成回合";
         return kind switch
         {
             NetworkGameCommandKind.MovePiece => "非法走法",
@@ -1702,7 +1721,8 @@ public class MultiplayerGameController :
     /// </summary>
     private PlayerSide GetSideForActor(int actorNumber)
     {
-        if (!PhotonNetwork.InRoom)
+        if (!PhotonNetwork.InRoom || PhotonNetwork.CurrentRoom == null ||
+            !PhotonNetwork.CurrentRoom.Players.ContainsKey(actorNumber))
         {
             return PlayerSide.None;
         }
@@ -1715,6 +1735,7 @@ public class MultiplayerGameController :
                 : hostSide;
         }
 
+        if (actorNumber != GetRemoteActorNumber()) return PlayerSide.None;
         return sideAssignmentReady
             ? (masterPlaysWhite ? PlayerSide.Black : PlayerSide.White)
             : firstRemoteClientSide;
@@ -1883,6 +1904,25 @@ public class MultiplayerGameController :
     private void RaiseToMaster(byte eventCode, object payload)
     {
         RaiseReliableEvent(eventCode, payload, ReceiverGroup.MasterClient);
+    }
+
+    /// <summary>取得雙人棋局中唯一的對手，額外房間成員不獲得玩家私有資料。</summary>
+    private int GetRemoteActorNumber()
+    {
+        if (!PhotonNetwork.InRoom || PhotonNetwork.MasterClient == null) return -1;
+        int result = int.MaxValue;
+        foreach (Player player in PhotonNetwork.PlayerList)
+            if (player.ActorNumber != PhotonNetwork.MasterClient.ActorNumber && player.ActorNumber < result)
+                result = player.ActorNumber;
+        return result == int.MaxValue ? -1 : result;
+    }
+
+    /// <summary>將含有手牌的狀態只送給實際對手，避免廣播私有資料。</summary>
+    private void RaiseToOpponent(byte eventCode, object payload)
+    {
+        int actor = GetRemoteActorNumber();
+        if (actor > 0) PhotonNetwork.RaiseEvent(eventCode, payload,
+            new RaiseEventOptions { TargetActors = new[] { actor } }, SendOptions.SendReliable);
     }
 
     /// <summary>

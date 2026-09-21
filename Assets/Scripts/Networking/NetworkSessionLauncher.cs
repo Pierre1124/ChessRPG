@@ -6,7 +6,7 @@ public class NetworkSessionLauncher : MonoBehaviourPunCallbacks
 {
     [Header("Photon Room")]
     [SerializeField] private string roomName = "ChessRPG";
-    [SerializeField, Min(2)] private byte maxPlayers = 2;
+    [SerializeField, Range(2, 2), Tooltip("目前規則只支援兩位玩家，房間固定為雙人。 ")] private byte maxPlayers = 2;
 
     [Header("Scene")]
     [SerializeField] private string gameSceneName = "ChessScene";
@@ -15,13 +15,21 @@ public class NetworkSessionLauncher : MonoBehaviourPunCallbacks
     private bool wantsHost;
     private bool wantsClient;
 
+    /// <summary>在選單或棋局的現有提示介面顯示連線狀態。</summary>
+    private void ShowFeedback(string message)
+    {
+        StartMenuController menu = FindFirstObjectByType<StartMenuController>();
+        if (menu != null) menu.ShowStatusMessage(message);
+        else GameFlowUI.Show(message);
+    }
+
     /// <summary>
     /// 啟用 Photon 場景同步，並以應用程式版本設定連線版本。
     /// </summary>
     private void Awake()
     {
         PhotonNetwork.AutomaticallySyncScene = true;
-        PhotonNetwork.GameVersion = Application.version;
+        PhotonNetwork.GameVersion = Application.version + "-private-cards-v1";
     }
 
     /// <summary>
@@ -49,6 +57,8 @@ public class NetworkSessionLauncher : MonoBehaviourPunCallbacks
     /// </summary>
     public void Shutdown()
     {
+        wantsHost = false;
+        wantsClient = false;
         if (PhotonNetwork.IsConnected)
         {
             PhotonNetwork.Disconnect();
@@ -102,10 +112,12 @@ public class NetworkSessionLauncher : MonoBehaviourPunCallbacks
             return;
         }
 
+        ShowFeedback("正在連線，請稍候");
         Debug.Log($"[NetworkGame] Connecting to Photon. Room={roomName}");
         bool started = PhotonNetwork.ConnectUsingSettings();
         if (!started)
         {
+            ShowFeedback("無法開始連線，請稍後重試");
             Debug.LogError(
                 "[NetworkGame] Photon ConnectUsingSettings failed. " +
                 "Check PhotonServerSettings AppIdRealtime."
@@ -147,6 +159,7 @@ public class NetworkSessionLauncher : MonoBehaviourPunCallbacks
     /// </summary>
     public override void OnJoinRoomFailed(short returnCode, string message)
     {
+        ShowFeedback("無法加入房間，請確認房名、遊戲版本及是否已滿員，再重新加入");
         Debug.LogError(
             $"[NetworkGame] Join room failed: {returnCode} {message}"
         );
@@ -157,6 +170,7 @@ public class NetworkSessionLauncher : MonoBehaviourPunCallbacks
     /// </summary>
     public override void OnCreateRoomFailed(short returnCode, string message)
     {
+        ShowFeedback("建立房間失敗，請稍後重試或更換房名");
         Debug.LogError(
             $"[NetworkGame] Create room failed: {returnCode} {message}"
         );
@@ -167,6 +181,8 @@ public class NetworkSessionLauncher : MonoBehaviourPunCallbacks
     /// </summary>
     public override void OnDisconnected(DisconnectCause cause)
     {
+        if (cause != DisconnectCause.DisconnectByClientLogic && (wantsHost || wantsClient))
+            ShowFeedback("連線中斷，請確認網路後重新加入房間");
         Debug.Log($"[NetworkGame] Photon disconnected: {cause}");
     }
 
@@ -182,7 +198,7 @@ public class NetworkSessionLauncher : MonoBehaviourPunCallbacks
 
         RoomOptions options = new RoomOptions
         {
-            MaxPlayers = maxPlayers,
+            MaxPlayers = 2,
             EmptyRoomTtl = 0,
             PlayerTtl = 0,
             CleanupCacheOnLeave = true

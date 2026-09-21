@@ -19,7 +19,7 @@ MonoBehaviour:
     width: 1920
     height: 997
   m_ShowMode: 4
-  m_Title: Console
+  m_Title: UnitySkills
   m_RootView: {fileID: 2}
   m_MinSize: {x: 875, y: 498}
   m_MaxSize: {x: 10000, y: 10000}
@@ -121,7 +121,7 @@ MonoBehaviour:
   m_MinSize: {x: 400, y: 100}
   m_MaxSize: {x: 32384, y: 16192}
   vertical: 0
-  controlID: 163
+  controlID: 18
   draggingID: 0
 --- !u!114 &6
 MonoBehaviour:
@@ -147,7 +147,7 @@ MonoBehaviour:
   m_MinSize: {x: 100, y: 100}
   m_MaxSize: {x: 8096, y: 16192}
   vertical: 1
-  controlID: 28
+  controlID: 19
   draggingID: 0
 --- !u!114 &7
 MonoBehaviour:
@@ -159,7 +159,7 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 1
   m_Script: {fileID: 12006, guid: 0000000000000000e000000000000000, type: 0}
-  m_Name: SceneView
+  m_Name: UnitySkillsWindow
   m_EditorClassIdentifier: 
   m_Children: []
   m_Position:
@@ -168,9 +168,9 @@ MonoBehaviour:
     y: 0
     width: 888
     height: 449
-  m_MinSize: {x: 201, y: 226}
-  m_MaxSize: {x: 4001, y: 4026}
-  m_ActualView: {fileID: 16}
+  m_MinSize: {x: 420, y: 480}
+  m_MaxSize: {x: 4000, y: 4000}
+  m_ActualView: {fileID: 17}
   m_Panes:
   - {fileID: 16}
   - {fileID: 17}
@@ -178,8 +178,8 @@ MonoBehaviour:
   - {fileID: 19}
   - {fileID: 20}
   - {fileID: 14}
-  m_Selected: 0
-  m_LastSelected: 1
+  m_Selected: 1
+  m_LastSelected: 0
 --- !u!114 &8
 MonoBehaviour:
   m_ObjectHideFlags: 52
@@ -230,7 +230,7 @@ MonoBehaviour:
   m_MinSize: {x: 100, y: 100}
   m_MaxSize: {x: 8096, y: 16192}
   vertical: 1
-  controlID: 72
+  controlID: 52
   draggingID: 0
 --- !u!114 &10
 MonoBehaviour:
@@ -251,8 +251,8 @@ MonoBehaviour:
     y: 0
     width: 311
     height: 408
-  m_MinSize: {x: 202, y: 226}
-  m_MaxSize: {x: 4002, y: 4026}
+  m_MinSize: {x: 200, y: 200}
+  m_MaxSize: {x: 4000, y: 4000}
   m_ActualView: {fileID: 21}
   m_Panes:
   - {fileID: 21}
@@ -277,8 +277,8 @@ MonoBehaviour:
     y: 408
     width: 311
     height: 533
-  m_MinSize: {x: 52, y: 76}
-  m_MaxSize: {x: 4002, y: 4026}
+  m_MinSize: {x: 50, y: 50}
+  m_MaxSize: {x: 4000, y: 4000}
   m_ActualView: {fileID: 22}
   m_Panes:
   - {fileID: 22}
@@ -329,8 +329,8 @@ MonoBehaviour:
     y: 0
     width: 431
     height: 941
-  m_MinSize: {x: 276, y: 76}
-  m_MaxSize: {x: 4001, y: 4026}
+  m_MinSize: {x: 275, y: 50}
+  m_MaxSize: {x: 4000, y: 4000}
   m_ActualView: {fileID: 24}
   m_Panes:
   - {fileID: 24}
@@ -1483,9 +1483,9 @@ MonoBehaviour:
   m_SceneHierarchy:
     m_TreeViewState:
       scrollPos: {x: 0, y: 0}
-      m_SelectedIDs: 
+      m_SelectedIDs: 5cdd0000
       m_LastClickedID: 0
-      m_ExpandedIDs: 3297ffffd8f5fffff4faffff
+      m_ExpandedIDs: f4faffff66db0000
       m_RenameOverlay:
         m_UserAcceptedRename: 0
         m_Name: 
@@ -1592,7 +1592,8 @@ MonoBehaviour:
     m_ShowAllHits: 0
     m_SkipHidden: 0
     m_SearchArea: 1
-    m_Folders: []
+    m_Folders:
+    - Assets/Prefabs/CardPrefabs
     m_Globs: []
     m_ProductIds: 
     m_AnyWithAssetOrigin: 0
@@ -1610,7 +1611,7 @@ MonoBehaviour:
     scrollPos: {x: 0, y: 0}
     m_SelectedIDs: b0230000
     m_LastClickedID: 9136
-    m_ExpandedIDs: 0000000082d60000bad700002ad800008eda0000f2dc0000f4dc0000f6dc0000f8dc0000fadc0000fcdc0000fedc000000dd000002dd000004dd000006dd000008dd00000add00000cdd00000edd000010dd000012dd000014dd000016dd000018dd00001add00001cdd00001edd000020dd000022dd000024dd000026dd000028dd00002add00002cdd00002edd000030dd000032dd000034dd0000
+    m_ExpandedIDs: 0000000086d60000bed700002ed800001ade0000c8de0000c4e00000cce40000cee40000d0e40000d2e40000d4e40000d6e40000d8e40000dae40000dce40000dee40000e0e40000e2e40000e4e40000e6e40000e8e40000eae40000ece40000eee40000f0e40000f2e40000f4e40000f6e40000f8e40000fae40000fce40000fee4000000e5000002e5000004e5000006e5000008e500000ae500000ce50000
     m_RenameOverlay:
       m_UserAcceptedRename: 0
       m_Name: 
@@ -1636,10 +1637,10 @@ MonoBehaviour:
       m_Icon: {fileID: 0}
       m_ResourceFile: 
   m_AssetTreeState:
-    scrollPos: {x: 0, y: 540}
+    scrollPos: {x: 0, y: 300}
     m_SelectedIDs: 
     m_LastClickedID: 0
-    m_ExpandedIDs: ffffffff0000000082d60000bad700002ad800008eda0000f2dc0000f4dc0000f6dc0000f8dc0000fadc0000fcdc0000fedc000000dd000002dd000004dd000006dd000008dd00000add00000cdd00000edd000010dd000012dd000014dd000016dd000018dd00001add00001cdd00001edd000020dd000022dd000024dd000026dd000028dd00002add00002cdd00002edd000030dd000032dd000034dd000022de0000
+    m_ExpandedIDs: ffffffff0000000086d60000bed700002ed800001ade0000c8de0000c4e00000cce40000cee40000d0e40000d2e40000d4e40000d6e40000d8e40000dae40000dce40000dee40000e0e40000e2e40000e4e40000e6e40000e8e40000eae40000ece40000eee40000f0e40000f2e40000f4e40000f6e40000f8e40000fae40000fce40000fee4000000e5000002e5000004e5000006e5000008e500000ae500004ae60000
     m_RenameOverlay:
       m_UserAcceptedRename: 0
       m_Name: 

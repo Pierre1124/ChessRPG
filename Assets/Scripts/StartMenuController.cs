@@ -1,3 +1,4 @@
+using System.Collections;
 using System.Collections.Generic;
 using TMPro;
 using UnityEngine;
@@ -40,6 +41,45 @@ public class StartMenuController : MonoBehaviour
         new Dictionary<string, GameObject>();
     private Resolution[] availableResolutions;
     private string openingCardId;
+    [SerializeField, Tooltip("選單操作提示，可不指定並由程式建立。")] private TMP_Text statusText;
+    private Coroutine statusRoutine;
+
+    /// <summary>顯示選單操作結果；未綁定文字時在 Canvas 下建立不攔截點擊的提示。</summary>
+    public void ShowStatusMessage(string message)
+    {
+        if (statusText == null)
+        {
+            Canvas canvas = GetComponentInParent<Canvas>();
+            if (canvas == null) canvas = FindFirstObjectByType<Canvas>();
+            if (canvas == null) return;
+            var label = new GameObject("MenuStatus", typeof(RectTransform), typeof(TextMeshProUGUI));
+            label.transform.SetParent(canvas.transform, false);
+            statusText = label.GetComponent<TextMeshProUGUI>();
+            if (deckCountText != null) statusText.font = deckCountText.font;
+            statusText.fontSize = 24;
+            statusText.color = Color.white;
+            statusText.alignment = TextAlignmentOptions.Center;
+            statusText.raycastTarget = false;
+            statusText.rectTransform.anchorMin = new Vector2(0.1f, 0f);
+            statusText.rectTransform.anchorMax = new Vector2(0.9f, 0f);
+            statusText.rectTransform.pivot = new Vector2(0.5f, 0f);
+            statusText.rectTransform.anchoredPosition = new Vector2(0f, 20f);
+            statusText.rectTransform.sizeDelta = new Vector2(0f, 90f);
+        }
+        if (statusRoutine != null) StopCoroutine(statusRoutine);
+        statusText.text = message;
+        statusText.gameObject.SetActive(true);
+        statusText.transform.SetAsLastSibling();
+        statusRoutine = StartCoroutine(HideStatusMessage());
+    }
+
+    /// <summary>使用真實時間隱藏一次性提示，避免暫停時間影響選單顯示。</summary>
+    private IEnumerator HideStatusMessage()
+    {
+        yield return new WaitForSecondsRealtime(6f);
+        if (statusText != null) statusText.gameObject.SetActive(false);
+        statusRoutine = null;
+    }
 
     /// <summary>
     /// 補齊選單與連線引用，顯示初始面板並綁定畫面設定。
@@ -307,6 +347,7 @@ public class StartMenuController : MonoBehaviour
         RefreshSelectionVisuals();
         LayoutRebuilder.ForceRebuildLayoutImmediate(cardContent);
         Canvas.ForceUpdateCanvases();
+        ShowStatusMessage("點擊卡片：1 張 → 2 張 → 指定起手 → 移除");
     }
 
     /// <summary>
@@ -321,6 +362,7 @@ public class StartMenuController : MonoBehaviour
 
         DeckStorage.Save(selectedCounts, openingCardId, cardLibrary.Cards);
         CloseDeckEditor();
+        ShowStatusMessage("牌組已儲存");
     }
 
     /// <summary>

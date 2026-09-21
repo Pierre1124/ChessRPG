@@ -39,7 +39,7 @@ public static class ClassicChessRegression
         SessionState.SetBool(Prefix + "Running", true);
         SessionState.SetInt(Prefix + "Stage", 0);
         SessionState.SetInt(Prefix + "OldLogic", 0);
-        SessionState.SetFloat(Prefix + "Deadline", (float)EditorApplication.timeSinceStartup + 90f);
+        SessionState.SetFloat(Prefix + "Deadline", (float)EditorApplication.timeSinceStartup + 150f);
         Directory.CreateDirectory("output");
         File.WriteAllText(OutputPath, "F12 local Play Mode regression\n");
         LogicManager.SetNextGameMode(false);
@@ -80,10 +80,11 @@ public static class ClassicChessRegression
             if (stage == 0)
             {
                 Check(!logic.IsClassicChess && hand.gameObject.activeInHierarchy, "Initial game uses RPG mode");
+                VerifyPrivateHandState(logic, hand);
                 Advance(logic, 1);
                 Check(logic.TryPlayFieldCard(hand.cardLibrary.GetCard("F12"), places[0]), "Direct F12 accepted");
             }
-            else if (stage == 1 || stage == 3 || stage == 5)
+            else if (stage == 1 || stage == 3 || stage == 5 || stage == 7 || stage == 9)
             {
                 VerifyClassicGame(logic, hand, places);
                 if (stage == 1)
@@ -97,12 +98,24 @@ public static class ClassicChessRegression
                     Advance(logic, 4);
                     Object.FindFirstObjectByType<MultiplayerGameController>().RequestRestartGame();
                 }
+                else if (stage == 5 || stage == 7)
+                {
+                    if (stage == 5) VerifyEnPassant(logic);
+                    else VerifyCastling(logic);
+                    Advance(logic, stage + 1);
+                    Object.FindFirstObjectByType<MultiplayerGameController>().RequestRestartGame();
+                }
                 else
                 {
                     VerifyCheckmate(logic);
                     File.AppendAllText(OutputPath, "PASS: all local regression checks completed\n");
                     EditorApplication.isPlaying = false;
                 }
+            }
+            else if (stage == 6 || stage == 8)
+            {
+                Advance(logic, stage + 1);
+                Check(logic.TryPlayFieldCard(hand.cardLibrary.GetCard("F12"), places[0]), "Restart classic rules fixture");
             }
             else if (stage == 2)
             {
@@ -177,6 +190,29 @@ public static class ClassicChessRegression
         logic.whiteHealth = LogicManager.MaxHealth;
     }
 
+    /// <summary>驗證實際手牌序列化、非法牌組的原子拒絕與私有資料套用。</summary>
+    private static void VerifyPrivateHandState(LogicManager logic, CardHandManager hand)
+    {
+        string original = hand.SerializeNetworkCardState(true);
+        Check(PrivateCardState.TryDecode(original, out PrivateCardState white), "Encode actual white hand");
+        Check(PrivateCardState.TryDecode(hand.SerializeNetworkCardState(false), out PrivateCardState black), "Encode actual black hand");
+        Check(white.recipientWhite && !black.recipientWhite, "Private packets target opposite player perspectives");
+        Check(!hand.SetDeckForPlayerAsAuthority(true, "J01,INVALID", false), "Invalid submitted deck is rejected");
+        Check(hand.SerializeNetworkCardState(true) == original, "Invalid deck leaves current hand unchanged");
+        hand.ApplyNetworkCardState(PrivateCardState.Encode(true, "J01,E01", 5), false, true);
+        var fields = System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic;
+        var whiteHand = (System.Collections.IList)typeof(CardHandManager).GetField("whiteHand", fields).GetValue(hand);
+        var blackHand = (System.Collections.IList)typeof(CardHandManager).GetField("blackHand", fields).GetValue(hand);
+        var whiteDeck = (System.Collections.IList)typeof(CardHandManager).GetField("whiteDeck", fields).GetValue(hand);
+        var blackDeck = (System.Collections.IList)typeof(CardHandManager).GetField("blackDeck", fields).GetValue(hand);
+        Check(whiteHand.Count == 2 && blackHand.Count == 0, "Client stores only its own hand");
+        Check(whiteDeck.Count == 0 && blackDeck.Count == 0, "Client stores neither deck order");
+        Check(!hand.CanDrawThisTurn, "Client applies authoritative draw permission");
+        Check((int)typeof(CardHandManager).GetField("remoteOpponentHandCount", fields).GetValue(hand) == 5,
+            "Opponent backs use public count without card definitions");
+        hand.ResetHands(logic.isWhiteTurn);
+    }
+
     /// <summary>
     /// 執行合法開局吃子，再建立升變測試位置，檢查回合、血量與升變功能。
     /// </summary>
@@ -218,6 +254,35 @@ public static class ClassicChessRegression
             "Checkmate ends the classic game with result UI");
         Check(logic.whiteHealth == LogicManager.MaxHealth && logic.blackHealth == LogicManager.MaxHealth,
             "Checkmate does not consume player HP");
+    }
+
+    /// <summary>執行真實走法驗證吃過路兵的移除位置及回合切換。</summary>
+    private static void VerifyEnPassant(LogicManager logic)
+    {
+        Check(!logic.TryExecuteNetworkMove(new BoardCoordinate(4, 1), new BoardCoordinate(4, 4), true), "Reject pawn three-square move");
+        Check(logic.TryExecuteNetworkMove(new BoardCoordinate(4, 1), new BoardCoordinate(4, 3), true), "EP e2-e4");
+        Check(!logic.TryExecuteNetworkMove(new BoardCoordinate(3, 1), new BoardCoordinate(3, 3), true), "Reject moving wrong side");
+        Check(logic.TryExecuteNetworkMove(new BoardCoordinate(0, 6), new BoardCoordinate(0, 5), false), "EP a7-a6");
+        Check(logic.TryExecuteNetworkMove(new BoardCoordinate(4, 3), new BoardCoordinate(4, 4), true), "EP e4-e5");
+        Check(logic.TryExecuteNetworkMove(new BoardCoordinate(3, 6), new BoardCoordinate(3, 4), false), "EP d7-d5");
+        Check(logic.TryExecuteNetworkMove(new BoardCoordinate(4, 4), new BoardCoordinate(3, 5), true), "EP e5xd6");
+        Check(logic.boardMap[3, 4] == null && logic.boardMap[3, 5] is Pawn && !logic.isWhiteTurn,
+            "En passant removes adjacent pawn and advances turn");
+    }
+
+    /// <summary>清出王翼路徑後驗證易位會同時移動王與車。</summary>
+    private static void VerifyCastling(LogicManager logic)
+    {
+        Check(!logic.TryExecuteNetworkMove(new BoardCoordinate(4, 0), new BoardCoordinate(6, 0), true), "Reject blocked castling");
+        Check(logic.TryExecuteNetworkMove(new BoardCoordinate(4, 1), new BoardCoordinate(4, 3), true), "Castle e2-e4");
+        Check(logic.TryExecuteNetworkMove(new BoardCoordinate(0, 6), new BoardCoordinate(0, 5), false), "Castle a7-a6");
+        Check(logic.TryExecuteNetworkMove(new BoardCoordinate(6, 0), new BoardCoordinate(5, 2), true), "Castle Ng1-f3");
+        Check(logic.TryExecuteNetworkMove(new BoardCoordinate(0, 5), new BoardCoordinate(0, 4), false), "Castle a6-a5");
+        Check(logic.TryExecuteNetworkMove(new BoardCoordinate(5, 0), new BoardCoordinate(4, 1), true), "Castle Bf1-e2");
+        Check(logic.TryExecuteNetworkMove(new BoardCoordinate(1, 6), new BoardCoordinate(1, 5), false), "Castle b7-b6");
+        Check(logic.TryExecuteNetworkMove(new BoardCoordinate(4, 0), new BoardCoordinate(6, 0), true), "Kingside castling accepted");
+        Check(logic.boardMap[6, 0] is King && logic.boardMap[5, 0] is Rook &&
+            logic.boardMap[4, 0] == null && logic.boardMap[7, 0] == null, "Castling relocates king and rook");
     }
 
     /// <summary>

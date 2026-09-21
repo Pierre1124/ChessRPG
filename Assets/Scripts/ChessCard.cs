@@ -637,6 +637,9 @@ public class ChessCard : MonoBehaviour
     /// </summary>
     private void OnValidate() { cards = null; }
 
+    /// <summary>製作工具修改素材後清除定義快取，下次讀取時重新建立。</summary>
+    public void InvalidateCardCache() { cards = null; }
+
     /// <summary>
     /// 建立卡牌庫並依既有順序登錄轉職、事件與場地卡。
     /// </summary>
