@@ -284,6 +284,105 @@ public class CardHandManager : MonoBehaviour
             (logicManager != null && logicManager.IsOperationLocked);
     }
 
+    /// <summary>拖曳前檢查對局與操作資格，拒絕時說明原因而不關閉手牌查看。</summary>
+    public bool TryBeginCardDrag()
+    {
+        string reason = GetCardInteractionBlockReason();
+        if (reason == null) return true;
+        ShowAlarm(reason);
+        return false;
+    }
+
+    /// <summary>查詢操作限制而不顯示提示，供手牌光暈及拖曳預覽共用。</summary>
+    public string GetCardInteractionBlockReason()
+    {
+        string reason = null;
+        if (IsRpgDisabled) reason = "普通西洋棋模式不能使用卡牌";
+        else if (logicManager == null) reason = "對局尚未準備完成";
+        else if (Time.timeScale == 0f) reason = "對局已暫停或結束，現在不能使用卡牌";
+        else if (IsMultiplayerWaiting())
+            reason = multiplayerGameController.IsWaitingForPlayer ? "請等待另一位玩家加入" : "正在同步對局，請稍候";
+        else if (!CanLocalPlayerUseCurrentTurnControls()) reason = "尚未輪到你，請等待對手完成回合";
+        else if (logicManager.isPromotionActive) reason = "請先完成棋子升變";
+        else if (isUsingCardAnimationPlaying || logicManager.IsOperationLocked || logicManager.IsFieldFusionPlaying)
+            reason = "請等待目前演出或結算完成";
+
+        return reason;
+    }
+
+    /// <summary>確認卡牌仍在目前玩家手牌內，而且對局允許操作。</summary>
+    public bool CanPreviewCard(CardDefinition card)
+    {
+        return card != null && GetCardInteractionBlockReason() == null &&
+            (logicManager.isWhiteTurn ? whiteHand : blackHand).Contains(card);
+    }
+
+    /// <summary>查詢手牌不可用原因，沿用操作限制、目標條件及場地驗證，不執行卡牌效果。</summary>
+    public string GetCardUnavailableReason(CardDefinition card)
+    {
+        string blocked = GetCardInteractionBlockReason();
+        if (blocked != null) return blocked;
+        if (!CanPreviewCard(card)) return "這張卡牌已不在目前可操作的手牌中";
+        CollectCardTargets(card, previewTargets);
+        if (previewTargets.Count > 0) return null;
+        if (card.cardType == CardType.Field)
+        {
+            string fallback = "目前沒有可使用的場地欄位";
+            foreach (FieldCardPlace place in logicManager.GetFieldPlaces())
+            {
+                logicManager.CanPlayFieldCard(card, place, out string reason);
+                if (!string.IsNullOrEmpty(reason)) fallback = reason;
+                if (place != null && place.isActiveAndEnabled && place.ActiveCard == null) return fallback;
+            }
+            return fallback;
+        }
+        return "目前沒有符合這張卡牌條件的棋子";
+    }
+
+    /// <summary>列出合法棋子或場地，只查詢條件，不消耗手牌或觸發技能。</summary>
+    public void CollectCardTargets(CardDefinition card, List<Component> targets)
+    {
+        targets.Clear();
+        if (!CanPreviewCard(card)) return;
+        if (card.cardType == CardType.Field)
+        {
+            foreach (FieldCardPlace place in logicManager.GetFieldPlaces())
+                if (logicManager.CanPlayFieldCard(card, place, out _)) targets.Add(place);
+            return;
+        }
+        for (int x = 0; x < 8; x++)
+            for (int y = 0; y < 8; y++)
+            {
+                Piece piece = logicManager.boardMap[x, y];
+                if (piece != null && piece.gameObject.activeInHierarchy &&
+                    (card.cardType == CardType.Event || piece.IsWhite == logicManager.isWhiteTurn) &&
+                    card.CanApplyTo(piece, logicManager)) targets.Add(piece);
+            }
+    }
+
+    private readonly Dictionary<CardDefinition, bool> playableCardCache = new Dictionary<CardDefinition, bool>();
+    private readonly List<Component> previewTargets = new List<Component>();
+    private float nextPreviewRefresh;
+    public bool IsWhiteCardTurn { get { return logicManager != null && logicManager.isWhiteTurn; } }
+
+    /// <summary>重複手牌共用短期快取；操作鎖與手牌歸屬仍每幀檢查。</summary>
+    public bool HasPlayableCardTarget(CardDefinition card)
+    {
+        if (!CanPreviewCard(card)) return false;
+        if (Time.unscaledTime >= nextPreviewRefresh)
+        {
+            playableCardCache.Clear();
+            nextPreviewRefresh = Time.unscaledTime + 0.15f;
+        }
+        if (!playableCardCache.TryGetValue(card, out bool playable))
+        {
+            CollectCardTargets(card, previewTargets);
+            playable = previewTargets.Count > 0;
+            playableCardCache[card] = playable;
+        }
+        return playable;
+    }
+
     /// <summary>
     /// 判斷多人對局是否仍在等待玩家或必要資料。
     /// </summary>
@@ -672,6 +771,7 @@ public class CardHandManager : MonoBehaviour
     /// </summary>
     public void Refresh(bool isWhiteTurn)
     {
+        playableCardCache.Clear();
         if (IsRpgDisabled) return;
         ResolveCardGameUiReferences();
 
@@ -1823,6 +1923,7 @@ public class CardHandManager : MonoBehaviour
         }
 
         target.ApplyCard(card);
+        CardPlayFeedback.Show(target.transform);
         SetLastPlayedCardTarget(target.transform);
         OperateLogUI.LogCard(
             logicManager.isWhiteTurn,
@@ -1901,6 +2002,7 @@ public class CardHandManager : MonoBehaviour
 
         currentHand.Remove(card);
         SetLastPlayedCardTarget(place.transform);
+        CardPlayFeedback.Show(place.transform);
         Debug.Log(
             $"[CardDebug][CardPlayed] Type=Field | " +
             $"Card={card.id} {card.cardName}"
@@ -1988,6 +2090,7 @@ public class CardHandManager : MonoBehaviour
 
         currentHand.Remove(card);
         SetLastPlayedCardTarget(target.transform);
+        CardPlayFeedback.Show(target.transform);
         OperateLogUI.LogCard(
             logicManager.isWhiteTurn,
             card,
@@ -2071,6 +2174,7 @@ public class CardHandManager : MonoBehaviour
             return false;
         }
 
+        CardPlayFeedback.Show(target.transform);
         if (removeFromHand)
         {
             currentHand.Remove(card);
@@ -2134,6 +2238,7 @@ public class CardHandManager : MonoBehaviour
             return false;
         }
 
+        if (!IsRpgDisabled) CardPlayFeedback.Show(place.transform);
         if (removeFromHand)
         {
             currentHand.Remove(card);

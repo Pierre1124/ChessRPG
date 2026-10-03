@@ -1,5 +1,37 @@
 F12 local Play Mode regression
 PASS: Initial game uses RPG mode
+PASS: Create preview hand fixture
+PASS: Job targets only eligible friendly pawns
+PASS: Playable job enables hand glow
+PASS: Playable card has no unavailable hint
+PASS: Dismissal without equipped pieces has no glow
+PASS: Unavailable card explains missing eligible pieces
+PASS: Unavailable hover shows text without blocking input
+PASS: Pointer exit immediately hides unavailable hint
+PASS: Field previews both empty slots
+PASS: Occupied field slot cannot be highlighted
+PASS: Advanced field requires two empty slots
+PASS: Advanced field explains insufficient space
+PASS: Preview leaves pieces and hand unchanged
+PASS: Live card renderer shows playable glow
+PASS: Glow has required CanvasRenderer before clipping
+PASS: Card clipping includes the full outer glow
+PASS: Card remains visible after glow clipping and canvas rebuild
+PASS: Operation lock immediately hides hand glow
+PASS: Operation lock prevents target previews
+PASS: Hover shares current operation lock reason
+PASS: Live drag creates eight legal target rings
+PASS: Ending drag immediately hides all world markers
+PASS: Invalid drop starts return animation without consuming card
+PASS: Returning card reserves its hand layout slot
+PASS: Valid authority card play accepted
+PASS: Confirmed card play creates one success flash
+PASS: Rejected card play does not create success flash
+PASS: Rejected drag callbacks leave card in original hand position
+PASS: Rejected drag preserves card readability and interaction
+PASS: Rejected drag cannot recycle through drop-zone callback
+PASS: Eligible card can begin normal drag
+PASS: New operation restriction restores dragged card
 PASS: Encode actual white hand
 PASS: Encode actual black hand
 PASS: Private packets target opposite player perspectives

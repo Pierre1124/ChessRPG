@@ -79,7 +79,10 @@ public static class ClassicChessRegression
             FieldCardPlace[] places = Object.FindObjectsByType<FieldCardPlace>(FindObjectsInactive.Include, FindObjectsSortMode.None);
             if (stage == 0)
             {
+                if (logic.IsOperationLocked) return;
                 Check(!logic.IsClassicChess && hand.gameObject.activeInHierarchy, "Initial game uses RPG mode");
+                VerifyCardPreviews(logic, hand, places);
+                VerifyDragGate(logic, hand);
                 VerifyPrivateHandState(logic, hand);
                 Advance(logic, 1);
                 Check(logic.TryPlayFieldCard(hand.cardLibrary.GetCard("F12"), places[0]), "Direct F12 accepted");
@@ -210,6 +213,152 @@ public static class ClassicChessRegression
         Check(!hand.CanDrawThisTurn, "Client applies authoritative draw permission");
         Check((int)typeof(CardHandManager).GetField("remoteOpponentHandCount", fields).GetValue(hand) == 5,
             "Opponent backs use public count without card definitions");
+        hand.ResetHands(logic.isWhiteTurn);
+    }
+
+    /// <summary>驗證拒絕拖曳的後續事件不改動 UI，以及拖曳途中鎖定時能還原卡片。</summary>
+    private static void VerifyDragGate(LogicManager logic, CardHandManager hand)
+    {
+        var card = new GameObject("DragGateFixture", typeof(RectTransform), typeof(CanvasGroup), typeof(CardDragHandler));
+        var parent = new GameObject("DragGateParent", typeof(RectTransform));
+        parent.transform.SetParent(hand.CardGameUiRoot, false);
+        card.transform.SetParent(parent.transform, false);
+        var rect = card.GetComponent<RectTransform>();
+        rect.anchoredPosition = new Vector2(17f, 23f);
+        var group = card.GetComponent<CanvasGroup>();
+        var drag = card.GetComponent<CardDragHandler>();
+        drag.Initialize(hand, hand.cardLibrary.GetCard("J01"));
+        var pointer = new UnityEngine.EventSystems.PointerEventData(UnityEngine.EventSystems.EventSystem.current)
+        { button = UnityEngine.EventSystems.PointerEventData.InputButton.Left, position = new Vector2(300f, 300f) };
+        logic.PushOperationLock("DragGateTest");
+        try
+        {
+            drag.OnBeginDrag(pointer);
+            drag.OnDrag(pointer);
+            drag.OnEndDrag(pointer);
+            Check(card.transform.parent == parent.transform && rect.anchoredPosition == new Vector2(17f, 23f),
+                "Rejected drag callbacks leave card in original hand position");
+            Check(group.alpha == 1f && group.blocksRaycasts, "Rejected drag preserves card readability and interaction");
+            Check(!drag.RecycleFromDropZone(), "Rejected drag cannot recycle through drop-zone callback");
+        }
+        finally { logic.PopOperationLock("DragGateTest"); }
+        try
+        {
+            drag.OnBeginDrag(pointer);
+            Check(card.transform.parent == hand.CardGameUiRoot && group.alpha == 0.5f && !group.blocksRaycasts,
+                "Eligible card can begin normal drag");
+            logic.isPromotionActive = true;
+            drag.OnEndDrag(pointer);
+            Check(card.transform.parent == parent.transform && rect.anchoredPosition == new Vector2(17f, 23f) &&
+                group.alpha == 1f && group.blocksRaycasts, "New operation restriction restores dragged card");
+        }
+        finally
+        {
+            logic.isPromotionActive = false;
+            Object.Destroy(card);
+            Object.Destroy(parent);
+        }
+    }
+
+    /// <summary>驗證手牌光暈與拖曳目標使用實際規則，而且查詢不消耗卡牌或改寫棋子。</summary>
+    private static void VerifyCardPreviews(LogicManager logic, CardHandManager hand, FieldCardPlace[] places)
+    {
+        var flags = System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic;
+        var openingField = typeof(CardHandManager).GetField("openingHandSize", flags);
+        int originalOpening = (int)openingField.GetValue(hand);
+        openingField.SetValue(hand, 4);
+        try { Check(hand.SetDeckForPlayerAsAuthority(true, "J01,E01,F01,F12", true), "Create preview hand fixture"); }
+        finally { openingField.SetValue(hand, originalOpening); }
+        CardDefinition job = hand.cardLibrary.GetCard("J01");
+        CardDefinition dismissal = hand.cardLibrary.GetCard("E01");
+        CardDefinition field = hand.cardLibrary.GetCard("F01");
+        CardDefinition advanced = hand.cardLibrary.GetCard("F12");
+        var targets = new System.Collections.Generic.List<Component>();
+        hand.CollectCardTargets(job, targets);
+        Check(targets.Count == 8 && targets.All(p => p is Pawn pawn && pawn.IsWhite), "Job targets only eligible friendly pawns");
+        Check(hand.HasPlayableCardTarget(job), "Playable job enables hand glow");
+        Check(hand.GetCardUnavailableReason(job) == null, "Playable card has no unavailable hint");
+        hand.CollectCardTargets(dismissal, targets);
+        Check(hand.CanPreviewCard(dismissal) && targets.Count == 0 && !hand.HasPlayableCardTarget(dismissal), "Dismissal without equipped pieces has no glow");
+        Check(hand.GetCardUnavailableReason(dismissal) == "目前沒有符合這張卡牌條件的棋子", "Unavailable card explains missing eligible pieces");
+        CardUnavailableHint hover = hand.GetComponentsInChildren<CardDragHandler>(true)
+            .First(d => d.gameObject.activeInHierarchy && (CardDefinition)typeof(CardDragHandler).GetField("cardDefinition", flags).GetValue(d) == dismissal)
+            .GetComponent<CardUnavailableHint>();
+        var hoverPointer = new UnityEngine.EventSystems.PointerEventData(UnityEngine.EventSystems.EventSystem.current)
+        { position = new Vector2(300, 300) };
+        hover.OnPointerEnter(hoverPointer);
+        typeof(CardUnavailableHint).GetField("showAt", flags).SetValue(hover, 0f);
+        typeof(CardUnavailableHint).GetMethod("Update", flags).Invoke(hover, null);
+        var hoverPanel = (RectTransform)typeof(CardUnavailableHint).GetField("panel", flags).GetValue(hover);
+        Check(hoverPanel != null && hoverPanel.gameObject.activeSelf &&
+            hoverPanel.GetComponentsInChildren<UnityEngine.UI.Graphic>().All(g => !g.raycastTarget),
+            "Unavailable hover shows text without blocking input");
+        hover.OnPointerExit(hoverPointer);
+        Check(!hoverPanel.gameObject.activeSelf, "Pointer exit immediately hides unavailable hint");
+        hand.CollectCardTargets(field, targets);
+        Check(targets.Count == places.Length, "Field previews both empty slots");
+        places[0].SetCard(field);
+        try
+        {
+            hand.CollectCardTargets(field, targets);
+            Check(targets.Count == 1 && !targets.Contains(places[0]), "Occupied field slot cannot be highlighted");
+            hand.CollectCardTargets(advanced, targets);
+            Check(targets.Count == 0, "Advanced field requires two empty slots");
+            Check(hand.GetCardUnavailableReason(advanced) == "空的場地欄位不足", "Advanced field explains insufficient space");
+        }
+        finally { places[0].Clear(); }
+        Check(logic.boardMap[0, 1].cardDefinition == null && hand.CanPreviewCard(job), "Preview leaves pieces and hand unchanged");
+        CardDragHandler drag = hand.GetComponentsInChildren<CardDragHandler>(true)
+            .First(d => d.gameObject.activeInHierarchy && (CardDefinition)typeof(CardDragHandler).GetField("cardDefinition", flags).GetValue(d) == job);
+        typeof(CardDragHandler).GetMethod("LateUpdate", flags).Invoke(drag, null);
+        Check(drag.GetComponentInChildren<CardGlowGraphic>(true).enabled, "Live card renderer shows playable glow");
+        CardGlowGraphic glow = drag.GetComponentInChildren<CardGlowGraphic>(true);
+        Check(glow.GetComponent<CanvasRenderer>() != null, "Glow has required CanvasRenderer before clipping");
+        Vector4 glowPadding = drag.GetComponent<UnityEngine.UI.RectMask2D>().padding;
+        Check(glowPadding.x <= -24f && glowPadding.y <= -24f && glowPadding.z <= -24f && glowPadding.w <= -24f,
+            "Card clipping includes the full outer glow");
+        glow.SetClipRect(new Rect(-1000, -1000, 2000, 2000), true);
+        glow.SetClipRect(default, false);
+        Canvas.ForceUpdateCanvases();
+        Check(drag.GetComponent<UnityEngine.UI.Image>().canvasRenderer != null && drag.gameObject.activeInHierarchy,
+            "Card remains visible after glow clipping and canvas rebuild");
+        logic.PushOperationLock("PreviewTest");
+        try
+        {
+            typeof(CardDragHandler).GetMethod("LateUpdate", flags).Invoke(drag, null);
+            Check(!drag.GetComponentInChildren<CardGlowGraphic>(true).enabled, "Operation lock immediately hides hand glow");
+            hand.CollectCardTargets(job, targets);
+            Check(targets.Count == 0, "Operation lock prevents target previews");
+            Check(hand.GetCardUnavailableReason(job) == hand.GetCardInteractionBlockReason(), "Hover shares current operation lock reason");
+        }
+        finally { logic.PopOperationLock("PreviewTest"); }
+        var pointer = new UnityEngine.EventSystems.PointerEventData(UnityEngine.EventSystems.EventSystem.current)
+        { button = UnityEngine.EventSystems.PointerEventData.InputButton.Left, position = new Vector2(300, 300) };
+        drag.OnBeginDrag(pointer);
+        CardTargetFeedback feedback = Object.FindFirstObjectByType<CardTargetFeedback>();
+        Check(feedback != null && feedback.GetComponentsInChildren<LineRenderer>().Length == 8, "Live drag creates eight legal target rings");
+        logic.isPromotionActive = true;
+        try
+        {
+            drag.OnEndDrag(pointer);
+            Check(feedback.GetComponentsInChildren<LineRenderer>().Length == 0, "Ending drag immediately hides all world markers");
+        }
+        finally { logic.isPromotionActive = false; }
+        drag.OnBeginDrag(pointer);
+        pointer.position = new Vector2(-10000f, -10000f);
+        drag.OnEndDrag(pointer);
+        Check(typeof(CardDragHandler).GetField("returnRoutine", flags).GetValue(drag) != null &&
+            !drag.GetComponent<CanvasGroup>().blocksRaycasts && hand.CanPreviewCard(job),
+            "Invalid drop starts return animation without consuming card");
+        Check(typeof(CardDragHandler).GetField("returnSlot", flags).GetValue(drag) != null,
+            "Returning card reserves its hand layout slot");
+        int feedbackCount = Object.FindObjectsByType<CardPlayFeedback>(FindObjectsSortMode.None).Length;
+        Check(hand.PlayCardOnPieceAsAuthority(true, job.id, new BoardCoordinate(0, 1)), "Valid authority card play accepted");
+        Check(Object.FindObjectsByType<CardPlayFeedback>(FindObjectsSortMode.None).Length == feedbackCount + 1,
+            "Confirmed card play creates one success flash");
+        Check(!hand.PlayCardOnPieceAsAuthority(true, job.id, new BoardCoordinate(0, 1)) &&
+            Object.FindObjectsByType<CardPlayFeedback>(FindObjectsSortMode.None).Length == feedbackCount + 1,
+            "Rejected card play does not create success flash");
         hand.ResetHands(logic.isWhiteTurn);
     }
 

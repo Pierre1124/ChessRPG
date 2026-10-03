@@ -2434,6 +2434,27 @@ public class LogicManager : MonoBehaviour
         return CardBattle.GetRandomPiece(isWhitePlayer);
     }
 
+    /// <summary>提供場地欄位供預覽查詢，避免重複搜尋場景。</summary>
+    public IReadOnlyList<FieldCardPlace> GetFieldPlaces()
+    {
+        ResolveFieldCardPlaces();
+        return fieldCardPlaces;
+    }
+
+    /// <summary>共用場地放置與預覽規則，不消耗卡牌或觸發合成。</summary>
+    public bool CanPlayFieldCard(CardDefinition card, FieldCardPlace place, out string reason)
+    {
+        ResolveFieldCardPlaces();
+        reason = null;
+        if (IsClassicChess) reason = "普通西洋棋模式不能使用場地卡";
+        else if (card == null || card.cardType != CardType.Field) reason = "這不是場地卡";
+        else if (place == null || !IsKnownFieldPlace(place) || !place.isActiveAndEnabled) reason = "請放到場地欄位";
+        else if (isFieldFusionPlaying) reason = "場地合成中，請稍候";
+        else if (place.ActiveCard != null) reason = "這個場地欄位已被佔用";
+        else if (GetFieldSlotCost(card) > GetEmptyFieldPlaceCount()) reason = "空的場地欄位不足";
+        return reason == null;
+    }
+
     /// <summary>
     /// 檢查欄位與場地規則後嘗試放置場地卡。
     /// </summary>
@@ -2452,55 +2473,12 @@ public class LogicManager : MonoBehaviour
     /// </summary>
     public bool TryPlayFieldCard(CardDefinition card, FieldCardPlace place)
     {
-        if (IsClassicChess) return false;
-        if (card == null || card.cardType != CardType.Field)
+        if (!CanPlayFieldCard(card, place, out string reason))
         {
-            GameFlowUI.Show("???臬?啣");
+            GameFlowUI.Show(reason);
             return false;
         }
-
-        ResolveFieldCardPlaces();
-
-        if (place == null || !IsKnownFieldPlace(place))
-        {
-            Debug.Log(
-                $"[CardDebug][FieldRejected] Card={card.id} {card.cardName} | " +
-                "Reason=Invalid field place"
-            );
-            GameFlowUI.Show("?游?∪???啣?啣?");
-            return false;
-        }
-
-        if (isFieldFusionPlaying)
-        {
-            Debug.Log(
-                $"[CardDebug][FieldRejected] Card={card.id} {card.cardName} | " +
-                "Reason=Field fusion animation playing"
-            );
-            GameFlowUI.Show("場地合成中，暫時不能放");
-            return false;
-        }
-
-        if (place.ActiveCard != null)
-        {
-            Debug.Log(
-                $"[CardDebug][FieldRejected] Card={card.id} {card.cardName} | " +
-                $"Reason=Field place occupied | Place={place.name}"
-            );
-            GameFlowUI.Show("??啣?撌脫??∠?");
-            return false;
-        }
-
         int cardSlotCost = GetFieldSlotCost(card);
-        if (cardSlotCost > GetEmptyFieldPlaceCount())
-        {
-            Debug.Log(
-                $"[CardDebug][FieldRejected] Card={card.id} {card.cardName} | " +
-                "Reason=Field limit reached"
-            );
-            GameFlowUI.Show("場地卡已達上限");
-            return false;
-        }
 
         if (cardSlotCost > 1)
         {
