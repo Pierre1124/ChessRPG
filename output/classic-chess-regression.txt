@@ -1,5 +1,21 @@
 F12 local Play Mode regression
 PASS: Initial game uses RPG mode
+PASS: Settings controls are built
+PASS: Settings uses an independent overlay above hand UI
+PASS: Sound switch applies mute and disables volume control
+PASS: Volume saves chosen percentage
+PASS: Camera preference applies immediately
+PASS: Leaving game requires confirmation
+PASS: Cancel keeps settings and game open
+PASS: Closing settings preserves promotion state
+PASS: Repeated settings open does not leak operation locks
+PASS: Closing settings preserves another operation lock
+PASS: Glow style saves without changing gameplay
+PASS: Glow settings clamp invalid values
+PASS: Glow reset restores default appearance
+PASS: Soft glow builds rounded gradient geometry
+PASS: Thin frame reduces outer glow width
+PASS: Disabled glow emits no geometry
 PASS: Create preview hand fixture
 PASS: Job targets only eligible friendly pawns
 PASS: Playable job enables hand glow

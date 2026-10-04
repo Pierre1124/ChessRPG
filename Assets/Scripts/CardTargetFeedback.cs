@@ -40,7 +40,7 @@ public sealed class CardTargetFeedback : MonoBehaviour
         if (shader == null) shader = Shader.Find("Sprites/Default");
         if (shader != null) feedback.material = new Material(shader);
         feedback.CreateHint(font);
-        if (manager.RecycleCardRoot != null) feedback.recycleGlow = CardGlowGraphic.Create(manager.RecycleCardRoot);
+        if (manager.RecycleCardRoot != null) feedback.recycleGlow = CardGlowGraphic.Create(manager.RecycleCardRoot, false);
         return feedback;
     }
 

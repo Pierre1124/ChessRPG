@@ -40,6 +40,14 @@ public static class CardTargetHighlightDemo
         SessionState.SetBool(Key + "LiveHand", true);
     }
 
+    /// <summary>在本機 Play Mode 開啟正式設定介面，供版面與即時光暈預覽驗證。</summary>
+    [MenuItem("Tools/Chess/Preview Settings (Play Mode)")]
+    public static void PreviewSettings()
+    {
+        if (!EditorApplication.isPlaying) return;
+        Object.FindFirstObjectByType<SettingsUI>()?.ShowPanel();
+    }
+
     /// <summary>共用示範啟動流程，保存原設定並選擇視覺樣板。</summary>
     private static void Begin(bool handGlow)
     {

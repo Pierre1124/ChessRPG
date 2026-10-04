@@ -6,15 +6,20 @@ using UnityEngine.UI;
 public sealed class CardGlowGraphic : MaskableGraphic
 {
     private const float GlowExtent = 24f;
+    private bool usePreferences = true;
+    private int revision = -1;
+    private static readonly float[] Distances = { 0f, 3f, 8f, 16f, 24f };
+    private static readonly float[] Alphas = { 1f, 0.75f, 0.4f, 0.12f, 0f };
 
     /// <summary>在指定 UI 外圍建立不攔截點擊、不參與排版的光暈。</summary>
-    public static CardGlowGraphic Create(RectTransform parent)
+    public static CardGlowGraphic Create(RectTransform parent, bool usePreferences = true)
     {
         var go = new GameObject("Playable card glow", typeof(RectTransform), typeof(CanvasRenderer), typeof(LayoutElement));
         go.transform.SetParent(parent, false);
         go.transform.SetAsFirstSibling();
         go.GetComponent<LayoutElement>().ignoreLayout = true;
         var glow = go.AddComponent<CardGlowGraphic>();
+        glow.usePreferences = usePreferences;
         glow.raycastTarget = false;
         glow.color = new Color(0.15f, 0.92f, 0.72f, 0.7f);
         glow.rectTransform.anchorMin = Vector2.zero;
@@ -37,28 +42,48 @@ public sealed class CardGlowGraphic : MaskableGraphic
     protected override void OnPopulateMesh(VertexHelper vh)
     {
         vh.Clear();
+        int style = usePreferences ? CardGlowSettings.Style : 0;
+        if (style == 3) return;
         Rect rect = rectTransform.rect;
-        float[] distances = { 0f, 3f, 8f, 16f, 24f };
-        float[] alphas = { 1f, 0.75f, 0.4f, 0.12f, 0f };
         for (int band = 0; band < 4; band++)
         {
             int first = vh.currentVertCount;
             for (int ring = 0; ring < 2; ring++)
             {
-                float d = distances[band + ring];
-                Color tint = color;
-                tint.a *= alphas[band + ring];
-                vh.AddVert(new Vector3(rect.xMin - d, rect.yMin - d), tint, Vector2.zero);
-                vh.AddVert(new Vector3(rect.xMin - d, rect.yMax + d), tint, Vector2.zero);
-                vh.AddVert(new Vector3(rect.xMax + d, rect.yMax + d), tint, Vector2.zero);
-                vh.AddVert(new Vector3(rect.xMax + d, rect.yMin - d), tint, Vector2.zero);
+                float d = Distances[band + ring] * (style == 1 ? 0.22f : 1f);
+                Color tint = usePreferences ? CardGlowSettings.Tint : color;
+                if (usePreferences) tint.a = CardGlowSettings.Intensity;
+                if (style == 2) tint.a *= 0.8f + 0.2f * Mathf.Sin(Time.unscaledTime * 2.5f);
+                tint.a *= Alphas[band + ring];
+                float radius = Mathf.Min(8f, Mathf.Min(rect.width, rect.height) * 0.5f);
+                for (int corner = 0; corner < 4; corner++)
+                {
+                    Vector2 center = new Vector2(corner == 0 || corner == 3 ? rect.xMax - radius : rect.xMin + radius,
+                        corner < 2 ? rect.yMax - radius : rect.yMin + radius);
+                    for (int step = 0; step <= 6; step++)
+                    {
+                        float angle = (corner * 90f + step * 15f) * Mathf.Deg2Rad;
+                        vh.AddVert(center + new Vector2(Mathf.Cos(angle), Mathf.Sin(angle)) * (radius + d), tint, Vector2.zero);
+                    }
+                }
             }
-            for (int edge = 0; edge < 4; edge++)
+            for (int edge = 0; edge < 28; edge++)
             {
-                int next = (edge + 1) % 4;
-                vh.AddTriangle(first + edge, first + next, first + 4 + next);
-                vh.AddTriangle(first + edge, first + 4 + next, first + 4 + edge);
+                int next = (edge + 1) % 28;
+                vh.AddTriangle(first + edge, first + next, first + 28 + next);
+                vh.AddTriangle(first + edge, first + 28 + next, first + 28 + edge);
             }
+        }
+    }
+
+    /// <summary>靜態樣式只在設定改變時重建，呼吸樣式使用不受暫停影響的時間。</summary>
+    private void Update()
+    {
+        if (!usePreferences) return;
+        if (revision != CardGlowSettings.Revision || CardGlowSettings.Style == 2)
+        {
+            revision = CardGlowSettings.Revision;
+            SetVerticesDirty();
         }
     }
 }

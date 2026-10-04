@@ -22,7 +22,6 @@ public class LayoutUI : MonoBehaviour
         if (settingsUI != null && logicManager != null)
         {
             settingsUI.ShowPanel();
-            logicManager.isPromotionActive = true; //disable pieces selecting
             gameObject.SetActive(false);
         }
     }

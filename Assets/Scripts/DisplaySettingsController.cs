@@ -8,13 +8,15 @@ public static class DisplaySettingsController
 {
     public const string ResolutionIndexKey = "ResolutionIndex";
     public const string WindowedKey = "WindowedMode";
+    public const string WidthKey = "DisplayWidth";
+    public const string HeightKey = "DisplayHeight";
 
     /// <summary>
     /// 建立解析度選項與對應的顯示文字。
     /// </summary>
     public static Resolution[] BuildResolutionOptions()
     {
-        return Screen.resolutions
+        Resolution[] options = Screen.resolutions
             .GroupBy(resolution => new
             {
                 resolution.width,
@@ -27,6 +29,7 @@ public static class DisplaySettingsController
             .OrderBy(resolution => resolution.width)
             .ThenBy(resolution => resolution.height)
             .ToArray();
+        return options.Length > 0 ? options : new[] { new Resolution { width = Mathf.Max(640, Screen.width), height = Mathf.Max(480, Screen.height) } };
     }
 
     /// <summary>
@@ -50,14 +53,7 @@ public static class DisplaySettingsController
 
         dropdown.ClearOptions();
         dropdown.AddOptions(options);
-        dropdown.value = Mathf.Clamp(
-            PlayerPrefs.GetInt(
-                ResolutionIndexKey,
-                GetCurrentResolutionIndex(resolutions)
-            ),
-            0,
-            Mathf.Max(0, resolutions.Length - 1)
-        );
+        dropdown.SetValueWithoutNotify(GetSavedResolutionIndex(resolutions));
         dropdown.RefreshShownValue();
 
         return resolutions;
@@ -69,14 +65,7 @@ public static class DisplaySettingsController
     public static void ApplySavedSettings()
     {
         Resolution[] resolutions = BuildResolutionOptions();
-        int index = Mathf.Clamp(
-            PlayerPrefs.GetInt(
-                ResolutionIndexKey,
-                GetCurrentResolutionIndex(resolutions)
-            ),
-            0,
-            Mathf.Max(0, resolutions.Length - 1)
-        );
+        int index = GetSavedResolutionIndex(resolutions);
 
         ApplyResolution(index, resolutions, IsWindowed(), false);
     }
@@ -108,6 +97,8 @@ public static class DisplaySettingsController
         {
             PlayerPrefs.SetInt(ResolutionIndexKey, index);
             PlayerPrefs.SetInt(WindowedKey, windowed ? 1 : 0);
+            PlayerPrefs.SetInt(WidthKey, resolution.width);
+            PlayerPrefs.SetInt(HeightKey, resolution.height);
             PlayerPrefs.Save();
         }
 
@@ -124,7 +115,7 @@ public static class DisplaySettingsController
     {
         if (toggle != null)
         {
-            toggle.isOn = IsWindowed();
+            toggle.SetIsOnWithoutNotify(IsWindowed());
         }
     }
 
@@ -152,8 +143,8 @@ public static class DisplaySettingsController
         for (int i = 0; i < resolutions.Length; i++)
         {
             if (
-                resolutions[i].width == Screen.currentResolution.width &&
-                resolutions[i].height == Screen.currentResolution.height
+                resolutions[i].width == Screen.width &&
+                resolutions[i].height == Screen.height
             )
             {
                 return i;
@@ -161,5 +152,19 @@ public static class DisplaySettingsController
         }
 
         return 0;
+    }
+
+    /// <summary>優先以尺寸還原設定，避免更換螢幕後相同索引代表不同解析度。</summary>
+    public static int GetSavedResolutionIndex(Resolution[] resolutions)
+    {
+        if (resolutions == null || resolutions.Length == 0) return 0;
+        if (PlayerPrefs.HasKey(WidthKey) && PlayerPrefs.HasKey(HeightKey))
+        {
+            int width = PlayerPrefs.GetInt(WidthKey), height = PlayerPrefs.GetInt(HeightKey);
+            for (int i = 0; i < resolutions.Length; i++)
+                if (resolutions[i].width == width && resolutions[i].height == height) return i;
+            return GetCurrentResolutionIndex(resolutions);
+        }
+        return Mathf.Clamp(PlayerPrefs.GetInt(ResolutionIndexKey, GetCurrentResolutionIndex(resolutions)), 0, resolutions.Length - 1);
     }
 }

@@ -2899,10 +2899,10 @@ MonoBehaviour:
   panel: {fileID: 1502984954}
   confirmationPopup: {fileID: 929886878}
   soundToggle: {fileID: 1850210633}
-  volumeSlider: {fileID: 1196427116}
   cameraRotationToggle: {fileID: 151415610}
-  resolutionDropdown: {fileID: 1220372238}
   windowedToggle: {fileID: 522573885}
+  volumeSlider: {fileID: 1196427116}
+  resolutionDropdown: {fileID: 1220372238}
 --- !u!1 &330585543
 GameObject:
   m_ObjectHideFlags: 0

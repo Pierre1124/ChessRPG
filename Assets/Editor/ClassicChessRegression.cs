@@ -81,6 +81,7 @@ public static class ClassicChessRegression
             {
                 if (logic.IsOperationLocked) return;
                 Check(!logic.IsClassicChess && hand.gameObject.activeInHierarchy, "Initial game uses RPG mode");
+                VerifySettings(logic);
                 VerifyCardPreviews(logic, hand, places);
                 VerifyDragGate(logic, hand);
                 VerifyPrivateHandState(logic, hand);
@@ -257,6 +258,82 @@ public static class ClassicChessRegression
             logic.isPromotionActive = false;
             Object.Destroy(card);
             Object.Destroy(parent);
+        }
+    }
+
+    /// <summary>檢查設定即時套用、獨立操作鎖及光暈偏好，完成後還原玩家設定。</summary>
+    private static void VerifySettings(LogicManager logic)
+    {
+        SettingsUI settings = Object.FindFirstObjectByType<SettingsUI>();
+        Check(settings != null && settings.soundToggle != null, "Settings controls are built");
+        Check(settings.panel.GetComponent<Canvas>().isRootCanvas && settings.panel.GetComponent<Canvas>().renderMode == RenderMode.ScreenSpaceOverlay,
+            "Settings uses an independent overlay above hand UI");
+        bool sound = settings.soundToggle.isOn, rotation = settings.cameraRotationToggle.isOn;
+        float volume = settings.volumeSlider.value;
+        int style = CardGlowSettings.Style, palette = CardGlowSettings.Palette;
+        float intensity = CardGlowSettings.Intensity;
+        string[] keys = { "SoundEnabled", "SoundVolume", "CameraRotationEnabled", CardGlowSettings.StyleKey, CardGlowSettings.ColorKey, CardGlowSettings.IntensityKey };
+        bool[] existed = keys.Select(PlayerPrefs.HasKey).ToArray();
+        try
+        {
+            settings.soundToggle.isOn = false;
+            Check(!logic.isSoundEnabled && !settings.volumeSlider.interactable, "Sound switch applies mute and disables volume control");
+            settings.soundToggle.isOn = true;
+            settings.volumeSlider.value = 0.32f;
+            Check(Mathf.Approximately(PlayerPrefs.GetFloat("SoundVolume"), 0.32f), "Volume saves chosen percentage");
+            settings.cameraRotationToggle.isOn = false;
+            Check(!logic.isCameraRotationEnabled, "Camera preference applies immediately");
+            settings.ShowPanel();
+            settings.ReturnToStartMenu();
+            Check(settings.confirmationPopup.activeSelf, "Leaving game requires confirmation");
+            settings.CancelRestart();
+            Check(!settings.confirmationPopup.activeSelf && settings.panel.activeSelf, "Cancel keeps settings and game open");
+            logic.isPromotionActive = true;
+            settings.ShowPanel(); settings.ShowPanel(); settings.goBack();
+            Check(logic.isPromotionActive, "Closing settings preserves promotion state");
+            logic.isPromotionActive = false;
+            Check(!logic.IsOperationLocked, "Repeated settings open does not leak operation locks");
+            logic.PushOperationLock("SettingsRegression");
+            settings.ShowPanel(); settings.goBack();
+            Check(logic.IsOperationLocked, "Closing settings preserves another operation lock");
+            logic.PopOperationLock("SettingsRegression");
+            CardGlowSettings.Set(3, 2, 0.5f);
+            Check(CardGlowSettings.Style == 3 && PlayerPrefs.GetInt(CardGlowSettings.StyleKey) == 3, "Glow style saves without changing gameplay");
+            CardGlowSettings.Set(99, -3, 5f);
+            Check(CardGlowSettings.Style == 3 && CardGlowSettings.Palette == 0 && CardGlowSettings.Intensity == 1f, "Glow settings clamp invalid values");
+            CardGlowSettings.ResetDefaults();
+            Check(CardGlowSettings.Style == 0 && Mathf.Approximately(CardGlowSettings.Intensity, 0.7f), "Glow reset restores default appearance");
+            var fixture = new GameObject("Glow mesh regression", typeof(RectTransform));
+            try
+            {
+                fixture.GetComponent<RectTransform>().sizeDelta = new Vector2(180, 240);
+                CardGlowGraphic graphic = CardGlowGraphic.Create(fixture.GetComponent<RectTransform>());
+                var populate = typeof(CardGlowGraphic).GetMethod("OnPopulateMesh", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.DeclaredOnly);
+                using (var vertices = new UnityEngine.UI.VertexHelper())
+                {
+                    populate.Invoke(graphic, new object[] { vertices });
+                    Check(vertices.currentVertCount == 224, "Soft glow builds rounded gradient geometry");
+                    var outer = new UnityEngine.UIVertex(); vertices.PopulateUIVertex(ref outer, 196);
+                    float softEdge = outer.position.x;
+                    CardGlowSettings.Set(1, 0, 0.7f);
+                    populate.Invoke(graphic, new object[] { vertices });
+                    vertices.PopulateUIVertex(ref outer, 196);
+                    Check(outer.position.x < softEdge, "Thin frame reduces outer glow width");
+                    CardGlowSettings.Set(3, 0, 0.7f);
+                    populate.Invoke(graphic, new object[] { vertices });
+                    Check(vertices.currentVertCount == 0, "Disabled glow emits no geometry");
+                }
+            }
+            finally { Object.Destroy(fixture); }
+        }
+        finally
+        {
+            logic.isPromotionActive = false;
+            settings.goBack();
+            settings.soundToggle.isOn = sound; settings.volumeSlider.value = volume; settings.cameraRotationToggle.isOn = rotation;
+            CardGlowSettings.Set(style, palette, intensity);
+            for (int i = 0; i < keys.Length; i++) if (!existed[i]) PlayerPrefs.DeleteKey(keys[i]);
+            PlayerPrefs.Save();
         }
     }
 
