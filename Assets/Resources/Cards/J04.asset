@@ -1,0 +1,69 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: a198e2be6703ca44bbf85c3ac9eb8529, type: 3}
+  m_Name: J04
+  m_EditorClassIdentifier: 
+  definition:
+    id: J04
+    specialRuleId: J04
+    useDataActions: 0
+    playActions: []
+    healthCost: 0
+    minimumTargetHealth: -1
+    maximumTargetHealth: -1
+    ruleNotes: 
+    cardType: 0
+    cardName: "\u96FB\u7DB2"
+    targetTypes: 32
+    conditionCost: "\u5169\u500B\u57CE\u5821\u5E73\u884C/\n\u57CE\u5821\u7121\u6CD5\u79FB\u52D5"
+    damageTags: 1040
+    randomDamageTypes: 
+    pawnCanPromote: 0
+    cardImage: {fileID: 21300000, guid: b3b9433f68bfd2f49bb78af43f460524, type: 3}
+    skillImage: {fileID: 21300000, guid: 18fd32856477bc44b8b089eeb80c2667, type: 3}
+    skillEffectPrefab: {fileID: 0}
+    skillSound: {fileID: 0}
+    description: "\u5169\u500B\u57CE\u5821\u4E4B\u9593\u7684\u683C\u5B50\u5F62\u6210\u96FB\u7DB2Token,\u901A\u904E\u7684\u68CB\u5B50\u53D7\u52301\u9EDE\u96FB\u5C6C\u6027\u50B7\u5BB3,\u53E6\u4E00\u500B\u57CE\u5821\u5F37\u5236\u88DD\u5099\u96FB\u7DB2\n\u4E3B\u52D5\u6280\u80FD:\u95DC\u9589\u72C0\u614B\u53EF\u79FB\u52D5,\u56DE\u5408\u958B\u59CB\u6642\u82E5\u5169\u500B\u57CE\u5821\u5E73\u884C\u81EA\u52D5\u91CD\u65B0\u958B\u555F\n\u907A\u8A00:\u53E6\u4E00\u500B\u57CE\u5821\u7684\u96FB\u7DB2\u7834\u58DE,\u4E26\u81EA\u8EAB\u53D7\u52305\u9EDE\u96FB\u5C6C\u6027\u50B7\u5BB3"
+    tags:
+    - "\u8F49\u8077"
+    - "\u8B8A\u5E7B"
+    - "\u5E72\u64FE"
+    - "\u907A\u8A00"
+    conditions: []
+    effects: []
+    statusesToApply:
+    - statusName: "\u96FB\u7DB2"
+      sourceCardId: J04
+      kind: 1
+      icon: {fileID: 21300000, guid: 18fd32856477bc44b8b089eeb80c2667, type: 3}
+      maxCharges: 0
+      initialCharges: 0
+      consumeChargeOnTrigger: 0
+      rechargeTrigger: 4
+      rechargeAmount: 0
+      durationTurns: 0
+      removeOnTrigger: 0
+      removeTrigger: 4
+      effects:
+      - trigger: 6
+        effectType: 4
+        target: 1
+        operation: 0
+        damageTags: 1040
+        value: 5
+        duration: 0
+        range: 0
+    animations: []
+    jobChangeDefinition:
+      displayName: 
+      moveRules: []
+  sourceReference: "Chess!.xlsx / \u8F49\u8077 / row 5 (2026-10-09)"

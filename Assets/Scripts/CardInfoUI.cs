@@ -22,6 +22,11 @@ public class CardInfoUI : MonoBehaviour
         new Color32(143, 217, 255, 255);
 
     private LogicManager logicManager;
+    private Piece inspectedPiece;
+    [SerializeField] private Button activeSkillButton;
+    [SerializeField] private Button closeButton;
+    [SerializeField] private TMP_Text activeSkillReason;
+    private MultiplayerGameController multiplayer;
     private GameObject cardPreviewObject;
     private readonly List<GameObject> spawnedStatusIcons =
         new List<GameObject>();
@@ -32,12 +37,15 @@ public class CardInfoUI : MonoBehaviour
     public void Initialize(LogicManager owner)
     {
         logicManager = owner;
+        multiplayer = FindFirstObjectByType<MultiplayerGameController>();
 
         if (infoRoot == null)
         {
             infoRoot = transform;
         }
 
+        if (closeButton != null) closeButton.onClick.AddListener(Hide);
+        if (activeSkillButton != null) activeSkillButton.onClick.AddListener(UseActiveSkill);
         HideStatusTooltip();
         Hide();
     }
@@ -59,6 +67,7 @@ public class CardInfoUI : MonoBehaviour
         }
 
         CardDefinition equippedCard = piece.cardDefinition;
+        inspectedPiece = piece;
         List<StatusRuntime> visibleStatuses =
             GetVisibleStatuses(piece);
 
@@ -75,6 +84,7 @@ public class CardInfoUI : MonoBehaviour
         );
 
         infoRoot.gameObject.SetActive(true);
+        RefreshSkillButton();
     }
 
     /// <summary>
@@ -82,6 +92,7 @@ public class CardInfoUI : MonoBehaviour
     /// </summary>
     public void Hide()
     {
+        inspectedPiece = null;
         HideStatusTooltip();
         ClearCardPreview();
         ClearStatusIcons();
@@ -90,6 +101,92 @@ public class CardInfoUI : MonoBehaviour
         {
             infoRoot.gameObject.SetActive(false);
         }
+    }
+
+    /// <summary>建立固定側邊資訊面板與操作列，避免遮住棋盤中央。</summary>
+    public void BakeControls()
+    {
+        if (activeSkillButton != null) return;
+        if (Application.isPlaying) return;
+        if (infoRoot == null) infoRoot = transform;
+        RectTransform panel = infoRoot as RectTransform;
+        if (panel != null)
+        {
+            panel.anchorMin = panel.anchorMax = new Vector2(1, 0.5f);
+            panel.pivot = new Vector2(1, 0.5f);
+            panel.anchoredPosition = new Vector2(-24, 25);
+        }
+        Button close = CreateButton("Close piece info", "關閉 ×", new Vector2(-65, -24), new Vector2(110, 40), new Vector2(1, 1));
+        closeButton = close;
+        activeSkillButton = CreateButton("Piece active skill", "主動技：關閉電網", new Vector2(0, -30), new Vector2(410, 48), new Vector2(0.5f, 0));
+        activeSkillButton.onClick.AddListener(UseActiveSkill);
+        var textObject = new GameObject("Active skill availability", typeof(RectTransform), typeof(CanvasRenderer), typeof(TextMeshProUGUI));
+        textObject.transform.SetParent(infoRoot, false);
+        activeSkillReason = textObject.GetComponent<TextMeshProUGUI>();
+        activeSkillReason.font = chessAtkText != null ? chessAtkText.font : TMP_Settings.defaultFontAsset;
+        activeSkillReason.fontSize = 18; activeSkillReason.alignment = TextAlignmentOptions.Center;
+        activeSkillReason.raycastTarget = false;
+        RectTransform rect = textObject.GetComponent<RectTransform>();
+        rect.anchorMin = rect.anchorMax = new Vector2(0.5f, 0);
+        rect.anchoredPosition = new Vector2(0, -76); rect.sizeDelta = new Vector2(430, 40);
+    }
+
+    /// <summary>以完整 UGUI 元件建立按鈕並沿用專案中文字型。</summary>
+    private Button CreateButton(string objectName, string label, Vector2 position, Vector2 size, Vector2 anchor)
+    {
+        var go = new GameObject(objectName, typeof(RectTransform), typeof(CanvasRenderer), typeof(Image), typeof(Button));
+        go.transform.SetParent(infoRoot, false);
+        var rect = go.GetComponent<RectTransform>(); rect.anchorMin = rect.anchorMax = anchor;
+        rect.anchoredPosition = position; rect.sizeDelta = size;
+        go.GetComponent<Image>().color = new Color32(32, 73, 91, 255);
+        var button = go.GetComponent<Button>(); button.targetGraphic = go.GetComponent<Image>();
+        var labelObject = new GameObject("Label", typeof(RectTransform), typeof(CanvasRenderer), typeof(TextMeshProUGUI));
+        labelObject.transform.SetParent(go.transform, false);
+        var text = labelObject.GetComponent<TextMeshProUGUI>(); text.text = label;
+        text.font = chessAtkText != null ? chessAtkText.font : TMP_Settings.defaultFontAsset;
+        text.fontSize = 22; text.alignment = TextAlignmentOptions.Center; text.raycastTarget = false;
+        var textRect = text.rectTransform; textRect.anchorMin = Vector2.zero; textRect.anchorMax = Vector2.one;
+        textRect.offsetMin = textRect.offsetMax = Vector2.zero;
+        return button;
+    }
+
+    /// <summary>即時顯示技能可用性；檢視敵方或等待回合時不提供可執行按鈕。</summary>
+    private void RefreshSkillButton()
+    {
+        if (activeSkillButton == null) return;
+        bool hasSkill = PieceActiveSkill.HasSkill(inspectedPiece);
+        activeSkillButton.gameObject.SetActive(hasSkill);
+        string reason = ControlBindings.Label(GameControl.InspectPiece) + " 查看棋子 · Esc 關閉";
+        bool canUse = false;
+        if (hasSkill)
+        {
+            canUse = PieceActiveSkill.CanUse(logicManager, inspectedPiece, inspectedPiece.IsWhite, out reason);
+            if (multiplayer != null && !multiplayer.CanLocalPlayerAct(inspectedPiece.IsWhite))
+            { canUse = false; reason = "只能操作自己回合的棋子"; }
+            if (canUse) reason = "關閉後可移動；下次我方回合重新判定";
+        }
+        activeSkillButton.interactable = canUse;
+        activeSkillReason.text = reason;
+    }
+
+    /// <summary>送交主機驗證或執行本機技能，避免按鈕直接繞過規則。</summary>
+    private void UseActiveSkill()
+    {
+        if (inspectedPiece == null) return;
+        RefreshSkillButton();
+        if (!activeSkillButton.interactable) return;
+        if (multiplayer != null && multiplayer.IsOnline)
+            multiplayer.SubmitCommand(multiplayer.CreateActiveSkillCommand(inspectedPiece));
+        else if (PieceActiveSkill.TryUse(logicManager, inspectedPiece, inspectedPiece.IsWhite))
+            GameFlowUI.Show("電網已關閉，可移動城堡");
+        RefreshSkillButton();
+    }
+
+    /// <summary>棋子移除或切換普通棋局時關閉面板，持續更新技能鎖定原因。</summary>
+    private void Update()
+    {
+        if (inspectedPiece == null || logicManager == null || logicManager.IsClassicChess) { Hide(); return; }
+        RefreshSkillButton();
     }
 
     /// <summary>
@@ -322,15 +419,8 @@ public class CardInfoUI : MonoBehaviour
                 continue;
             }
 
-            GameObject iconObject =
-                new GameObject(
-                    status.definition.statusName,
-                    typeof(RectTransform),
-                    typeof(CanvasRenderer),
-                    typeof(Image)
-                );
-
-            iconObject.transform.SetParent(chessStatusRoot, false);
+            GameObject iconObject = SceneObjectTemplates.Spawn("Status icon", chessStatusRoot);
+            iconObject.name = status.definition.statusName;
 
             RectTransform rectTransform =
                 iconObject.GetComponent<RectTransform>();
@@ -341,7 +431,7 @@ public class CardInfoUI : MonoBehaviour
             image.preserveAspect = true;
 
             StatusIconHover hover =
-                iconObject.AddComponent<StatusIconHover>();
+                iconObject.GetComponent<StatusIconHover>();
             hover.Initialize(this, status);
 
             spawnedStatusIcons.Add(iconObject);
@@ -438,8 +528,8 @@ public class CardInfoUI : MonoBehaviour
                 : null;
             int captures = runtime != null ? runtime.skillCounterA : 0;
             int friendlyLosses = runtime != null ? runtime.skillCounterB : 0;
-            int bonus = Mathf.Max(0, 1 + captures - friendlyLosses);
-            return $"\u6211\u65b9\u6240\u6709\u68cb\u5b50\u653b\u64ca\u529b +{bonus}" +
+            int bonus = card.friendlyDamageBonus + Mathf.Max(0, captures - friendlyLosses);
+            return $"我方造成傷害 +{bonus}" +
                 $"\n\u8c9e\u5fb7\u5403\u5b50\uff1a{captures}\uff0c" +
                 $"\u6211\u65b9\u68cb\u5b50\u88ab\u5403\uff1a{friendlyLosses}";
         }
@@ -451,7 +541,7 @@ public class CardInfoUI : MonoBehaviour
 
         if (card != null && card.id == "J09")
         {
-            return "\u6211\u65b9\u6240\u6709\u68cb\u5b50\u653b\u64ca\u529b +2\uff1b\u6211\u65b9\u7121\u6cd5\u56de\u5fa9 HP";
+            return $"我方造成傷害 +{card.friendlyDamageBonus}；我方無法回復 HP";
         }
 
         StringBuilder builder = new StringBuilder();

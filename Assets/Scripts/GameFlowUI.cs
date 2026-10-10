@@ -118,7 +118,8 @@ public class GameFlowUI : MonoBehaviour
         instance = cardGameUi.GetComponent<GameFlowUI>();
         if (instance == null)
         {
-            instance = cardGameUi.AddComponent<GameFlowUI>();
+            Debug.LogError("CardGameUI 缺少 GameFlowUI 場景元件。");
+            return null;
         }
 
         instance.AutoBindReferences();

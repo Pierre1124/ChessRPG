@@ -220,7 +220,9 @@ public static class ClassicChessRegression
     /// <summary>驗證拒絕拖曳的後續事件不改動 UI，以及拖曳途中鎖定時能還原卡片。</summary>
     private static void VerifyDragGate(LogicManager logic, CardHandManager hand)
     {
-        var card = new GameObject("DragGateFixture", typeof(RectTransform), typeof(CanvasGroup), typeof(CardDragHandler));
+        var template = (GameObject)new SerializedObject(hand).FindProperty("cardPrefab").objectReferenceValue;
+        var card = Object.Instantiate(template);
+        card.name = "DragGateFixture";
         var parent = new GameObject("DragGateParent", typeof(RectTransform));
         parent.transform.SetParent(hand.CardGameUiRoot, false);
         card.transform.SetParent(parent.transform, false);
@@ -389,6 +391,17 @@ public static class ClassicChessRegression
             .First(d => d.gameObject.activeInHierarchy && (CardDefinition)typeof(CardDragHandler).GetField("cardDefinition", flags).GetValue(d) == job);
         typeof(CardDragHandler).GetMethod("LateUpdate", flags).Invoke(drag, null);
         Check(drag.GetComponentInChildren<CardGlowGraphic>(true).enabled, "Live card renderer shows playable glow");
+        GameObject cardAsset = AssetDatabase.LoadAssetAtPath<GameObject>("Assets/Prefabs/CardPrefabs/CardImage.prefab");
+        foreach (TMPro.TMP_Text source in cardAsset.GetComponentsInChildren<TMPro.TMP_Text>(true))
+        {
+            string path = AnimationUtility.CalculateTransformPath(source.transform, cardAsset.transform);
+            TMPro.TMP_Text actual = drag.transform.Find(path)?.GetComponent<TMPro.TMP_Text>();
+            Check(actual != null && actual.font == source.font && actual.fontSharedMaterial == source.fontSharedMaterial &&
+                actual.enableAutoSizing == source.enableAutoSizing && actual.characterSpacing == source.characterSpacing &&
+                actual.fontStyle == source.fontStyle && (actual.enableAutoSizing || actual.fontSize == source.fontSize),
+                "Runtime card retains Prefab typography: " + path);
+        }
+
         CardGlowGraphic glow = drag.GetComponentInChildren<CardGlowGraphic>(true);
         Check(glow.GetComponent<CanvasRenderer>() != null, "Glow has required CanvasRenderer before clipping");
         Vector4 glowPadding = drag.GetComponent<UnityEngine.UI.RectMask2D>().padding;

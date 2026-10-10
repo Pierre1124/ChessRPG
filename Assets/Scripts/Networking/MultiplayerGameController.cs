@@ -26,6 +26,7 @@ public class MultiplayerGameController :
     private const byte EventReturnToStart = 13;
     private const byte EventRestartRequest = 14;
     private const byte EventSideAssignment = 15;
+    private const byte EventActiveSkillResult = 16;
     private const string RoomPropertyMasterWhite = "MasterWhite";
     private const string RoomPropertyClassicChess = "ClassicChess";
 
@@ -468,6 +469,14 @@ public class MultiplayerGameController :
         );
     }
 
+    /// <summary>建立主動技能命令，沿用主機序號及回合驗證。</summary>
+    public NetworkGameCommand CreateActiveSkillCommand(Piece piece)
+    {
+        return new NetworkGameCommand { kind = NetworkGameCommandKind.UseActiveSkill,
+            sequence = ConsumeSequence(), isWhitePlayer = piece.IsWhite,
+            from = BoardCoordinate.FromVector2(piece.GetCoordinates()) };
+    }
+
     /// <summary>
     /// 建立對棋子出牌的連線命令。
     /// </summary>
@@ -764,6 +773,14 @@ public class MultiplayerGameController :
         }
         switch (photonEvent.Code)
         {
+            case EventActiveSkillResult:
+                if (!PhotonNetwork.IsMasterClient && logicManager != null)
+                {
+                    var data = (object[])photonEvent.CustomData;
+                    Piece piece = logicManager.boardMap[(int)data[2], (int)data[3]];
+                    if (piece != null && piece.IsWhite == (bool)data[1]) PieceActiveSkill.ApplyDisabled(logicManager, piece);
+                }
+                break;
             case EventCommandRequest:
                 HandleCommandRequest(photonEvent);
                 break;
@@ -1222,6 +1239,13 @@ public class MultiplayerGameController :
 
         switch (command.kind)
         {
+            case NetworkGameCommandKind.UseActiveSkill:
+                accepted = logicManager != null && command.from.IsValid && PieceActiveSkill.TryUse(logicManager,
+                    logicManager.boardMap[command.from.x, command.from.y], command.isWhitePlayer);
+                message = accepted ? "電網已關閉" : "目前無法使用主動技能";
+                if (accepted) RaiseToOthers(EventActiveSkillResult, new object[] {
+                    command.sequence, command.isWhitePlayer, command.from.x, command.from.y });
+                break;
             case NetworkGameCommandKind.MovePiece:
                 accepted =
                     logicManager != null &&
@@ -1407,7 +1431,8 @@ public class MultiplayerGameController :
         if (!System.Enum.IsDefined(typeof(NetworkGameCommandKind), command.kind) ||
             command.kind == NetworkGameCommandKind.EndTurn ||
             (command.kind == NetworkGameCommandKind.MovePiece && (!command.from.IsValid || !command.to.IsValid)) ||
-            (command.kind == NetworkGameCommandKind.PlayCardOnPiece && !command.to.IsValid))
+            (command.kind == NetworkGameCommandKind.PlayCardOnPiece && !command.to.IsValid) ||
+            (command.kind == NetworkGameCommandKind.UseActiveSkill && !command.from.IsValid))
         { reason = "操作資料無效"; return false; }
         if (logicManager == null || IsWaitingForPlayer || IsWaitingForRemoteDeck || isRestartingGame ||
             Time.timeScale == 0f || logicManager.IsOperationLocked || logicManager.isPromotionActive ||

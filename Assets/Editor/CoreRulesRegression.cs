@@ -42,6 +42,21 @@ public static class CoreRulesRegression
     /// <summary>執行無 Unity 執行階段依賴的測試，亦可由命令列驗證程式呼叫。</summary>
     public static void RunManagedChecks(Action<bool, string> check)
     {
+        check(!new PieceDefinition().HasMoveRules, "Empty serialized move definition preserves standard movement");
+        check(!new PieceDefinition { moveRules = null }.HasMoveRules, "Null move list preserves standard movement");
+        check(!new PieceDefinition { moveRules = new List<PieceMoveRule> { null } }.HasMoveRules, "Null-only move list preserves standard movement");
+        check(new PieceDefinition { moveRules = new List<PieceMoveRule> { new PieceMoveRule() } }.HasMoveRules,
+            "Explicit move rules still override standard movement");
+        foreach (DamageTag tag in new[] { DamageTag.None, DamageTag.Fire, DamageTag.Electric, DamageTag.Poison, DamageTag.Curse, DamageTag.True, DamageTag.Cost })
+        {
+            bool fixedDamage = tag == DamageTag.True || tag == DamageTag.Cost;
+            bool outgoing = tag == DamageTag.None || tag == DamageTag.Fire;
+            check(CardDamageRules.AllowsOutgoing(tag) == outgoing, tag + " outgoing bonus/weakening policy");
+            check(CardDamageRules.AllowsEffect(tag, new CardEffectData { effectType = CardEffectType.ModifyDamageTaken }) == !fixedDamage,
+                tag + " vulnerability/reduction policy");
+            check(CardDamageRules.AllowsEffect(tag, new CardEffectData { effectType = CardEffectType.ModifyDamageDealt, operation = CardValueOperation.Set }),
+                tag + " final truce override");
+        }
         check(CardNumericRules.Apply(3.5f, CardValueOperation.Add, -2) == 1.5f, "Add preserves fractional value");
         check(CardNumericRules.Apply(9f, CardValueOperation.Set, 2) == 2f, "Set replaces prior modifiers");
         check(CardNumericRules.Apply(3.5f, CardValueOperation.Multiply, 2) == 7f, "Multiply preserves calculation precision");

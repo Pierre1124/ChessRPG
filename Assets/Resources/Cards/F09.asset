@@ -1,0 +1,46 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: a198e2be6703ca44bbf85c3ac9eb8529, type: 3}
+  m_Name: F09
+  m_EditorClassIdentifier: 
+  definition:
+    id: F09
+    specialRuleId: F09
+    useDataActions: 0
+    playActions: []
+    healthCost: 0
+    minimumTargetHealth: -1
+    maximumTargetHealth: -1
+    ruleNotes: 
+    cardType: 2
+    cardName: "\u9ED1\u5E02"
+    targetTypes: 0
+    conditionCost: "\u7121"
+    damageTags: 8192
+    randomDamageTypes: 
+    pawnCanPromote: 0
+    cardImage: {fileID: 21300000, guid: b5b32917a3727ac4a850679f93822224, type: 3}
+    skillImage: {fileID: 21300000, guid: b5b32917a3727ac4a850679f93822224, type: 3}
+    skillEffectPrefab: {fileID: 0}
+    skillSound: {fileID: 0}
+    description: "\u56DE\u6536\u5361\u7247\u6642,\u96A8\u6A5F\u6211\u65B91\u500B\u68CB\u5B50\u653B\u64CA\u529B+1,\u50F9\u503C-1"
+    tags:
+    - "\u5834\u5730"
+    - "\u5F37\u5316"
+    conditions: []
+    effects: []
+    statusesToApply: []
+    animations: []
+    jobChangeDefinition:
+      displayName: 
+      moveRules: []
+  sourceReference: "Chess!.xlsx / \u5834\u5730 / row 10 (2026-10-09)"

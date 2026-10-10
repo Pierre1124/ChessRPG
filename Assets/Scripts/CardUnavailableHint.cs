@@ -69,26 +69,9 @@ public sealed class CardUnavailableHint : MonoBehaviour, IPointerEnterHandler, I
     private void CreatePanel()
     {
         if (hand.CardGameUiRoot == null) return;
-        var root = new GameObject("Card unavailable hint", typeof(RectTransform), typeof(CanvasRenderer), typeof(Image));
-        root.transform.SetParent(hand.CardGameUiRoot, false);
+        var root = SceneObjectTemplates.Spawn("Card unavailable hint", hand.CardGameUiRoot);
         panel = root.GetComponent<RectTransform>();
-        panel.pivot = new Vector2(0f, 1f);
-        panel.sizeDelta = new Vector2(440f, 84f);
-        Image background = root.GetComponent<Image>();
-        background.color = new Color(0.02f, 0.04f, 0.06f, 0.96f);
-        background.raycastTarget = false;
-        var text = new GameObject("Reason", typeof(RectTransform), typeof(TextMeshProUGUI));
-        text.transform.SetParent(panel, false);
-        label = text.GetComponent<TextMeshProUGUI>();
-        TMP_Text cardLabel = GetComponentInChildren<TMP_Text>(true);
-        label.font = cardLabel != null ? cardLabel.font : TMP_Settings.defaultFontAsset;
-        label.fontSize = 24f;
-        label.alignment = TextAlignmentOptions.Center;
-        label.raycastTarget = false;
-        label.rectTransform.anchorMin = Vector2.zero;
-        label.rectTransform.anchorMax = Vector2.one;
-        label.rectTransform.offsetMin = new Vector2(16f, 8f);
-        label.rectTransform.offsetMax = new Vector2(-16f, -8f);
+        label = root.GetComponentInChildren<TMP_Text>(true);
     }
 
     /// <summary>拖曳開始或離開手牌時取消計時並立即隱藏提示。</summary>

@@ -1,0 +1,4 @@
+PASS Source Han Sans dynamic multi-atlas, default/fallback, 939 characters checked; no missing Chinese
+PASS baked Assets/Scenes/StartScene.unity
+PASS baked Assets/Scenes/ChessScene.unity
+PASS baked Assets/Scenes/CardScene.unity

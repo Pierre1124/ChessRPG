@@ -69,6 +69,17 @@ public class InputManager : MonoBehaviour
     /// </summary>
     private void Update()
     {
+        if (ControlBindings.SuppressGameplay) { isHoldingMouse = false; heldPiece = null; return; }
+        if (Keyboard.current != null && Keyboard.current.escapeKey.wasPressedThisFrame)
+        { cardInfoUI?.Hide(); ClearSelection(); }
+        if (Mouse.current != null && ControlBindings.Read(GameControl.InspectPiece) &&
+            !IsPointerOverUi(Mouse.current.position.ReadValue()))
+        {
+            isHoldingMouse = false;
+            ClearSelection();
+            cardInfoUI?.Show(GetPieceAtScreenPosition(Mouse.current.position.ReadValue()));
+            return;
+        }
         if (
             (logicManager != null && logicManager.IsOperationLocked) ||
             multiplayerGameController != null &&
@@ -96,10 +107,12 @@ public class InputManager : MonoBehaviour
 
         if (
             isHoldingMouse &&
+            ControlBindings.LongPressEnabled &&
             Mouse.current.leftButton.isPressed &&
             !didShowPieceInfo &&
             (logicManager == null || !logicManager.IsClassicChess) &&
             heldPiece != null &&
+            Vector2.Distance(holdStartScreenPosition, mousePosition) <= 12f &&
             Time.unscaledTime - holdStartedAt >= pieceInfoHoldSeconds
         )
         {

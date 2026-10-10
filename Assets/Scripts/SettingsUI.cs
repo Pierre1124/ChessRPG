@@ -26,7 +26,9 @@ public class SettingsUI : MonoBehaviour
         layoutUI = FindFirstObjectByType<LayoutUI>();
         multiplayerGameController = FindFirstObjectByType<MultiplayerGameController>();
         if (panel == null) return;
-        view = SettingsPanelView.Build(this);
+        view = panel.GetComponent<SettingsPanelView>();
+        if (view == null) { Debug.LogError("設定頁尚未烘焙至場景。", this); return; }
+        view.Initialize(this);
         soundToggle.SetIsOnWithoutNotify(PlayerPrefs.GetInt("SoundEnabled", 1) == 1);
         float volume = PlayerPrefs.GetFloat("SoundVolume", 0.5f);
         volumeSlider.SetValueWithoutNotify(float.IsNaN(volume) ? 0.5f : Mathf.Clamp01(volume));
@@ -68,6 +70,7 @@ public class SettingsUI : MonoBehaviour
     public void ShowPanel()
     {
         if (panel == null) return;
+        ControlBindings.SettingsOpen = true;
         if (!ownsLock && logicManager != null) { logicManager.PushOperationLock("Settings"); ownsLock = true; }
         panel.SetActive(true);
         panel.transform.SetAsLastSibling();
@@ -75,6 +78,7 @@ public class SettingsUI : MonoBehaviour
     /// <summary>撤銷未確認的顯示變更，保存偏好並釋放自己的操作鎖。</summary>
     public void goBack()
     {
+        ControlBindings.SettingsOpen = false;
         RevertDisplay(); CancelRestart(); PlayerPrefs.Save();
         if (panel != null) panel.SetActive(false);
         ReleaseLock();
@@ -117,6 +121,7 @@ public class SettingsUI : MonoBehaviour
     /// <summary>不受暫停影響的倒數，避免顯示設定導致畫面無法操作。</summary>
     private void Update()
     {
+        if (ControlBindings.Capturing || ControlBindings.CaptureFinishedFrame == Time.frameCount) return;
         if (panel != null && panel.activeSelf && UnityEngine.InputSystem.Keyboard.current != null &&
             UnityEngine.InputSystem.Keyboard.current.escapeKey.wasPressedThisFrame &&
             (resolutionDropdown == null || !resolutionDropdown.IsExpanded))
@@ -163,7 +168,7 @@ public class SettingsUI : MonoBehaviour
     /// <summary>取消確認視窗，保留棋局與設定。</summary>
     public void CancelRestart() { if (view != null) view.HideConfirmation(); }
     /// <summary>停用時撤銷顯示試用並釋放設定鎖。</summary>
-    private void OnDisable() { RevertDisplay(); ReleaseLock(); PlayerPrefs.Save(); }
+    private void OnDisable() { ControlBindings.SettingsOpen = false; RevertDisplay(); ReleaseLock(); PlayerPrefs.Save(); }
     /// <summary>切到背景時保存本機偏好。</summary>
     private void OnApplicationPause(bool paused) { if (paused) PlayerPrefs.Save(); }
 }

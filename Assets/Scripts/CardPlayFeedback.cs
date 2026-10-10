@@ -7,6 +7,9 @@ public sealed class CardPlayFeedback : MonoBehaviour
     private Material material;
     private float startedAt;
     private LogicManager logic;
+    [SerializeField] private Color feedbackColor = new Color(0.3f, 1f, 0.7f);
+    [SerializeField, Min(0.01f)] private float lifetime = 0.65f;
+    [SerializeField, Min(0.001f)] private float width = 0.09f;
 
     /// <summary>在已接受的目標位置建立獨立光圈，目標被技能移除後仍能顯示結果。</summary>
     public static void Show(Transform target)
@@ -14,19 +17,19 @@ public sealed class CardPlayFeedback : MonoBehaviour
         if (target == null) return;
         Shader shader = Shader.Find("Universal Render Pipeline/Unlit") ?? Shader.Find("Sprites/Default");
         if (shader == null) return;
-        var root = new GameObject("Card played successfully");
-        var feedback = root.AddComponent<CardPlayFeedback>();
+        var root = SceneObjectTemplates.Spawn("Card played successfully");
+        var feedback = root.GetComponent<CardPlayFeedback>();
         feedback.startedAt = Time.unscaledTime;
         feedback.logic = Object.FindFirstObjectByType<LogicManager>();
         feedback.material = new Material(shader);
-        Color tint = new Color(0.3f, 1f, 0.7f);
+        Color tint = feedback.feedbackColor;
         feedback.material.SetColor("_BaseColor", tint);
         feedback.material.SetColor("_Color", tint);
-        feedback.ring = root.AddComponent<LineRenderer>();
+        feedback.ring = root.GetComponent<LineRenderer>();
         feedback.ring.sharedMaterial = feedback.material;
         feedback.ring.loop = true;
         feedback.ring.useWorldSpace = false;
-        feedback.ring.widthMultiplier = 0.09f;
+        feedback.ring.widthMultiplier = feedback.width;
         feedback.ring.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
         feedback.ring.receiveShadows = false;
         root.transform.position = target.position;
@@ -56,9 +59,9 @@ public sealed class CardPlayFeedback : MonoBehaviour
     private void Update()
     {
         if (logic != null && logic.IsClassicChess) { Destroy(gameObject); return; }
-        float progress = (Time.unscaledTime - startedAt) / 0.65f;
+        float progress = (Time.unscaledTime - startedAt) / lifetime;
         if (progress >= 1f) { Destroy(gameObject); return; }
-        if (ring != null) ring.widthMultiplier = 0.09f * (1f - progress);
+        if (ring != null) ring.widthMultiplier = width * (1f - progress);
     }
 
     /// <summary>離開場景或動畫結束時釋放專用材質。</summary>

@@ -1,0 +1,67 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: a198e2be6703ca44bbf85c3ac9eb8529, type: 3}
+  m_Name: J02
+  m_EditorClassIdentifier: 
+  definition:
+    id: J02
+    specialRuleId: J02
+    useDataActions: 0
+    playActions: []
+    healthCost: 0
+    minimumTargetHealth: -1
+    maximumTargetHealth: -1
+    ruleNotes: 
+    cardType: 0
+    cardName: "\u76FE\u724C\u5175"
+    targetTypes: 1
+    conditionCost: "\u7121"
+    damageTags: 0
+    randomDamageTypes: 
+    pawnCanPromote: 1
+    cardImage: {fileID: 21300000, guid: b4f11e397e7e73b4a98751401ddce2c8, type: 3}
+    skillImage: {fileID: 0}
+    skillEffectPrefab: {fileID: 0}
+    skillSound: {fileID: 0}
+    description: "\u50F9\u503C-1"
+    tags:
+    - "\u8F49\u8077"
+    - "\u5F37\u5316"
+    conditions: []
+    effects: []
+    statusesToApply:
+    - statusName: "\u76FE\u724C\u5175"
+      sourceCardId: J02
+      kind: 0
+      icon: {fileID: 0}
+      maxCharges: 0
+      initialCharges: 0
+      consumeChargeOnTrigger: 0
+      rechargeTrigger: 4
+      rechargeAmount: 0
+      durationTurns: 0
+      removeOnTrigger: 0
+      removeTrigger: 4
+      effects:
+      - trigger: 0
+        effectType: 9
+        target: 0
+        operation: 0
+        damageTags: 0
+        value: -1
+        duration: 0
+        range: 0
+    animations: []
+    jobChangeDefinition:
+      displayName: 
+      moveRules: []
+  sourceReference: "Chess!.xlsx / \u8F49\u8077 / row 3 (2026-10-09)"

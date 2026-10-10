@@ -6,7 +6,7 @@ using UnityEngine.UI;
 public sealed class CardGlowGraphic : MaskableGraphic
 {
     private const float GlowExtent = 24f;
-    private bool usePreferences = true;
+    [SerializeField] private bool usePreferences = true;
     private int revision = -1;
     private static readonly float[] Distances = { 0f, 3f, 8f, 16f, 24f };
     private static readonly float[] Alphas = { 1f, 0.75f, 0.4f, 0.12f, 0f };
@@ -14,6 +14,13 @@ public sealed class CardGlowGraphic : MaskableGraphic
     /// <summary>在指定 UI 外圍建立不攔截點擊、不參與排版的光暈。</summary>
     public static CardGlowGraphic Create(RectTransform parent, bool usePreferences = true)
     {
+        CardGlowGraphic existing = parent.GetComponentInChildren<CardGlowGraphic>(true);
+        if (existing != null && existing.transform.parent == parent) { existing.usePreferences = usePreferences; return existing; }
+        if (Application.isPlaying)
+        {
+            var copy = SceneObjectTemplates.Spawn("Card glow", parent).GetComponent<CardGlowGraphic>();
+            copy.usePreferences = usePreferences; copy.transform.SetAsFirstSibling(); return copy;
+        }
         var go = new GameObject("Playable card glow", typeof(RectTransform), typeof(CanvasRenderer), typeof(LayoutElement));
         go.transform.SetParent(parent, false);
         go.transform.SetAsFirstSibling();

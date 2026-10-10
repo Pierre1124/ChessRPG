@@ -1,3 +1,28 @@
+PASS: Empty serialized move definition preserves standard movement
+PASS: Null move list preserves standard movement
+PASS: Null-only move list preserves standard movement
+PASS: Explicit move rules still override standard movement
+PASS: None outgoing bonus/weakening policy
+PASS: None vulnerability/reduction policy
+PASS: None final truce override
+PASS: Fire outgoing bonus/weakening policy
+PASS: Fire vulnerability/reduction policy
+PASS: Fire final truce override
+PASS: Electric outgoing bonus/weakening policy
+PASS: Electric vulnerability/reduction policy
+PASS: Electric final truce override
+PASS: Poison outgoing bonus/weakening policy
+PASS: Poison vulnerability/reduction policy
+PASS: Poison final truce override
+PASS: Curse outgoing bonus/weakening policy
+PASS: Curse vulnerability/reduction policy
+PASS: Curse final truce override
+PASS: True outgoing bonus/weakening policy
+PASS: True vulnerability/reduction policy
+PASS: True final truce override
+PASS: Cost outgoing bonus/weakening policy
+PASS: Cost vulnerability/reduction policy
+PASS: Cost final truce override
 PASS: Add preserves fractional value
 PASS: Set replaces prior modifiers
 PASS: Multiply preserves calculation precision

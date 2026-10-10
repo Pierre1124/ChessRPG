@@ -101,6 +101,7 @@ public class CardBattleSystem
     /// </summary>
     public void OnTurnStarted(bool isWhiteTurn)
     {
+        PieceActiveSkill.BeginTurn(logic, isWhiteTurn);
         logic.UpdatePiecesOnBoard();
 
         foreach (Piece piece in logic.piecesOnBoard.ToArray())
@@ -533,7 +534,7 @@ public class CardBattleSystem
             sourceEffect = effect,
             sourceStatus = sourceStatus,
             trigger = sourceTrigger,
-            tags = resolvedTags,
+            tags = sourceCard != null ? sourceCard.ResolveDamageTags(resolvedTags) : resolvedTags,
             visualIcon = visualIcon
         };
         DamageCalculationSequence sequence =
@@ -574,7 +575,8 @@ public class CardBattleSystem
     public void DealEventDamageToPiece(
         CardDefinition card,
         Piece target,
-        int damage
+        int damage,
+        DamageTag? resolvedTags = null
     )
     {
         if (card == null || target == null) return;
@@ -589,7 +591,7 @@ public class CardBattleSystem
             target = target,
             sourceCard = card,
             trigger = CardEffectTrigger.OnApplied,
-            tags = card.damageTags,
+            tags = resolvedTags ?? card.ResolveDamageTags(card.damageTags),
             visualIcon = icon
         };
         DamageCalculationSequence sequence =
@@ -653,6 +655,8 @@ public class CardBattleSystem
             iconPiece = icon == null ? target : null,
             countingIcon = DamageCountingIcon.Heal,
             side = DamageStepSide.Attack,
+            title = card.cardName + "・治療",
+            hasContribution = true, contribution = amount,
             displayText = amount.ToString(),
             worldPosition = position,
             color = new Color(0.45f, 1f, 0.55f, 1f)
@@ -1001,6 +1005,8 @@ public class CardBattleSystem
             usePieceIcon = icon == null && visualSource != null,
             countingIcon = DamageCountingIcon.Cost,
             side = DamageStepSide.Attack,
+            title = "生命代價",
+            hasContribution = true, contribution = cost,
             displayText = cost.ToString(),
             worldPosition = position,
             color = new Color(1f, 0.45f, 0.35f, 1f)
@@ -1059,7 +1065,7 @@ public class CardBattleSystem
     /// </summary>
     private int ResolveHealAmount(bool isWhitePlayer, int amount)
     {
-        int result = Mathf.Max(0, amount);
+        int result = logic.ApplyFieldHealModifiers(isWhitePlayer, Mathf.Max(0, amount), null);
 
         for (int x = 0; x < 8; x++)
         {
@@ -1106,7 +1112,7 @@ public class CardBattleSystem
             }
         }
 
-        return logic.ApplyFieldHealModifiers(isWhitePlayer, result, null);
+        return Mathf.Max(0, result);
     }
 
     /// <summary>
@@ -1120,7 +1126,7 @@ public class CardBattleSystem
     {
         if (sequence == null) return;
 
-        int result = Mathf.Max(0, baseAmount);
+        int result = logic.ApplyFieldHealModifiers(isWhitePlayer, Mathf.Max(0, baseAmount), sequence);
         for (int x = 0; x < 8; x++)
         {
             for (int y = 0; y < 8; y++)
@@ -1156,6 +1162,8 @@ public class CardBattleSystem
                     : sourceCard.cardImage;
                 sequence.steps.Add(new DamageCalculationStep
                 {
+                    modifierPhase = result > previous ? DamageModifierPhase.Increase : DamageModifierPhase.Decrease,
+                    sourceCardId = sourceCard.id,
                     icon = sourceIcon,
                     iconPiece = source,
                     usePieceIcon = sourceIcon == null,
@@ -1163,6 +1171,8 @@ public class CardBattleSystem
                         ? DamageCountingIcon.AntiHeal
                         : DamageCountingIcon.Heal,
                     side = DamageStepSide.Defense,
+                    title = sourceCard.cardName + "・治療修正",
+                    hasContribution = true, contribution = result - previous,
                     displayText = Mathf.Abs(previous - result).ToString(),
                     worldPosition = source.transform.position,
                     color = result < previous
@@ -1172,7 +1182,7 @@ public class CardBattleSystem
             }
         }
 
-        logic.ApplyFieldHealModifiers(isWhitePlayer, result, sequence);
+
     }
 
     /// <summary>
@@ -1197,22 +1207,20 @@ public class CardBattleSystem
                     : Vector3.zero
             };
 
-        int friendlyBonus = GetFriendlyAttackBonusWithSteps(
-            attacker.IsWhite,
-            null,
-            attacker
-        );
-        int attack = GetAttackWithSteps(attacker, friendlyBonus, null);
         sequence.steps.Add(new DamageCalculationStep
         {
             iconPiece = attacker,
             usePieceIcon = true,
             countingIcon = DamageCountingIcon.Attack,
             side = DamageStepSide.Attack,
-            displayText = attack.ToString(),
+            title = "基礎攻擊力",
+            hasContribution = true, contribution = attacker.Attack,
+            displayText = attacker.Attack.ToString(),
             worldPosition = attacker.transform.position,
             color = new Color(0.45f, 1f, 0.55f, 1f)
         });
+        int friendlyBonus = GetFriendlyAttackBonusWithSteps(attacker.IsWhite, sequence, attacker);
+        int attack = GetAttackWithSteps(attacker, friendlyBonus, sequence);
         int attackDamage = ResolveDamageDealtWithSteps(
             attacker,
             attack,
@@ -1220,42 +1228,40 @@ public class CardBattleSystem
             false
         );
 
+        attackDamage = ResolveCardNumericWithSteps(
+            target,
+            CardEffectTrigger.BeforeOwnerTakesDamage,
+            CardEffectType.ModifyDamageTaken,
+            attackDamage,
+            sequence
+        );
+        attackDamage = ResolveStatusNumericWithSteps(
+            target,
+            CardEffectTrigger.BeforeOwnerTakesDamage,
+            CardEffectType.ModifyDamageTaken,
+            attackDamage,
+            sequence
+        );
+        attackDamage = ResolveFriendlyDamageTakenSkillsWithSteps(
+            target,
+            attackDamage,
+            sequence
+        );
+
+        attackDamage = ResolvePlayerDamageTakenWithSteps(sequence.damagedWhitePlayer, attackDamage, sequence);
         int valueDamage = GetEffectiveValue(target);
         sequence.steps.Add(new DamageCalculationStep
         {
             iconPiece = target,
             usePieceIcon = true,
             side = DamageStepSide.Defense,
+            title = "被吃棋子價值",
+            hasContribution = true, contribution = valueDamage,
             displayText = valueDamage.ToString(),
             worldPosition = target.transform.position,
             color = Color.white
         });
-        valueDamage = ResolveCardNumericWithSteps(
-            target,
-            CardEffectTrigger.BeforeOwnerTakesDamage,
-            CardEffectType.ModifyDamageTaken,
-            valueDamage,
-            sequence
-        );
-        valueDamage = ResolveStatusNumericWithSteps(
-            target,
-            CardEffectTrigger.BeforeOwnerTakesDamage,
-            CardEffectType.ModifyDamageTaken,
-            valueDamage,
-            sequence
-        );
-        valueDamage = ResolveFriendlyDamageTakenSkillsWithSteps(
-            target,
-            valueDamage,
-            sequence
-        );
-
-        int finalDamage = Mathf.Max(0, attackDamage + valueDamage);
-        finalDamage = ResolvePlayerDamageTakenWithSteps(
-            sequence.damagedWhitePlayer,
-            finalDamage,
-            sequence
-        );
+        int finalDamage = Mathf.Max(0, attackDamage) + Mathf.Max(0, valueDamage);
         finalDamage = ResolveDamageDealtWithSteps(
             attacker,
             finalDamage,
@@ -1307,6 +1313,9 @@ public class CardBattleSystem
             usePieceIcon = visualIcon == null,
             countingIcon = GetCountingIcon(damageContext.tags),
             side = DamageStepSide.Attack,
+            sourceCardId = damageContext.sourceCard?.id,
+            title = damageContext.sourceCard != null ? damageContext.sourceCard.cardName : "基礎傷害",
+            hasContribution = true, contribution = damage,
             displayText = damage.ToString(),
             worldPosition = source != null
                 ? source.transform.position
@@ -1387,6 +1396,9 @@ public class CardBattleSystem
             usePieceIcon = source != null,
             countingIcon = GetCountingIcon(damageContext.tags),
             side = DamageStepSide.Attack,
+            sourceCardId = damageContext.sourceCard?.id,
+            title = damageContext.sourceCard != null ? damageContext.sourceCard.cardName : "基礎傷害",
+            hasContribution = true, contribution = damage,
             displayText = damage.ToString(),
             worldPosition = source != null
                 ? source.transform.position
@@ -1446,6 +1458,7 @@ public class CardBattleSystem
         DamageCalculationSequence sequence
     )
     {
+        if (sequence?.damageContext != null && CardDamageRules.IsUnmodified(sequence.damageContext.tags)) return baseDamage;
         if (target == null)
         {
             return Mathf.Max(0, baseDamage);
@@ -1495,11 +1508,15 @@ public class CardBattleSystem
 
             sequence.steps.Add(new DamageCalculationStep
             {
-                icon = card.skillImage,
+                modifierPhase = DamageModifierPhase.Decrease,
+                sourceCardId = card.id,
+                icon = card.skillImage != null ? card.skillImage : GetFirstStatusIcon(card),
                 iconPiece = source,
                 usePieceIcon = card.skillImage == null,
                 countingIcon = DamageCountingIcon.Defense,
                 side = DamageStepSide.Defense,
+                title = card.cardName + "・承傷修正",
+                hasContribution = true, contribution = result - previous,
                 displayText = paladinTriggered
                     ? "1"
                     : Mathf.Abs(previous - result).ToString(),
@@ -1520,6 +1537,7 @@ public class CardBattleSystem
         DamageCalculationSequence sequence
     )
     {
+        if (sequence?.damageContext != null && CardDamageRules.IsUnmodified(sequence.damageContext.tags)) return baseDamage;
         int result = Mathf.Max(0, baseDamage);
 
         logic.UpdatePiecesOnBoard();
@@ -1587,6 +1605,8 @@ public class CardBattleSystem
             usePieceIcon = visualIcon == null,
             countingIcon = DamageCountingIcon.Heal,
             side = DamageStepSide.Attack,
+            title = "基礎治療",
+            hasContribution = true, contribution = Mathf.Max(0, baseAmount),
             displayText = Mathf.Max(0, baseAmount).ToString(),
             worldPosition = source != null
                 ? source.transform.position
@@ -1671,8 +1691,16 @@ public class CardBattleSystem
             );
         }
 
-        bonus += logic.GetFieldAttackBonus();
-        return Mathf.Max(0, bonus);
+        int fieldBonus = logic.GetFieldAttackBonus();
+        int previousBonus = bonus;
+        bonus = Mathf.Max(0, bonus + fieldBonus);
+        if (sequence != null && bonus != previousBonus)
+            sequence.steps.Add(new DamageCalculationStep {
+                modifierPhase = bonus > previousBonus ? DamageModifierPhase.Increase : DamageModifierPhase.Decrease,
+                title = "場地攻擊加成", hasContribution = true, contribution = bonus - previousBonus,
+                countingIcon = DamageCountingIcon.Attack, worldPosition = sequence.resultStartWorldPosition
+            });
+        return bonus;
     }
 
     /// <summary>
@@ -1744,14 +1772,14 @@ public class CardBattleSystem
             Sprite statusIcon =
                 GetFirstStatusIcon(source.CardRuntime.definition);
 
-            AddValueStep(
-                sequence,
-                statusIcon,
-                result,
-                source.transform.position,
-                new Color(0.45f, 1f, 0.55f, 1f),
-                statusIcon == null ? source : null
-            );
+            sequence.steps.Add(new DamageCalculationStep {
+                modifierPhase = result > baseBonus ? DamageModifierPhase.Increase : DamageModifierPhase.Decrease,
+                sourceCardId = source.CardRuntime.definition.id,
+                title = source.CardRuntime.definition.cardName + "・攻擊加成",
+                icon = statusIcon, iconPiece = source, usePieceIcon = statusIcon == null,
+                hasContribution = true, contribution = result - baseBonus,
+                countingIcon = DamageCountingIcon.Attack, worldPosition = source.transform.position
+            });
         }
 
         return result;
@@ -1794,7 +1822,7 @@ public class CardBattleSystem
         }
 
         float result = baseAttack;
-        bool showedAttackSource = false;
+
 
         foreach (StatusRuntime status in owner.Statuses)
         {
@@ -1818,20 +1846,15 @@ public class CardBattleSystem
                     continue;
                 }
 
+                float previous = result;
                 result = ApplyValueOperation(
                     result,
                     effect.operation,
                     effect.value
                 );
-                showedAttackSource = true;
-
-                AddValueStep(
-                    sequence,
-                    status.definition.icon,
-                    Mathf.RoundToInt(result) + friendlyBonus,
-                    owner.transform.position,
-                    new Color(0.45f, 1f, 0.55f, 1f)
-                );
+                AddCalculationStep(sequence, status.definition.icon, status.definition.statusName,
+                    effect, Mathf.RoundToInt(previous) + friendlyBonus, Mathf.RoundToInt(result) + friendlyBonus,
+                    owner.transform.position, owner);
             }
         }
 
@@ -1839,17 +1862,6 @@ public class CardBattleSystem
             0,
             Mathf.RoundToInt(result) + friendlyBonus
         );
-
-        if (!showedAttackSource)
-        {
-            AddPieceValueStep(
-                sequence,
-                owner,
-                totalAttack,
-                owner.transform.position,
-                new Color(0.45f, 1f, 0.55f, 1f)
-            );
-        }
 
         return totalAttack;
     }
@@ -1894,6 +1906,7 @@ public class CardBattleSystem
                 continue;
             }
 
+            if (sequence != null && sequence.damageContext != null && !CardDamageRules.AllowsEffect(sequence.damageContext.tags, effect)) continue;
             float previousValue = result;
             result = ApplyValueOperation(result, effect.operation, effect.value);
             owner.CardRuntime.hasTriggered = true;
@@ -1906,7 +1919,8 @@ public class CardBattleSystem
                 previousValue,
                 result,
                 owner.transform.position,
-                owner
+                owner,
+                card.id
             );
         }
 
@@ -1953,7 +1967,8 @@ public class CardBattleSystem
                     continue;
                 }
 
-                float previousValue = result;
+                if (sequence != null && sequence.damageContext != null && !CardDamageRules.AllowsEffect(sequence.damageContext.tags, effect)) continue;
+            float previousValue = result;
                 result = ApplyValueOperation(result, effect.operation, effect.value);
 
                 AddCalculationStep(
@@ -1971,6 +1986,29 @@ public class CardBattleSystem
         return Mathf.Max(0, Mathf.RoundToInt(result));
     }
 
+    /// <summary>將資產定義的友軍增傷加入傷害，不再混入吃子專用攻擊力。</summary>
+    private int ApplyFriendlyDamageBonus(Piece source, int amount, DamageCalculationSequence sequence)
+    {
+        if (sequence?.damageContext == null || !CardDamageRules.AllowsOutgoing(sequence.damageContext.tags)) return amount;
+        if (sequence.damageContext.sourceCard?.cardType == CardType.Field) return amount;
+        bool white = source != null ? source.IsWhite : logic.isWhiteTurn;
+        if (sequence.damageContext.sourceStatus != null && sequence.damageContext.sourceStatus.hasSourcePlayer)
+            white = sequence.damageContext.sourceStatus.sourcePlayerIsWhite;
+        foreach (Piece owner in logic.boardMap)
+        {
+            CardRuntimeState state = owner != null ? owner.CardRuntime : null;
+            CardDefinition card = state != null ? state.definition : null;
+            if (owner == null || owner.IsWhite != white || card == null || card.friendlyDamageBonus <= 0) continue;
+            int bonus = card.friendlyDamageBonus;
+            if (card.damageBonusUsesCaptureStacks) bonus += Mathf.Max(0, state.skillCounterA - state.skillCounterB);
+            amount += bonus;
+            sequence.steps.Add(new DamageCalculationStep { modifierPhase = DamageModifierPhase.Increase, sourceCardId = card.id, title = card.cardName + "・增傷", icon = card.skillImage,
+                iconPiece = owner, hasContribution = true, contribution = bonus,
+                worldPosition = owner.transform.position, countingIcon = DamageCountingIcon.Attack });
+        }
+        return amount;
+    }
+
     /// <summary>
     /// 計算造成傷害的修正並記錄各項來源。
     /// </summary>
@@ -1981,15 +2019,14 @@ public class CardBattleSystem
         bool setOnly
     )
     {
+        if (!setOnly && sequence?.damageContext != null && !CardDamageRules.AllowsOutgoing(sequence.damageContext.tags))
+            return logic.ApplyFieldDamageDealtModifiers(sequence.damageContext, baseValue, sequence);
         if (source == null)
         {
             return setOnly
                 ? ResolveGlobalDamageSetWithSteps(baseValue, sequence)
-                : logic.ApplyFieldDamageDealtModifiers(
-                    sequence != null ? sequence.damageContext : null,
-                    baseValue,
-                    sequence
-                );
+                : ApplyFriendlyDamageBonus(null, logic.ApplyFieldDamageDealtModifiers(
+                    sequence != null ? sequence.damageContext : null, baseValue, sequence), sequence);
         }
 
         float result = baseValue;
@@ -2022,7 +2059,8 @@ public class CardBattleSystem
                     previousValue,
                     result,
                     source.transform.position,
-                    card.skillImage == null ? source : null
+                    source,
+                    card.id
                 );
             }
         }
@@ -2053,7 +2091,7 @@ public class CardBattleSystem
                     previousValue,
                     result,
                     source.transform.position,
-                    status.definition.icon == null ? source : null
+                    source
                 );
             }
         }
@@ -2067,6 +2105,7 @@ public class CardBattleSystem
             );
         }
 
+        if (!setOnly) result = ApplyFriendlyDamageBonus(source, Mathf.RoundToInt(result), sequence);
         int resolved = Mathf.Max(0, Mathf.RoundToInt(result));
         if (resolved != baseValue)
         {
@@ -2118,7 +2157,7 @@ public class CardBattleSystem
                         baseValue,
                         result,
                         owner.transform.position,
-                        status.definition.icon == null ? owner : null
+                        owner
                     );
 
                     int resolved = Mathf.Max(0, Mathf.RoundToInt(result));
@@ -2160,7 +2199,8 @@ public class CardBattleSystem
         float previousValue,
         float result,
         Vector3 worldPosition,
-        Piece iconPiece = null
+        Piece iconPiece = null,
+        string sourceCardId = null
     )
     {
         if (sequence == null || effect == null)
@@ -2194,6 +2234,8 @@ public class CardBattleSystem
 
         sequence.steps.Add(new DamageCalculationStep
         {
+            modifierPhase = result > previousValue ? DamageModifierPhase.Increase : DamageModifierPhase.Decrease,
+            sourceCardId = sourceCardId,
             icon = icon,
             iconPiece = iconPiece,
             usePieceIcon = icon == null && iconPiece != null,
@@ -2201,6 +2243,10 @@ public class CardBattleSystem
             side = isDefense
                 ? DamageStepSide.Defense
                 : isAttack ? DamageStepSide.Attack : DamageStepSide.Neutral,
+            title = title,
+            detail = Mathf.Max(0, Mathf.RoundToInt(previousValue)) + " → " + Mathf.Max(0, Mathf.RoundToInt(result)),
+            hasContribution = true,
+            contribution = Mathf.Max(0, Mathf.RoundToInt(result)) - Mathf.Max(0, Mathf.RoundToInt(previousValue)),
             displayText = displayAmount.ToString(),
             worldPosition = worldPosition,
             color = result > previousValue

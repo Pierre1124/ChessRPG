@@ -1,0 +1,34 @@
+Unified damage panel regression
+PASS: Real capture builder provides signed contributions matching final damage
+PASS: Network payload preserves source and signed change
+PASS: Equipped paladin retains both initial knight moves
+PASS: Equipped paladin retains knight attack map for check detection
+PASS: J02 empty serialized definition does not suppress standard movement
+PASS: J03 empty serialized definition does not suppress standard movement
+PASS: J04 empty serialized definition does not suppress standard movement
+PASS: J05 empty serialized definition does not suppress standard movement
+PASS: J06 empty serialized definition does not suppress standard movement
+PASS: J07 empty serialized definition does not suppress standard movement
+PASS: J08 empty serialized definition does not suppress standard movement
+PASS: J09 empty serialized definition does not suppress standard movement
+PASS: J10 empty serialized definition does not suppress standard movement
+PASS: J11 empty serialized definition does not suppress standard movement
+PASS: J12 empty serialized definition does not suppress standard movement
+PASS: Long spearman retains its explicit custom movement
+PASS: Fireball 5 + weakness vulnerability 1 - paladin 1 = 5 without field reduction
+PASS: Empire adds reduction 1: weakness fireball against protected pawn = 4
+PASS: Volcano + kingdom + paladin + weakness fireball = 5
+PASS: Fireball with volcano, kingdom and adjacent paladin retains final damage 2 and groups 1 increase / 2 reductions
+PASS: Paladin cue anchors to supporting knight rather than damaged pawn
+PASS: Attack visual starts before sources without applying HP
+PASS: Single sequence applies once after increase then simultaneous reductions
+PASS: Damage applies final amount and releases operation lock
+PASS: Completed panel is hidden before next calculation
+PASS: All three target UIs advance together before any HP settlement
+PASS: Mixed batch including zero result invokes every callback exactly once
+PASS: Damage and healing retain separate results and release queue lock
+PASS: Damage animation waits until using-card animation finishes
+PASS: Initial effect starts only after card animation releases
+PASS: Cancellation restores health bar position without drift
+PASS: Classic-mode cancellation hides panel and prevents delayed settlement
+PASS: all damage panel checks completed

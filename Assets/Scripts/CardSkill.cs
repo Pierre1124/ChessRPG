@@ -544,6 +544,7 @@ public sealed class CardSkill
         CardDefinition card = context.sourceCard;
         Piece target = context.owner;
 
+        if (card.useDataActions) return ResolveDataActions(context);
         switch (card.id)
         {
             case "E01":
@@ -575,7 +576,7 @@ public sealed class CardSkill
 
                 context.logic.PayHealthCost(
                     context.logic.isWhiteTurn,
-                    5,
+                    card.healthCost,
                     card,
                     target
                 );
@@ -651,6 +652,31 @@ public sealed class CardSkill
         return true;
     }
 
+    /// <summary>執行資產中的通用效果清單，新增同類卡不必增加卡號分支。</summary>
+    private static bool ResolveDataActions(CardSkillContext context)
+    {
+        CardDefinition card = context.sourceCard;
+        if (card.playActions == null || card.playActions.Count == 0) return false;
+        foreach (CardPlayAction action in card.playActions)
+        {
+            if (action == null) continue;
+            switch (action.type)
+            {
+                case CardPlayActionType.Damage:
+                    context.logic.DealEventDamageToPiece(card, context.owner, action.amount); break;
+                case CardPlayActionType.Heal:
+                    context.logic.HealPlayerFromEvent(card, context.owner, action.amount); break;
+                case CardPlayActionType.ApplyStatuses:
+                    if (!ApplyEventStatus(card, context.owner, context.logic.isWhiteTurn)) return false;
+                    break;
+                case CardPlayActionType.ApplyStatusesToBoard:
+                    if (ApplyEventStatusToBoard(context.logic, card) == 0) return false;
+                    break;
+            }
+        }
+        return true;
+    }
+
     /// <summary>
     /// 將事件卡的狀態套用到指定棋子。
     /// </summary>
@@ -667,13 +693,8 @@ public sealed class CardSkill
         }
 
         target.RemoveStatusesByCardId(card.id);
-        target.ApplyStatus(
-            card.statusesToApply[0],
-            null,
-            false,
-            true,
-            sourcePlayerIsWhite
-        );
+        foreach (StatusDefinition status in card.statusesToApply)
+            if (status != null) target.ApplyStatus(status, null, false, true, sourcePlayerIsWhite);
         return true;
     }
 
@@ -711,6 +732,14 @@ public sealed class CardSkill
     /// </summary>
     public bool CanApply(CardSkillContext context)
     {
+        if (context != null && context.sourceCard != null && context.sourceCard.useDataActions)
+        {
+            if (!IsValid(context)) return false;
+            int health = GetOwnerPlayerHealth(context);
+            CardDefinition card = context.sourceCard;
+            return (card.minimumTargetHealth < 0 || health >= card.minimumTargetHealth) &&
+                (card.maximumTargetHealth < 0 || health <= card.maximumTargetHealth);
+        }
         switch (GetId(context))
         {
             case "E01":
@@ -719,7 +748,7 @@ public sealed class CardSkill
             case "E03":
                 return IsValid(context) &&
                     context.owner.cardDefinition != null &&
-                    GetCurrentPlayerHealth(context) >= 5;
+                    GetCurrentPlayerHealth(context) >= context.sourceCard.healthCost;
 
             case "E10":
                 return IsValid(context) &&
@@ -846,9 +875,9 @@ public sealed class CardSkill
                 context.logic.DealFixedDamageToPiece(
                     context.owner,
                     attacker,
-                    1,
+                    context.sourceCard.lastWillDamage,
                     CardEffectTrigger.OnOwnerDestroyed,
-                    DamageTag.LastWill | DamageTag.Skill
+                    context.sourceCard.lastWillDamageTags
                 );
                 break;
         }
@@ -877,7 +906,10 @@ public sealed class CardSkill
     )
     {
         if (GetId(context) != "J10" || context.owner.CardRuntime == null) return;
-        context.owner.CardRuntime.skillCounterB++;
+        context.owner.CardRuntime.skillCounterB = Mathf.Min(
+            context.owner.CardRuntime.skillCounterA,
+            context.owner.CardRuntime.skillCounterB + 1
+        );
         Debug.Log(
             $"[CardDebug][J10] 我方棋子被吃 | " +
             $"PenaltyStack={context.owner.CardRuntime.skillCounterB}"
@@ -894,7 +926,7 @@ public sealed class CardSkill
     /// </summary>
     public int ModifyHealAmount(CardSkillContext context, int currentValue)
     {
-        return GetId(context) == "J09" ? 0 : currentValue;
+        return context.sourceCard != null && context.sourceCard.blocksHealing ? 0 : currentValue;
     }
 
     /// <summary>
@@ -910,22 +942,7 @@ public sealed class CardSkill
     /// </summary>
     public int ModifyFriendlyAttack(CardSkillContext context, int currentValue)
     {
-        switch (GetId(context))
-        {
-            case "J09":
-                return Mathf.Max(0, currentValue + 2);
-
-            case "J10":
-                if (context == null || context.owner == null ||
-                    context.owner.CardRuntime == null) return currentValue;
-                int bonus = 1 +
-                    context.owner.CardRuntime.skillCounterA -
-                    context.owner.CardRuntime.skillCounterB;
-                return Mathf.Max(0, currentValue + Mathf.Max(0, bonus));
-
-            default:
-                return currentValue;
-        }
+        return currentValue;
     }
 
     /// <summary>
@@ -1003,7 +1020,8 @@ public sealed class CardSkill
             : context.logic.blackHealth >= LogicManager.MaxHealth;
         bool noFriendlyCaptured =
             context.logic.GetCapturedPieceCount(context.owner.IsWhite) == 0;
-        return fullHealth && noFriendlyCaptured;
+        return fullHealth && noFriendlyCaptured && (!context.sourceCard.requiresNoBoardCaptures ||
+            context.logic.GetCapturedPieceCount(!context.owner.IsWhite) == 0);
     }
 
     /// <summary>
@@ -1020,7 +1038,7 @@ public sealed class CardSkill
     private string GetId(CardSkillContext context)
     {
         return context != null && context.sourceCard != null
-            ? context.sourceCard.id
+            ? (string.IsNullOrEmpty(context.sourceCard.specialRuleId) ? context.sourceCard.id : context.sourceCard.specialRuleId)
             : string.Empty;
     }
 

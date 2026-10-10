@@ -7,11 +7,16 @@ using UnityEngine;
 public sealed class CardLibraryValidation : Editor
 {
     private readonly List<string> findings = new List<string>();
+    private bool showLegacy;
 
     /// <summary>保留原本欄位，加入檢查按鈕及可直接閱讀的問題清單。</summary>
     public override void OnInspectorGUI()
     {
-        DrawDefaultInspector();
+        EditorGUILayout.HelpBox("正式卡牌資料位於 Assets/Resources/Cards。請編輯 CardAsset；下方舊欄位僅供初次遷移。", MessageType.Info);
+        if (GUILayout.Button("開啟卡牌資產資料夾"))
+            Selection.activeObject = AssetDatabase.LoadAssetAtPath<UnityEngine.Object>("Assets/Resources/Cards");
+        showLegacy = EditorGUILayout.Foldout(showLegacy, "舊版遷移素材", true);
+        if (showLegacy) DrawDefaultInspector();
         if (!EditorApplication.isPlaying && GUILayout.Button("檢查卡牌定義與素材"))
         {
             findings.Clear();

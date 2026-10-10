@@ -57,10 +57,11 @@ public class CameraController : MonoBehaviour
     /// </summary>
     void Update()
     {
+        if (ControlBindings.SuppressGameplay || InputManager.IsPointerOverUiStatic()) return;
         HandleRotation();
 
         // 空白鍵回到本地玩家所屬視角
-        if (Keyboard.current.spaceKey.wasPressedThisFrame)
+        if (ControlBindings.Read(GameControl.ResetCamera))
         {
             ApplyLocalPlayerPerspective();
         }
@@ -74,7 +75,7 @@ public class CameraController : MonoBehaviour
     /// </summary>
     void HandleRotation()
     {
-        if (Mouse.current.rightButton.isPressed)
+        if (Mouse.current != null && ControlBindings.Read(GameControl.RotateCamera, true))
         {
             Vector2 delta = Mouse.current.delta.ReadValue();
 

@@ -405,13 +405,14 @@ public abstract class Piece : MonoBehaviour
                         )
                     );
 
-                if (skillDefinition != null)
+                if (skillDefinition != null && skillDefinition.HasMoveRules)
                 {
                     return skillDefinition;
                 }
             }
 
-            return cardDefinition.jobChangeDefinition;
+            PieceDefinition definition = cardDefinition.jobChangeDefinition;
+            return definition != null && definition.HasMoveRules ? definition : null;
         }
     }
 

@@ -4,17 +4,84 @@ using UnityEngine;
 using UnityEngine.Events;
 using UnityEngine.UI;
 
-/// <summary>執行時建立一致的設定版面，保留場景中的設定入口與公開按鈕方法。</summary>
+/// <summary>管理場景內可編輯的設定版面；執行期只綁定功能與更新數值。</summary>
 public sealed class SettingsPanelView : MonoBehaviour
 {
-    private TMP_FontAsset font;
-    private RectTransform content;
-    private TMP_Text volumeText, intensityText, confirmationText;
-    private GameObject modal;
-    private Button accept, cancel;
-    private Button[] styles, colors;
-    private Slider intensity;
-    private SettingsUI owner;
+    [SerializeField] private TMP_FontAsset font;
+    [SerializeField] private RectTransform content;
+    [SerializeField] private TMP_Text volumeText, intensityText, confirmationText;
+    [SerializeField] private GameObject modal;
+    [SerializeField] private Button accept, cancel;
+    [SerializeField] private Button[] styles, colors;
+    [SerializeField] private Slider intensity;
+    [SerializeField] private SettingsUI owner;
+    [SerializeField] private GameObject[] pages;
+    [SerializeField] private Button[] tabs, bindingButtons;
+    [SerializeField] private Toggle longPress;
+    [SerializeField] private TMP_Text bindingHint;
+    [SerializeField] private Button[] actionButtons;
+    private static readonly string[] ActionNames = { "恢復預設按鍵", "恢復預設光暈", "套用顯示設定", "重新開始", "返回主選單", "完成並返回" };
+    private GameControl bindingAction;
+    private int captureStartFrame;
+
+    /// <summary>只顯示目前分類，切換時取消未完成的按鍵輸入。</summary>
+    private void SelectPage(int index)
+    {
+        CancelBinding();
+        for (int i = 0; i < pages.Length; i++)
+        { pages[i].SetActive(i == index); tabs[i].GetComponent<Image>().color = i == index ? Accent : Surface; }
+    }
+
+    /// <summary>開始等待下一個按鍵，略過啟動按鈕的當幀輸入。</summary>
+    private void BeginBinding(GameControl action)
+    {
+        bindingAction = action; captureStartFrame = Time.frameCount;
+        ControlBindings.Capturing = true;
+        bindingHint.text = "請按新的按鍵 · Esc 取消 · 不接受重複綁定";
+        bindingButtons[(int)action].GetComponentInChildren<TMP_Text>().text = "等待輸入…";
+    }
+
+    /// <summary>更新所有按鍵欄位。</summary>
+    private void RefreshBindings()
+    {
+        if (bindingButtons == null) return;
+        for (int i = 0; i < bindingButtons.Length; i++)
+            bindingButtons[i].GetComponentInChildren<TMP_Text>().text = ControlBindings.Label((GameControl)i);
+    }
+
+    /// <summary>取消重新綁定並抑制同幀的棋盤快捷操作。</summary>
+    private void CancelBinding()
+    {
+        if (!ControlBindings.Capturing) return;
+        ControlBindings.Capturing = false; ControlBindings.CaptureFinishedFrame = Time.frameCount;
+        RefreshBindings();
+        if (bindingHint != null) bindingHint.text = "已取消按鍵設定";
+    }
+
+    /// <summary>以 Input System 擷取鍵盤或滑鼠輸入，保留原設定直到合法輸入成功。</summary>
+    private void Update()
+    {
+        if (!ControlBindings.Capturing || Time.frameCount == captureStartFrame) return;
+        var keyboard = UnityEngine.InputSystem.Keyboard.current;
+        if (keyboard != null && keyboard.escapeKey.wasPressedThisFrame) { CancelBinding(); return; }
+        int code = 0;
+        if (keyboard != null)
+            foreach (var key in keyboard.allKeys) if (key.wasPressedThisFrame) { code = (int)key.keyCode; break; }
+        var mouse = UnityEngine.InputSystem.Mouse.current;
+        if (mouse != null)
+        {
+            if (mouse.rightButton.wasPressedThisFrame) code = -1;
+            else if (mouse.middleButton.wasPressedThisFrame) code = -2;
+            else if (mouse.backButton.wasPressedThisFrame) code = -3;
+            else if (mouse.forwardButton.wasPressedThisFrame) code = -4;
+        }
+        if (code == 0) return;
+        if (!ControlBindings.TrySet(bindingAction, code, out string reason)) { bindingHint.text = reason + "；請重試或按 Esc"; return; }
+        CancelBinding(); bindingHint.text = "已儲存：" + ControlBindings.ActionName(bindingAction) + " → " + ControlBindings.Label(bindingAction);
+    }
+
+    /// <summary>面板停用時清理輸入擷取狀態。</summary>
+    private void OnDisable() { CancelBinding(); ControlBindings.SettingsOpen = false; }
     private static readonly Color Surface = new Color(0.12f, 0.17f, 0.22f);
     private static readonly Color Accent = new Color(0.14f, 0.48f, 0.42f);
     public bool IsConfirmationVisible { get { return modal != null && modal.activeSelf; } }
@@ -22,6 +89,9 @@ public sealed class SettingsPanelView : MonoBehaviour
     /// <summary>沿用原本字型與解析度下拉模板，替換舊面板內容。</summary>
     public static SettingsPanelView Build(SettingsUI settings)
     {
+        if (Application.isPlaying) throw new InvalidOperationException("設定介面只能在編輯器建立。");
+        var existing = settings.panel.GetComponent<SettingsPanelView>();
+        if (existing != null) return existing;
         TMP_Text oldText = settings.panel.GetComponentInChildren<TMP_Text>(true);
         TMP_Dropdown template = settings.resolutionDropdown;
         var view = settings.panel.AddComponent<SettingsPanelView>();
@@ -56,6 +126,53 @@ public sealed class SettingsPanelView : MonoBehaviour
         return view;
     }
 
+    /// <summary>只連接場景內既有控制項，保留 Inspector 編輯的階層、字型與排版。</summary>
+    public void Initialize(SettingsUI settings)
+    {
+        owner = settings;
+        for (int i = 0; i < tabs.Length; i++) { int n = i; Bind(tabs[i], () => SelectPage(n)); }
+        for (int i = 0; i < bindingButtons.Length; i++) { GameControl action = (GameControl)i; Bind(bindingButtons[i], () => BeginBinding(action)); }
+        for (int i = 0; i < styles.Length; i++)
+        {
+            int n = i;
+            Bind(styles[i], () => { CardGlowSettings.Set(n, CardGlowSettings.Palette, CardGlowSettings.Intensity); RefreshGlow(); });
+            Bind(colors[i], () => { CardGlowSettings.Set(CardGlowSettings.Style, n, CardGlowSettings.Intensity); RefreshGlow(); });
+        }
+        longPress.SetIsOnWithoutNotify(ControlBindings.LongPressEnabled);
+        longPress.onValueChanged.RemoveAllListeners(); longPress.onValueChanged.AddListener(ControlBindings.SetLongPress);
+        intensity.onValueChanged.RemoveAllListeners();
+        intensity.onValueChanged.AddListener(value => { CardGlowSettings.Set(CardGlowSettings.Style, CardGlowSettings.Palette, value); RefreshGlow(); });
+        BindNamed("恢復預設按鍵", () => { ControlBindings.ResetDefaults(); longPress.SetIsOnWithoutNotify(false); RefreshBindings(); bindingHint.text = "已恢復預設按鍵"; });
+        BindNamed("恢復預設光暈", () => { CardGlowSettings.ResetDefaults(); RefreshGlow(); });
+        BindNamed("套用顯示設定", owner.ApplyDisplayChanges);
+        BindNamed("重新開始", owner.ShowRestartConfirmation); BindNamed("返回主選單", owner.ReturnToStartMenu);
+        BindNamed("完成並返回", owner.goBack);
+        RefreshBindings(); RefreshGlow(); SelectPage(0); HideConfirmation();
+    }
+
+    /// <summary>依保留的物件名稱連接一般操作按鈕。</summary>
+    private void BindNamed(string objectName, UnityAction action)
+    {
+        int index = Array.IndexOf(ActionNames, objectName);
+        if (index >= 0 && actionButtons != null && index < actionButtons.Length && actionButtons[index] != null)
+            Bind(actionButtons[index], action);
+    }
+
+    /// <summary>在編輯器保存按鈕引用，之後修改物件名稱不影響功能。</summary>
+    public void BakeActionReferences()
+    {
+        if (Application.isPlaying) return;
+        if (actionButtons != null && actionButtons.Length == ActionNames.Length) return;
+        actionButtons = new Button[ActionNames.Length];
+        for (int i = 0; i < ActionNames.Length; i++)
+            foreach (Button button in content.GetComponentsInChildren<Button>(true))
+                if (button.name == ActionNames[i]) { actionButtons[i] = button; break; }
+    }
+
+    /// <summary>重綁執行期監聽器，不重建按鈕。</summary>
+    private void Bind(Button button, UnityAction action)
+    { button.onClick.RemoveAllListeners(); button.onClick.AddListener(action); }
+
     /// <summary>依可用画面等比例縮放，確保低解析度仍可操作所有設定。</summary>
     private void LateUpdate()
     {
@@ -68,50 +185,87 @@ public sealed class SettingsPanelView : MonoBehaviour
     /// <summary>建立一般設定、光暈選項、預覽與對局操作。</summary>
     private void CreateControls(TMP_Dropdown template)
     {
-        Label(content, "設定", new Vector2(0, 332), new Vector2(900, 52), 36);
-        Label(content, "音效與卡牌外觀即時套用 · 顯示設定需按套用", new Vector2(0, 286), new Vector2(920, 36), 20);
-        Label(content, "一般設定", new Vector2(-245, 232), new Vector2(440, 40), 27);
-        Label(content, "可使用手牌光暈", new Vector2(245, 232), new Vector2(440, 40), 27);
-        owner.soundToggle = ToggleRow("遊戲音效", new Vector2(-245, 174));
-        volumeText = Label(content, "音量", new Vector2(-245, 129), new Vector2(440, 28), 20);
-        owner.volumeSlider = SliderRow(new Vector2(-245, 96), 0f, 1f);
-        owner.cameraRotationToggle = ToggleRow("回合切換時旋轉鏡頭", new Vector2(-245, 32));
-        Label(content, "解析度", new Vector2(-394, -27), new Vector2(130, 42), 22);
+        RectTransform root = content;
+        Label(root, "設定", new Vector2(0, 330), new Vector2(900, 52), 36);
+        string[] categories = { "操作", "音效", "顯示", "卡牌外觀", "對局" };
+        pages = new GameObject[categories.Length]; tabs = new Button[categories.Length];
+        for (int i = 0; i < categories.Length; i++)
+        {
+            int index = i;
+            tabs[i] = MakeButton(root, categories[i], new Vector2(-380 + 190 * i, 265), new Vector2(174, 48), () => SelectPage(index));
+            pages[i] = Rect(categories[i], root, Vector2.zero, new Vector2(950, 470)).gameObject;
+        }
+        content = pages[0].GetComponent<RectTransform>();
+        Label(content, "點擊按鍵欄位，再按新的鍵盤鍵或滑鼠按鍵", new Vector2(0, 185), new Vector2(880, 36), 22);
+        bindingButtons = new Button[3];
+        for (int i = 0; i < 3; i++)
+        {
+            GameControl action = (GameControl)i;
+            Label(content, ControlBindings.ActionName(action), new Vector2(-210, 110 - i * 68), new Vector2(390, 46), 24);
+            bindingButtons[i] = MakeButton(content, "", new Vector2(235, 110 - i * 68), new Vector2(370, 46), () => BeginBinding(action));
+        }
+        longPress = ToggleRow("啟用長按左鍵查看（1.5 秒）", new Vector2(0, -115));
+        longPress.SetIsOnWithoutNotify(ControlBindings.LongPressEnabled);
+        longPress.onValueChanged.AddListener(ControlBindings.SetLongPress);
+        bindingHint = Label(content, "左鍵：選取／移動 · Esc：取消／關閉（保留）", new Vector2(0, -183), new Vector2(920, 48), 20);
+        MakeButton(content, "恢復預設按鍵", new Vector2(0, -250), new Vector2(440, 46), () => {
+            ControlBindings.ResetDefaults(); longPress.SetIsOnWithoutNotify(false); RefreshBindings();
+            bindingHint.text = "已恢復預設按鍵";
+        });
+        RefreshBindings();
+
+        content = pages[1].GetComponent<RectTransform>();
+        owner.soundToggle = ToggleRow("遊戲音效", new Vector2(0, 115));
+        volumeText = Label(content, "音量", new Vector2(0, 30), new Vector2(440, 36), 24);
+        owner.volumeSlider = SliderRow(new Vector2(0, -25), 0f, 1f);
+        Label(content, "音效與音量即時套用", new Vector2(0, -100), new Vector2(800, 40), 20);
+
+        content = pages[2].GetComponent<RectTransform>();
+        owner.cameraRotationToggle = ToggleRow("回合切換時旋轉鏡頭", new Vector2(0, 170));
+        Label(content, "解析度", new Vector2(-180, 95), new Vector2(130, 42), 22);
         if (template != null)
         {
             owner.resolutionDropdown = Instantiate(template, content);
             owner.resolutionDropdown.gameObject.SetActive(true);
             owner.resolutionDropdown.onValueChanged = new TMP_Dropdown.DropdownEvent();
-            SetRect(owner.resolutionDropdown.GetComponent<RectTransform>(), new Vector2(-174, -27), new Vector2(292, 44));
+            SetRect(owner.resolutionDropdown.GetComponent<RectTransform>(), new Vector2(90, 95), new Vector2(292, 44));
             if (owner.resolutionDropdown.captionText != null) owner.resolutionDropdown.captionText.fontSize = 22;
         }
-        owner.windowedToggle = ToggleRow("視窗模式", new Vector2(-245, -90));
-        MakeButton(content, "套用顯示設定", new Vector2(-245, -155), new Vector2(440, 46), owner.ApplyDisplayChanges);
-        Label(content, "套用後有 12 秒確認，逾時自動還原。", new Vector2(-245, -201), new Vector2(440, 40), 18);
+        owner.windowedToggle = ToggleRow("視窗模式", new Vector2(0, 15));
+        MakeButton(content, "套用顯示設定", new Vector2(0, -75), new Vector2(440, 46), owner.ApplyDisplayChanges);
+        Label(content, "套用後有 12 秒確認，逾時自動還原。", new Vector2(0, -140), new Vector2(800, 40), 20);
+
+        content = pages[3].GetComponent<RectTransform>();
+        Label(content, "可使用手牌光暈", new Vector2(-220, 180), new Vector2(460, 40), 26);
         styles = new Button[4]; colors = new Button[4];
         string[] names = { "柔和", "細框", "呼吸", "關閉" };
         string[] palette = { "青綠", "金色", "天藍", "紫色" };
         for (int i = 0; i < 4; i++)
         {
             int index = i;
-            styles[i] = MakeButton(content, names[i], new Vector2(77 + i * 112, 176), new Vector2(104, 44),
+            styles[i] = MakeButton(content, names[i], new Vector2(-395 + i * 112, 105), new Vector2(104, 44),
                 () => { CardGlowSettings.Set(index, CardGlowSettings.Palette, CardGlowSettings.Intensity); RefreshGlow(); });
-            colors[i] = MakeButton(content, palette[i], new Vector2(77 + i * 112, 117), new Vector2(104, 44),
+            colors[i] = MakeButton(content, palette[i], new Vector2(-395 + i * 112, 40), new Vector2(104, 44),
                 () => { CardGlowSettings.Set(CardGlowSettings.Style, index, CardGlowSettings.Intensity); RefreshGlow(); });
         }
-        intensityText = Label(content, "亮度", new Vector2(245, 74), new Vector2(440, 28), 20);
-        intensity = SliderRow(new Vector2(245, 42), 0.2f, 1f);
+        intensityText = Label(content, "亮度", new Vector2(-225, -25), new Vector2(440, 28), 20);
+        intensity = SliderRow(new Vector2(-225, -70), 0.2f, 1f);
         intensity.onValueChanged.AddListener(value => { CardGlowSettings.Set(CardGlowSettings.Style, CardGlowSettings.Palette, value); RefreshGlow(); });
-        RectTransform sample = Rect("Glow preview card", content, new Vector2(245, -119), new Vector2(172, 220));
+        RectTransform sample = Rect("Glow preview card", content, new Vector2(255, 10), new Vector2(172, 220));
         sample.gameObject.AddComponent<Image>().color = Surface;
         Label(sample, "可用卡牌", new Vector2(0, 54), new Vector2(160, 40), 25);
-        Label(sample, "即時外觀預覽\n不影響出牌規則", new Vector2(0, -26), new Vector2(160, 100), 20);
+        Label(sample, "即時外觀預覽", new Vector2(0, -26), new Vector2(160, 100), 20);
         CardGlowGraphic.Create(sample);
-        MakeButton(content, "恢復預設光暈", new Vector2(245, -275), new Vector2(440, 42),
+        MakeButton(content, "恢復預設光暈", new Vector2(-225, -160), new Vector2(440, 42),
             () => { CardGlowSettings.ResetDefaults(); RefreshGlow(); });
-        MakeButton(content, "重新開始", new Vector2(-330, -337), new Vector2(240, 48), owner.ShowRestartConfirmation);
-        MakeButton(content, "返回主選單", new Vector2(-40, -337), new Vector2(240, 48), owner.ReturnToStartMenu);
-        MakeButton(content, "完成並返回", new Vector2(290, -337), new Vector2(320, 48), owner.goBack);
+
+        content = pages[4].GetComponent<RectTransform>();
+        Label(content, "對局操作會再次確認", new Vector2(0, 150), new Vector2(800, 48), 26);
+        MakeButton(content, "重新開始", new Vector2(0, 45), new Vector2(440, 52), owner.ShowRestartConfirmation);
+        MakeButton(content, "返回主選單", new Vector2(0, -45), new Vector2(440, 52), owner.ReturnToStartMenu);
+        content = root;
+        MakeButton(root, "完成並返回", new Vector2(0, -337), new Vector2(440, 48), owner.goBack);
+        SelectPage(0);
     }
 
     /// <summary>同步選取樣式、顏色及亮度，關閉光暈時停用無效控制項。</summary>

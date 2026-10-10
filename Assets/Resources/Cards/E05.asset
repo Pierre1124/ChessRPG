@@ -1,0 +1,78 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: a198e2be6703ca44bbf85c3ac9eb8529, type: 3}
+  m_Name: E05
+  m_EditorClassIdentifier: 
+  definition:
+    id: E05
+    specialRuleId: E05
+    useDataActions: 1
+    playActions:
+    - type: 2
+      amount: 0
+    healthCost: 0
+    friendlyDamageBonus: 0
+    damageBonusUsesCaptureStacks: 0
+    blocksHealing: 0
+    requiresNoBoardCaptures: 0
+    lastWillDamage: 0
+    lastWillDamageTags: 0
+    minimumTargetHealth: -1
+    maximumTargetHealth: -1
+    ruleNotes: "\u5C64\u6578\u8207\u91CD\u65BD\u898F\u5247\u5F85\u78BA\u8A8D\uFF1B\u9077\u79FB\u5148\u4FDD\u7559\u539F\u672C
+      1 \u5C64\u53CA\u5237\u65B0\u6642\u9593\u884C\u70BA\u3002"
+    cardType: 1
+    cardName: "\u8A5B\u5492"
+    targetTypes: -1
+    conditionCost: "\u7121"
+    damageTags: 2568
+    randomDamageTypes: 
+    pawnCanPromote: 0
+    cardImage: {fileID: 21300000, guid: bd5449cb5b28f27438af436a901dce79, type: 3}
+    skillImage: {fileID: 21300000, guid: 059b4e45a3298cf449642b280693add1, type: 3}
+    skillEffectPrefab: {fileID: 0}
+    skillSound: {fileID: 0}
+    description: "\u6307\u5B9A\u4E00\u500B\u68CB\u5B50,\u53D7\u52301\u5C64\u8A5B\u5492,\u6301\u7E8C3\u56DE\u5408"
+    tags:
+    - "\u4E8B\u4EF6"
+    - "\u50B7\u5BB3"
+    - "\u5E72\u64FE"
+    - "\u907A\u8A00"
+    conditions: []
+    effects: []
+    statusesToApply:
+    - statusName: "\u8A5B\u5492"
+      sourceCardId: E05
+      kind: 1
+      icon: {fileID: 21300000, guid: 059b4e45a3298cf449642b280693add1, type: 3}
+      maxCharges: 0
+      initialCharges: 0
+      consumeChargeOnTrigger: 0
+      rechargeTrigger: 4
+      rechargeAmount: 0
+      durationTurns: 3
+      removeOnTrigger: 0
+      removeTrigger: 4
+      effects:
+      - trigger: 8
+        effectType: 4
+        target: 1
+        operation: 0
+        damageTags: 2568
+        value: 1
+        duration: 0
+        range: 0
+    animations: []
+    jobChangeDefinition:
+      displayName: 
+      moveRules: []
+  sourceReference: "Chess!.xlsx / \u4E8B\u4EF6 / row 6 (2026-10-09)"

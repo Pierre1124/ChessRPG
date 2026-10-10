@@ -23,7 +23,8 @@ public enum NetworkGameCommandKind
     PlayCardOnPiece,
     PlayFieldCard,
     RecycleCard,
-    EndTurn
+    EndTurn,
+    UseActiveSkill
 }
 
 [Serializable]
@@ -203,6 +204,12 @@ public class NetworkDamageCalculationSequence
 [Serializable]
 public class NetworkDamageCalculationStep
 {
+    public int modifierPhase;
+    public string sourceCardId;
+    public string title;
+    public string detail;
+    public bool hasContribution;
+    public int contribution;
     public string displayText;
     public Vector3 worldPosition;
     public Color color = Color.white;

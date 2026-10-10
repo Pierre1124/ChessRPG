@@ -1,0 +1,79 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: a198e2be6703ca44bbf85c3ac9eb8529, type: 3}
+  m_Name: J07
+  m_EditorClassIdentifier: 
+  definition:
+    id: J07
+    specialRuleId: J07
+    useDataActions: 0
+    playActions: []
+    healthCost: 0
+    minimumTargetHealth: -1
+    maximumTargetHealth: -1
+    ruleNotes: 
+    cardType: 0
+    cardName: "\u9B54\u6CD5\u5E2B"
+    targetTypes: 2
+    conditionCost: "\u7121"
+    damageTags: 1026
+    randomDamageTypes: 0200000010000000
+    pawnCanPromote: 0
+    cardImage: {fileID: 21300000, guid: fa512bef8bd83da4dae992148c942da0, type: 3}
+    skillImage: {fileID: 21300000, guid: 3b79a9140b9bf254b905e797e18a3ecc, type: 3}
+    skillEffectPrefab: {fileID: 6445826192643391251, guid: 46251c357a645f04c85bb9ee5cde4d37, type: 3}
+    skillSound: {fileID: 8300000, guid: 84f2685d2fb17e04fa3158ab50a9fc65, type: 3}
+    description: "\u56DE\u5408\u958B\u59CB\u6642,\u5C0D\u6575\u65B9\u96A8\u6A5F\u4E00\u500B\u68CB\u5B50\u9020\u62101\u9EDE\u706B\u5C6C\u6027\u6216\u96FB\u5C6C\u6027\u50B7\u5BB3,\u9B54\u6CD5\u5E2B\u79FB\u52D5\u5F8C\u53EF\u91CD\u88FD\u8A72\u6548\u679C"
+    tags:
+    - "\u8F49\u8077"
+    - "\u50B7\u5BB3"
+    conditions: []
+    effects: []
+    statusesToApply:
+    - statusName: "\u9B54\u6CD5\u5E2B"
+      sourceCardId: J07
+      kind: 0
+      icon: {fileID: 21300000, guid: 3b79a9140b9bf254b905e797e18a3ecc, type: 3}
+      maxCharges: 1
+      initialCharges: 1
+      consumeChargeOnTrigger: 1
+      rechargeTrigger: 4
+      rechargeAmount: 1
+      durationTurns: 0
+      removeOnTrigger: 0
+      removeTrigger: 4
+      effects:
+      - trigger: 1
+        effectType: 4
+        target: 6
+        operation: 0
+        damageTags: 1026
+        value: 1
+        duration: 0
+        range: 0
+    animations:
+    - timing: 4
+      recipient: 1
+      animatorTrigger: 
+      animatorState: 
+      effectPrefab: {fileID: 6445826192643391251, guid: 46251c357a645f04c85bb9ee5cde4d37, type: 3}
+      effectPositionOffset: {x: 0, y: 0.5, z: 0}
+      effectRotationEuler: {x: -45, y: 0, z: 0}
+      effectScale: {x: 0.15, y: 0.15, z: 0.15}
+      effectLifetime: 2
+      attachEffectToReceiver: 0
+      sound: {fileID: 8300000, guid: 84f2685d2fb17e04fa3158ab50a9fc65, type: 3}
+      soundVolume: 1
+    jobChangeDefinition:
+      displayName: 
+      moveRules: []
+  sourceReference: "Chess!.xlsx / \u8F49\u8077 / row 8 (2026-10-09)"

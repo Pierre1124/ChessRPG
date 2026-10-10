@@ -60,6 +60,7 @@ public sealed class NetworkInputPolicy
             case 10: schema = "ibsii"; break;
             case 11: schema = "ibss"; break;
             case 15: schema = "ib"; break;
+            case 16: schema = "ibii"; break;
             default: return false;
         }
         if (!(payload is object[] fields) || fields.Length != schema.Length) return false;
@@ -69,7 +70,7 @@ public sealed class NetworkInputPolicy
             if (schema[i] == 'b' && !(fields[i] is bool)) return false;
             if (schema[i] == 's' && !(fields[i] is string value && value.Length <= 8192)) return false;
         }
-        if (code == 2 || code == 9) return IsBoardCell(fields[2], fields[3]);
+        if (code == 2 || code == 9 || code == 16) return IsBoardCell(fields[2], fields[3]);
         if (code == 8) return IsBoardCell(fields[2], fields[3]) && IsBoardCell(fields[4], fields[5]);
         if (code == 10) return IsBoardCell(fields[3], fields[4]);
         return true;

@@ -119,6 +119,7 @@ public class CardHandManager : MonoBehaviour
     private int waitingTextDotCount = 1;
     private bool wasWaitingForPlayer;
     private bool isUsingCardAnimationPlaying;
+    public bool IsUsingCardAnimationPlaying => isUsingCardAnimationPlaying;
     private Transform lastPlayedCardTargetTransform;
 
     public Transform CardGameUiRoot
@@ -2493,43 +2494,8 @@ public class CardHandManager : MonoBehaviour
     /// </summary>
     private GameObject CreateFallbackCardBackTemplate()
     {
-        Transform parent = whiteViewOpponentHandRoot != null
-            ? whiteViewOpponentHandRoot
-            : blackViewOpponentHandRoot;
-        if (parent == null)
-        {
-            return null;
-        }
-
-        GameObject template = new GameObject(
-            "CardBack",
-            typeof(RectTransform),
-            typeof(CanvasRenderer),
-            typeof(Image)
-        );
-        template.transform.SetParent(parent, false);
-
-        RectTransform rectTransform =
-            template.GetComponent<RectTransform>();
-        rectTransform.sizeDelta = new Vector2(80f, 120f);
-
-        Image image = template.GetComponent<Image>();
-        image.raycastTarget = false;
-        image.color = Color.white;
-
-#if UNITY_EDITOR
-        Sprite cardBackSprite =
-            AssetDatabase.LoadAssetAtPath<Sprite>(
-                "Assets/ChessCardImages/CardBack.png"
-            );
-        if (cardBackSprite != null)
-        {
-            image.sprite = cardBackSprite;
-        }
-#endif
-
-        template.SetActive(false);
-        return template;
+        Debug.LogError("請在場景指定對手牌背樣板。", this);
+        return null;
     }
 
     /// <summary>

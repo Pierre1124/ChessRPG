@@ -15,6 +15,7 @@ public enum DamageTag
     Curse = 1 << 3,
     Electric = 1 << 4,
     Cost = 1 << 5,
+    True = 1 << 6,
 
     Capture = 1 << 8,
     Event = 1 << 9,
@@ -100,7 +101,8 @@ public enum CardAnimationTiming
     OnDamageDealt,
     OnHealed,
     OnTurnEnded,
-    OnOwnerCastled
+    OnOwnerCastled,
+    OnDamageModifier
 }
 
 public enum CardAnimationRecipient { Source, Target, Both }
@@ -210,17 +212,35 @@ public class PieceDefinition
 {
     public string displayName;
     public List<PieceMoveRule> moveRules = new List<PieceMoveRule>();
+
+    /// <summary>Unity 會將空的內嵌定義序列化成物件；只有實際走法才取代棋子原走法。</summary>
+    public bool HasMoveRules => moveRules != null && moveRules.Exists(rule => rule != null);
 }
 
 [Serializable]
 public class CardDefinition
 {
     public string id;
+    [Tooltip("特殊規則的識別碼；一般數值卡使用資料效果即可。")]
+    public string specialRuleId;
+    public bool useDataActions;
+    public List<CardPlayAction> playActions = new List<CardPlayAction>();
+    [Min(0)] public int healthCost;
+    [Min(0)] public int friendlyDamageBonus;
+    public bool damageBonusUsesCaptureStacks;
+    public bool blocksHealing;
+    public bool requiresNoBoardCaptures;
+    [Min(0)] public int lastWillDamage;
+    public DamageTag lastWillDamageTags;
+    public int minimumTargetHealth = -1;
+    public int maximumTargetHealth = -1;
+    [TextArea] public string ruleNotes;
     public CardType cardType;
     public string cardName;
     public CardTargetType targetTypes = CardTargetType.All;
     public string conditionCost;
     public DamageTag damageTags;
+    public DamageTag[] randomDamageTypes = new DamageTag[0];
     public bool pawnCanPromote;
     public Sprite cardImage;
     public Sprite skillImage;
@@ -233,6 +253,14 @@ public class CardDefinition
     public List<StatusDefinition> statusesToApply = new List<StatusDefinition>();
     public List<CardAnimationData> animations = new List<CardAnimationData>();
     public PieceDefinition jobChangeDefinition;
+
+    /// <summary>每次觸發只選一種屬性，保留事件／技能等來源標籤。</summary>
+    public DamageTag ResolveDamageTags(DamageTag original)
+    {
+        if (randomDamageTypes == null || randomDamageTypes.Length == 0) return original;
+        const DamageTag elements = DamageTag.Physical | DamageTag.Fire | DamageTag.Poison | DamageTag.Curse | DamageTag.Electric;
+        return (original & ~elements) | randomDamageTypes[UnityEngine.Random.Range(0, randomDamageTypes.Length)];
+    }
 
     public CardSkill skill { get { return CardSkill.Shared; } }
     public CardDefinition Api { get { return this; } }
@@ -320,6 +348,7 @@ public class CardRuntimeState
     public bool hasTriggered;
     public int skillCounterA;
     public int skillCounterB;
+    public bool activeSkillDisabled;
 
     /// <summary>
     /// 建立指定卡牌的執行期狀態。
@@ -583,7 +612,7 @@ public class ChessCard : MonoBehaviour
     {
         get
         {
-            if (cards == null) cards = BuildCards();
+            if (cards == null) cards = CardAssetLibrary.LoadDefinitions();
             return cards;
         }
     }
@@ -643,7 +672,8 @@ public class ChessCard : MonoBehaviour
     /// <summary>
     /// 建立卡牌庫並依既有順序登錄轉職、事件與場地卡。
     /// </summary>
-    private List<CardDefinition> BuildCards()
+    #if UNITY_EDITOR
+    public List<CardDefinition> BuildLegacyCardsForMigration()
     {
         return new List<CardDefinition>
         {
@@ -1277,4 +1307,5 @@ public class ChessCard : MonoBehaviour
             "場地", "變幻"
         );
     }
+    #endif
 }

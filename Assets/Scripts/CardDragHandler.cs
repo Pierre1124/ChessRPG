@@ -33,7 +33,7 @@ public class CardDragHandler : MonoBehaviour,
         handManager = manager;
         cardDefinition = card;
         CardUnavailableHint hoverHint = GetComponent<CardUnavailableHint>();
-        if (hoverHint == null) hoverHint = gameObject.AddComponent<CardUnavailableHint>();
+        if (hoverHint == null) { Debug.LogError("手牌樣板缺少 CardUnavailableHint", this); return; }
         hoverHint.Initialize(manager, card);
         rectTransform = GetComponent<RectTransform>();
         canvasGroup = GetComponent<CanvasGroup>();
@@ -184,7 +184,7 @@ public class CardDragHandler : MonoBehaviour,
     private System.Collections.IEnumerator ReturnToHand()
     {
         if (originalParent == null) { Destroy(gameObject); yield break; }
-        var slot = new GameObject("Returning card slot", typeof(RectTransform), typeof(UnityEngine.UI.LayoutElement));
+        var slot = SceneObjectTemplates.Spawn("Returning card slot");
         returnSlot = slot.GetComponent<RectTransform>();
         returnSlot.SetParent(originalParent, false);
         returnSlot.SetSiblingIndex(originalSiblingIndex);

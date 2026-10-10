@@ -1,0 +1,67 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: a198e2be6703ca44bbf85c3ac9eb8529, type: 3}
+  m_Name: J08
+  m_EditorClassIdentifier: 
+  definition:
+    id: J08
+    specialRuleId: J08
+    useDataActions: 0
+    playActions: []
+    healthCost: 0
+    minimumTargetHealth: -1
+    maximumTargetHealth: -1
+    ruleNotes: 
+    cardType: 0
+    cardName: "\u8056\u8077\u8005"
+    targetTypes: 2
+    conditionCost: "\u7121"
+    damageTags: 0
+    randomDamageTypes: 
+    pawnCanPromote: 0
+    cardImage: {fileID: 21300000, guid: b402b8272ef602e4aa561c9c02b390c3, type: 3}
+    skillImage: {fileID: 21300000, guid: 0551e46be7822a04c9ba2728154dc1cb, type: 3}
+    skillEffectPrefab: {fileID: 0}
+    skillSound: {fileID: 0}
+    description: "\u56DE\u5408\u958B\u59CB\u6642,\u6211\u65B9\u6062\u5FA91\u9EDEHP,\u8056\u8077\u8005\u79FB\u52D5\u5F8C\u53EF\u91CD\u88FD\u8A72\u6548\u679C"
+    tags:
+    - "\u8F49\u8077"
+    - "\u6062\u5FA9"
+    conditions: []
+    effects: []
+    statusesToApply:
+    - statusName: "\u8056\u8077\u8005"
+      sourceCardId: J08
+      kind: 0
+      icon: {fileID: 21300000, guid: 0551e46be7822a04c9ba2728154dc1cb, type: 3}
+      maxCharges: 1
+      initialCharges: 1
+      consumeChargeOnTrigger: 1
+      rechargeTrigger: 4
+      rechargeAmount: 1
+      durationTurns: 0
+      removeOnTrigger: 0
+      removeTrigger: 4
+      effects:
+      - trigger: 1
+        effectType: 3
+        target: 1
+        operation: 0
+        damageTags: 0
+        value: 1
+        duration: 0
+        range: 0
+    animations: []
+    jobChangeDefinition:
+      displayName: 
+      moveRules: []
+  sourceReference: "Chess!.xlsx / \u8F49\u8077 / row 9 (2026-10-09)"

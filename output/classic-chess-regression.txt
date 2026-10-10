@@ -30,6 +30,9 @@ PASS: Advanced field requires two empty slots
 PASS: Advanced field explains insufficient space
 PASS: Preview leaves pieces and hand unchanged
 PASS: Live card renderer shows playable glow
+PASS: Runtime card retains Prefab typography: CardLord/CardLordText
+PASS: Runtime card retains Prefab typography: CardTagGroup/CardTag/CardLordText
+PASS: Runtime card retains Prefab typography: CardName/CardNameText
 PASS: Glow has required CanvasRenderer before clipping
 PASS: Card clipping includes the full outer glow
 PASS: Card remains visible after glow clipping and canvas rebuild

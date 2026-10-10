@@ -43,8 +43,14 @@ public enum DamageStepSide
     Defense
 }
 
+public enum DamageModifierPhase { None, Increase, Decrease }
+
 public class DamageCalculationStep
 {
+    public DamageModifierPhase modifierPhase;
+    public string sourceCardId;
+    public bool hasContribution;
+    public int contribution;
     public Sprite icon;
     public Piece iconPiece;
     public string title;
@@ -67,6 +73,7 @@ public class DamageCalculationVisualizer : MonoBehaviour
     public void DisableForClassicChess()
     {
         StopAllCoroutines();
+        RestoreHealthPositions();
         HideDamageCalcSteps();
         HideDamageResultFlies();
         HidePrebuiltObjects();
@@ -87,6 +94,7 @@ public class DamageCalculationVisualizer : MonoBehaviour
     [SerializeField] private RectTransform damageResultFly;
     [SerializeField] private Image damageResultFlyBackground;
     [SerializeField] private TMP_Text damageResultFlyText;
+    [SerializeField] private TMP_FontAsset resolutionFont;
 
     [Header("Counting Icons")]
     [SerializeField] private Sprite attackIcon;
@@ -105,6 +113,17 @@ public class DamageCalculationVisualizer : MonoBehaviour
     [SerializeField, Min(0.05f)] private float flyDuration = 0.55f;
     [SerializeField, Min(0.05f)] private float clashDuration = 0.4f;
 
+    [Header("Final result and impact")]
+    [SerializeField, Min(0f)] private float resultHoldDuration = 0.35f;
+    [SerializeField] private Vector2 resultOffset = new Vector2(0f, 80f);
+    [SerializeField, Min(1f)] private float flightAcceleration = 2.5f;
+    [SerializeField, Min(0.01f)] private float healthShakeDuration = 0.25f;
+    [SerializeField, Min(0f)] private float healthShakeDistance = 8f;
+    private readonly Dictionary<Transform, Vector3> healthOrigins = new Dictionary<Transform, Vector3>();
+    private readonly Dictionary<Transform, Coroutine> healthShakes = new Dictionary<Transform, Coroutine>();
+    public DamageModifierPhase CurrentModifierPhase { get; private set; }
+    public int VisibleModifierCount { get; private set; }
+
     [Header("Layout")]
     [SerializeField] private Vector2 worldOffset = new Vector2(0f, 80f);
     [SerializeField] private Vector2 repeatedStepOffset = new Vector2(0f, 44f);
@@ -119,6 +138,9 @@ public class DamageCalculationVisualizer : MonoBehaviour
         new List<DamageStepLayout>();
     private readonly List<DamageResultFlyView> damageResultFlyPool =
         new List<DamageResultFlyView>();
+    private readonly List<DamageResolutionPanel> resolutionPanels = new List<DamageResolutionPanel>();
+    [SerializeField] private Font resolutionSourceFont;
+    private TMP_FontAsset runtimeResolutionFont;
 
     /// <summary>
     /// 補齊傷害演出所需的 UI 引用及數值圖示。
@@ -293,137 +315,166 @@ public class DamageCalculationVisualizer : MonoBehaviour
             yield break;
         }
 
-        activeStepViews.Clear();
-        Dictionary<Vector3Int, int> stackCounts =
-            new Dictionary<Vector3Int, int>();
-
-        for (int i = 0; i < sequence.steps.Count; i++)
-        {
-            DamageCalculationStep step = sequence.steps[i];
-            RectTransform view = GetOrCreateStepView(i);
-            Vector3Int stackKey = Vector3Int.RoundToInt(step.worldPosition * 10f);
-            stackCounts.TryGetValue(stackKey, out int stackIndex);
-            stackCounts[stackKey] = stackIndex + 1;
-
-            ShowDamageCalcStep(view, step, sequence, stackIndex);
-            activeStepViews.Add(view);
-            yield return new WaitForSecondsRealtime(stepDuration);
-        }
-
-        if (sequence.isCapture && sequence.attacker != null && sequence.target != null)
-        {
-            yield return PlayClash(sequence, onCaptureVisual);
-        }
-        else
-        {
-            onCaptureVisual?.Invoke();
-            yield return new WaitForSecondsRealtime(captureDelay);
-        }
-
-        HideDamageCalcSteps();
-
-        if (sequence.finalDamage <= 0)
-        {
-            HideDamageResultFly();
-            onDamageApplied?.Invoke();
-            yield break;
-        }
-
-        ShowDamageResultFly(sequence);
-        yield return FlyToHealthTarget(sequence);
-        HideDamageResultFly();
-
-        onDamageApplied?.Invoke();
+        yield return PlayBatchRoutine(new[] { sequence }, new[] { onCaptureVisual }, new[] { onDamageApplied }, null);
     }
 
-    /// <summary>
-    /// 依序呈現批次計算步驟及結果，完成後執行回呼。
-    /// </summary>
+    /// <summary>每個目標同時播放自己的計算步驟，所有目標完成後才結算血量。</summary>
     private IEnumerator PlayBatchRoutine(
         IReadOnlyList<DamageCalculationSequence> sequences,
         IReadOnlyList<Action> onCaptureVisuals,
         IReadOnlyList<Action> onDamageApplied,
-        Action onComplete
-    )
+        Action onComplete)
     {
         if (sequences == null || sequences.Count == 0)
         {
-            InvokeAll(onCaptureVisuals);
-            InvokeAll(onDamageApplied);
-            onComplete?.Invoke();
+            InvokeAll(onCaptureVisuals); InvokeAll(onDamageApplied); onComplete?.Invoke();
             yield break;
         }
-
-        activeStepViews.Clear();
-        Dictionary<Vector3Int, int> stackCounts =
-            new Dictionary<Vector3Int, int>();
-        int stepViewIndex = 0;
-        bool showImmediately = sequences.Count > 6;
-
-        for (int sequenceIndex = 0; sequenceIndex < sequences.Count; sequenceIndex++)
-        {
-            DamageCalculationSequence sequence = sequences[sequenceIndex];
-            if (sequence == null)
-            {
-                continue;
-            }
-
-            for (int stepIndex = 0; stepIndex < sequence.steps.Count; stepIndex++)
-            {
-                DamageCalculationStep step = sequence.steps[stepIndex];
-                RectTransform view = GetOrCreateStepView(stepViewIndex);
-                Vector3Int stackKey =
-                    Vector3Int.RoundToInt(step.worldPosition * 10f);
-                stackCounts.TryGetValue(stackKey, out int stackIndex);
-                stackCounts[stackKey] = stackIndex + 1;
-
-                ShowDamageCalcStep(view, step, sequence, stackIndex);
-                activeStepViews.Add(view);
-                stepViewIndex++;
-
-                if (!showImmediately)
-                {
-                    yield return new WaitForSecondsRealtime(stepDuration);
-                }
-            }
-        }
-
-        if (showImmediately)
-        {
-            yield return new WaitForSecondsRealtime(stepDuration);
-        }
-
-        InvokeAll(onCaptureVisuals);
-        yield return new WaitForSecondsRealtime(captureDelay);
         HideDamageCalcSteps();
-
-        List<DamageCalculationSequence> flyingSequences =
-            new List<DamageCalculationSequence>();
-        List<DamageResultFlyView> flyingViews =
-            new List<DamageResultFlyView>();
-
+        // 出牌展示與傷害佇列可同時啟動；先等既有出牌動畫完成再播來源階段。
+        CardHandManager hand = FindFirstObjectByType<CardHandManager>();
+        while (hand != null && hand.isActiveAndEnabled && hand.IsUsingCardAnimationPlaying) yield return null;
+        InvokeAll(onCaptureVisuals);
+        float initialDuration = captureDelay;
+        foreach (var sequence in sequences)
+        {
+            CardDefinition sourceCard = sequence?.damageContext?.sourceCard;
+            if (sourceCard == null && sequence != null)
+                foreach (var step in sequence.steps)
+                    if (step != null && step.modifierPhase == DamageModifierPhase.None && !string.IsNullOrEmpty(step.sourceCardId))
+                    { sourceCard = imageDatabase.GetCard(step.sourceCardId); break; }
+            if (sourceCard == null) continue;
+            foreach (var animation in sourceCard.animations)
+                if (animation != null && animation.timing == CardAnimationTiming.OnDamageDealt)
+                    initialDuration = Mathf.Max(initialDuration, animation.effectLifetime);
+        }
+        yield return new WaitForSecondsRealtime(initialDuration);
+        yield return PlayModifierPhase(sequences, DamageModifierPhase.Increase);
+        yield return PlayModifierPhase(sequences, DamageModifierPhase.Decrease);
+        var flyingSequences = new List<DamageCalculationSequence>();
+        var flyingViews = new List<DamageResultFlyView>();
         for (int i = 0; i < sequences.Count; i++)
         {
             DamageCalculationSequence sequence = sequences[i];
-            if (sequence == null || sequence.finalDamage <= 0)
-            {
-                continue;
-            }
-
+            if (sequence == null) continue;
             DamageResultFlyView view = GetOrCreateResultFlyView(flyingViews.Count);
             ShowDamageResultFly(sequence, view);
-            flyingSequences.Add(sequence);
-            flyingViews.Add(view);
+            flyingSequences.Add(sequence); flyingViews.Add(view);
         }
-
         if (flyingViews.Count > 0)
         {
-            yield return FlyBatchToHealthTargets(flyingSequences, flyingViews);
+            yield return new WaitForSecondsRealtime(resultHoldDuration);
+            // 歸零仍顯示最終 0，但不飛向血條或產生受傷震動。
+            for (int i = flyingViews.Count - 1; i >= 0; i--)
+                if (flyingSequences[i].finalDamage <= 0)
+                { flyingViews[i].root.gameObject.SetActive(false); flyingViews.RemoveAt(i); flyingSequences.RemoveAt(i); }
+            if (flyingViews.Count > 0) yield return FlyBatchToHealthTargets(flyingSequences, flyingViews);
         }
-
         HideDamageResultFlies();
+        var impacted = new HashSet<Transform>();
+        foreach (var sequence in flyingSequences)
+        {
+            Transform health = sequence.damagedWhitePlayer ? whiteHealthTarget : blackHealthTarget;
+            if (!sequence.isHealing && health != null && impacted.Add(health)) StartHealthShake(health);
+        }
         InvokeAll(onDamageApplied);
         onComplete?.Invoke();
+    }
+
+    /// <summary>同一階段所有來源在同一幀啟動，等待最長的來源演出後一起收起。</summary>
+    private IEnumerator PlayModifierPhase(IReadOnlyList<DamageCalculationSequence> sequences, DamageModifierPhase phase)
+    {
+        CurrentModifierPhase = phase;
+        var shown = new HashSet<string>();
+        var positions = new Dictionary<Vector3, int>();
+        float duration = Mathf.Max(0.05f, stepDuration);
+        foreach (var sequence in sequences)
+        {
+            if (sequence == null) continue;
+            foreach (var step in sequence.steps)
+            {
+                if (step == null || step.modifierPhase != phase) continue;
+                string key = step.sourceCardId + "|" + step.title + "|" + step.worldPosition.ToString("R");
+                if (!shown.Add(key)) continue;
+                positions.TryGetValue(step.worldPosition, out int stack);
+                positions[step.worldPosition] = stack + 1;
+                CardDefinition card = string.IsNullOrEmpty(step.sourceCardId) ? null : imageDatabase.GetCard(step.sourceCardId);
+                Sprite sprite = step.icon;
+                if (sprite == null && card != null) sprite = card.skillImage != null ? card.skillImage : card.cardImage;
+                if (sprite == null) sprite = ResolveIcon(step, sequence) ?? GetCountingIcon(step.countingIcon);
+                GetResolutionPanel(VisibleModifierCount++).ShowSource(step, sprite, stack);
+                if (card == null) continue;
+                CardAnimationEvents.Play(step.iconPiece, sequence.target, card, CardAnimationTiming.OnDamageModifier);
+                foreach (var animation in card.animations)
+                    if (animation != null && animation.timing == CardAnimationTiming.OnDamageModifier)
+                        duration = Mathf.Max(duration, animation.effectLifetime);
+            }
+        }
+        if (VisibleModifierCount > 0) yield return new WaitForSecondsRealtime(duration);
+        HideResolutionPanels(); VisibleModifierCount = 0;
+        CurrentModifierPhase = DamageModifierPhase.None;
+    }
+
+    /// <summary>同一血條重複受擊時重啟震動，先還原原始位置避免漂移。</summary>
+    private void StartHealthShake(Transform health)
+    {
+        if (healthShakes.TryGetValue(health, out Coroutine previous)) StopCoroutine(previous);
+        if (!healthOrigins.ContainsKey(health)) healthOrigins.Add(health, health.localPosition);
+        health.localPosition = healthOrigins[health];
+        healthShakes[health] = StartCoroutine(ShakeHealth(health));
+    }
+
+    /// <summary>命中時衰減震動；正常完成或取消均還原血條座標。</summary>
+    private IEnumerator ShakeHealth(Transform health)
+    {
+        Vector3 origin = healthOrigins[health];
+        float elapsed = 0f;
+        while (elapsed < healthShakeDuration && health != null)
+        {
+            elapsed += Time.unscaledDeltaTime;
+            float t = Mathf.Clamp01(elapsed / Mathf.Max(0.01f, healthShakeDuration));
+            health.localPosition = origin + Vector3.right * Mathf.Sin(t * Mathf.PI * 8f) * (1f - t) * healthShakeDistance;
+            yield return null;
+        }
+        if (health != null) health.localPosition = origin;
+        healthOrigins.Remove(health); healthShakes.Remove(health);
+    }
+
+    /// <summary>取消時還原所有正在震動的血條。</summary>
+    private void RestoreHealthPositions()
+    {
+        foreach (var pair in healthOrigins) if (pair.Key != null) pair.Key.localPosition = pair.Value;
+        healthOrigins.Clear(); healthShakes.Clear(); VisibleModifierCount = 0; CurrentModifierPhase = DamageModifierPhase.None;
+    }
+
+    /// <summary>重用各目標的浮動框，中文字型由專案字型動態產生。</summary>
+    private DamageResolutionPanel GetResolutionPanel(int index)
+    {
+        // 傷害字型由場景樣板指定，不再於執行期建立另一套字型。
+        while (resolutionPanels.Count <= index)
+            resolutionPanels.Add(DamageResolutionPanel.Create(runtimeResolutionFont != null ? runtimeResolutionFont : resolutionFont));
+        return resolutionPanels[index];
+    }
+
+    /// <summary>隱藏所有目標的浮動 UI。</summary>
+    private void HideResolutionPanels()
+    {
+        foreach (DamageResolutionPanel panel in resolutionPanels) if (panel != null) panel.Hide();
+    }
+
+    /// <summary>停用時停止演出及隱藏外部 Canvas，避免延遲結算。</summary>
+    private void OnDisable() { StopAllCoroutines(); RestoreHealthPositions(); HideDamageCalcSteps(); HideDamageResultFlies(); HideResolutionPanels(); }
+
+    /// <summary>離開場景時回收浮動 UI 及動態中文字型。</summary>
+    private void OnDestroy()
+    {
+        foreach (DamageResolutionPanel panel in resolutionPanels) if (panel != null) Destroy(panel.gameObject);
+        if (runtimeResolutionFont != null)
+        {
+            foreach (Texture2D texture in runtimeResolutionFont.atlasTextures) if (texture != null) Destroy(texture);
+            Destroy(runtimeResolutionFont.material);
+            Destroy(runtimeResolutionFont);
+        }
     }
 
     /// <summary>
@@ -456,8 +507,11 @@ public class DamageCalculationVisualizer : MonoBehaviour
 
         if (icon != null)
         {
-            icon.sprite = null;
-            icon.gameObject.SetActive(false);
+            Sprite sprite = ResolveIcon(step, sequence);
+            CardDefinition card = string.IsNullOrEmpty(step.sourceCardId) ? null : imageDatabase.GetCard(step.sourceCardId);
+            if (sprite == null && card != null) sprite = card.skillImage != null ? card.skillImage : card.cardImage;
+            icon.sprite = sprite; icon.preserveAspect = true;
+            icon.gameObject.SetActive(sprite != null);
         }
 
         if (countingIcon != null)
@@ -472,7 +526,7 @@ public class DamageCalculationVisualizer : MonoBehaviour
         if (text != null)
         {
             text.color = step.color;
-            text.text = ResolveDisplayText(step);
+            text.text = DamageResolutionPanel.SourceTitle(step);
         }
 
         view.gameObject.SetActive(true);
@@ -611,9 +665,7 @@ public class DamageCalculationVisualizer : MonoBehaviour
             return;
         }
 
-        view.root.position =
-            WorldToCanvasPosition(sequence.resultStartWorldPosition) +
-            (Vector3)worldOffset;
+        view.root.position = WorldToCanvasPosition(sequence.resultStartWorldPosition) + (Vector3)resultOffset;
 
         if (view.canvasGroup != null)
         {
@@ -686,7 +738,7 @@ public class DamageCalculationVisualizer : MonoBehaviour
         {
             elapsed += Time.unscaledDeltaTime;
             float t = Mathf.Clamp01(elapsed / flyDuration);
-            float eased = 1f - Mathf.Pow(1f - t, 3f);
+            float eased = Mathf.Pow(t, Mathf.Max(1f, flightAcceleration));
 
             view.root.position = Vector3.Lerp(start, end, eased);
             if (group != null)
@@ -719,7 +771,7 @@ public class DamageCalculationVisualizer : MonoBehaviour
         {
             elapsed += Time.unscaledDeltaTime;
             float t = Mathf.Clamp01(elapsed / flyDuration);
-            float eased = 1f - Mathf.Pow(1f - t, 3f);
+            float eased = Mathf.Pow(t, Mathf.Max(1f, flightAcceleration));
             float alpha = 1f - Mathf.Clamp01((t - 0.75f) / 0.25f);
 
             for (int i = 0; i < views.Count; i++)

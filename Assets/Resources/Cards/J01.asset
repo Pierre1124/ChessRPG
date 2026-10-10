@@ -1,0 +1,76 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: a198e2be6703ca44bbf85c3ac9eb8529, type: 3}
+  m_Name: J01
+  m_EditorClassIdentifier: 
+  definition:
+    id: J01
+    specialRuleId: J01
+    useDataActions: 0
+    playActions: []
+    healthCost: 0
+    minimumTargetHealth: -1
+    maximumTargetHealth: -1
+    ruleNotes: 
+    cardType: 0
+    cardName: "\u9577\u69CD\u5175"
+    targetTypes: 1
+    conditionCost: "\u7121"
+    damageTags: 0
+    randomDamageTypes: 
+    pawnCanPromote: 1
+    cardImage: {fileID: 21300000, guid: 33b5c6dc56fd15646a08288f99fd0659, type: 3}
+    skillImage: {fileID: 0}
+    skillEffectPrefab: {fileID: 0}
+    skillSound: {fileID: 0}
+    description: "\u5403\u5B50\u65B9\u5F0F\u8B8A\u70BA\u524D\u65B9\u7B2C\u4E8C\u683C
+      \u79FB\u52D5\u65B9\u5F0F\u70BA\u524D\u65B9\u4E00\u683C"
+    tags:
+    - "\u8F49\u8077"
+    - "\u8B8A\u5E7B"
+    conditions: []
+    effects: []
+    statusesToApply:
+    - statusName: "\u9577\u69CD\u5175"
+      sourceCardId: J01
+      kind: 0
+      icon: {fileID: 0}
+      maxCharges: 0
+      initialCharges: 0
+      consumeChargeOnTrigger: 0
+      rechargeTrigger: 4
+      rechargeAmount: 0
+      durationTurns: 0
+      removeOnTrigger: 0
+      removeTrigger: 4
+      effects: []
+    animations: []
+    jobChangeDefinition:
+      displayName: "\u9577\u69CD\u5175"
+      moveRules:
+      - label: Capture Forward 2
+        mode: 0
+        direction: {x: 0, y: 1}
+        distance: 2
+        dependsOnFacing: 1
+        canMoveToEmpty: 0
+        canCaptureEnemy: 1
+        canJump: 0
+      - label: Move Forward 1
+        mode: 0
+        direction: {x: 0, y: 1}
+        distance: 1
+        dependsOnFacing: 1
+        canMoveToEmpty: 1
+        canCaptureEnemy: 0
+        canJump: 0
+  sourceReference: "Chess!.xlsx / \u8F49\u8077 / row 2 (2026-10-09)"

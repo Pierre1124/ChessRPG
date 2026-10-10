@@ -47,25 +47,7 @@ public class StartMenuController : MonoBehaviour
     /// <summary>顯示選單操作結果；未綁定文字時在 Canvas 下建立不攔截點擊的提示。</summary>
     public void ShowStatusMessage(string message)
     {
-        if (statusText == null)
-        {
-            Canvas canvas = GetComponentInParent<Canvas>();
-            if (canvas == null) canvas = FindFirstObjectByType<Canvas>();
-            if (canvas == null) return;
-            var label = new GameObject("MenuStatus", typeof(RectTransform), typeof(TextMeshProUGUI));
-            label.transform.SetParent(canvas.transform, false);
-            statusText = label.GetComponent<TextMeshProUGUI>();
-            if (deckCountText != null) statusText.font = deckCountText.font;
-            statusText.fontSize = 24;
-            statusText.color = Color.white;
-            statusText.alignment = TextAlignmentOptions.Center;
-            statusText.raycastTarget = false;
-            statusText.rectTransform.anchorMin = new Vector2(0.1f, 0f);
-            statusText.rectTransform.anchorMax = new Vector2(0.9f, 0f);
-            statusText.rectTransform.pivot = new Vector2(0.5f, 0f);
-            statusText.rectTransform.anchoredPosition = new Vector2(0f, 20f);
-            statusText.rectTransform.sizeDelta = new Vector2(0f, 90f);
-        }
+        if (statusText == null) { Debug.LogError("選單缺少場景狀態文字", this); return; }
         if (statusRoutine != null) StopCoroutine(statusRoutine);
         statusText.text = message;
         statusText.gameObject.SetActive(true);

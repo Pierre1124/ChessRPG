@@ -1,0 +1,11 @@
+PASS Default inspection and rotation use distinct inputs
+PASS Left-click inspection defaults off
+PASS Duplicate binding rejected
+PASS Escape remains reserved
+PASS Rebinding writes persistent preference
+PASS Settings suppress gameplay shortcuts
+PASS Category is accessible: 操作
+PASS Category is accessible: 音效
+PASS Category is accessible: 顯示
+PASS Category is accessible: 卡牌外觀
+PASS Category is accessible: 對局

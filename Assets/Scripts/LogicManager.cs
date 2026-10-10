@@ -669,6 +669,7 @@ public class LogicManager : MonoBehaviour
 
         if (turnChanged)
         {
+            PieceActiveSkill.BeginTurn(this, isWhiteTurn);
             OperateLogUI.BeginTurn(isWhiteTurn);
         }
 
@@ -968,6 +969,8 @@ public class LogicManager : MonoBehaviour
             usePieceIcon = false,
             countingIcon = DamageCountingIcon.Heal,
             side = DamageStepSide.Attack,
+            title = "護城河・治療",
+            hasContribution = true, contribution = resolvedHeal,
             displayText = resolvedHeal.ToString(),
             worldPosition = sourcePosition,
             color = new Color(0.45f, 1f, 0.55f, 1f)
@@ -1082,6 +1085,8 @@ public class LogicManager : MonoBehaviour
             usePieceIcon = powerGridStatus == null ||
                 powerGridStatus.icon == null,
             side = DamageStepSide.Attack,
+            title = "電網・傷害",
+            hasContribution = true, contribution = resolvedDamage,
             displayText = resolvedDamage.ToString(),
             worldPosition = sourcePosition,
             color = new Color(1f, 0.45f, 0.9f, 1f)
@@ -1158,6 +1163,7 @@ public class LogicManager : MonoBehaviour
 
         foreach (Piece piece in piecesOnBoard)
         {
+            if (piece.CardRuntime != null && piece.CardRuntime.activeSkillDisabled) continue;
             BoardFieldEffectType type = GetBoardFieldEffectType(piece);
 
             if (type == BoardFieldEffectType.Moat)
@@ -1841,6 +1847,12 @@ public class LogicManager : MonoBehaviour
                     new NetworkDamageCalculationStep
                     {
                         displayText = step.displayText,
+                        title = step.title,
+                        detail = step.detail,
+                        hasContribution = step.hasContribution,
+                        contribution = step.contribution,
+                        modifierPhase = (int)step.modifierPhase,
+                        sourceCardId = step.sourceCardId,
                         worldPosition = step.worldPosition,
                         color = step.color,
                         usePieceIcon = step.usePieceIcon,
@@ -1923,6 +1935,13 @@ public class LogicManager : MonoBehaviour
                 new DamageCalculationStep
                 {
                     displayText = networkStep.displayText,
+                    title = networkStep.title,
+                    detail = networkStep.detail,
+                    hasContribution = networkStep.hasContribution,
+                    contribution = networkStep.contribution,
+                    modifierPhase = System.Enum.IsDefined(typeof(DamageModifierPhase), networkStep.modifierPhase)
+                        ? (DamageModifierPhase)networkStep.modifierPhase : DamageModifierPhase.None,
+                    sourceCardId = networkStep.sourceCardId,
                     worldPosition = networkStep.worldPosition,
                     color = networkStep.color,
                     usePieceIcon = networkStep.usePieceIcon,
@@ -2284,11 +2303,12 @@ public class LogicManager : MonoBehaviour
     public void DealEventDamageToPiece(
         CardDefinition card,
         Piece target,
-        int damage
+        int damage,
+        DamageTag? resolvedTags = null
     )
     {
         if (IsClassicChess) return;
-        CardBattle.DealEventDamageToPiece(card, target, damage);
+        CardBattle.DealEventDamageToPiece(card, target, damage, resolvedTags);
     }
 
     /// <summary>
@@ -2559,6 +2579,7 @@ public class LogicManager : MonoBehaviour
         DamageCalculationSequence sequence
     )
     {
+        if (damageContext != null && CardDamageRules.IsUnmodified(damageContext.tags)) return baseDamage;
         if (damageContext == null)
         {
             return Mathf.Max(0, baseDamage);
@@ -2581,7 +2602,7 @@ public class LogicManager : MonoBehaviour
                 field,
                 DamageCountingIcon.Attack,
                 DamageStepSide.Attack,
-                Mathf.Abs(result - previous),
+                result - previous,
                 GetFieldStepPosition(sequence),
                 result >= previous
                     ? new Color(0.45f, 1f, 0.55f, 1f)
@@ -2645,7 +2666,7 @@ public class LogicManager : MonoBehaviour
         int result = Mathf.Max(0, baseDamage);
         foreach (CardDefinition field in activeFieldCards)
         {
-            if (field == null || field.id != "F05") continue;
+            if (field == null || (field.id != "F05" && field.id != "F06")) continue;
 
             int previous = result;
             result = Mathf.Max(0, result - 1);
@@ -2654,7 +2675,7 @@ public class LogicManager : MonoBehaviour
                 field,
                 DamageCountingIcon.Defense,
                 DamageStepSide.Defense,
-                previous - result,
+                result - previous,
                 GetFieldStepPosition(sequence),
                 new Color(0.45f, 0.75f, 1f, 1f)
             );
@@ -3333,15 +3354,17 @@ public class LogicManager : MonoBehaviour
         if (GetActiveFieldCount("F11") > 0)
         {
             CardDefinition field = GetActiveField("F11");
-            Piece center = GetRandomPiece(!endingWhiteTurn);
+            var candidates = GetAllPiecesSnapshot();
+            Piece center = candidates.Count > 0 ? candidates[Random.Range(0, candidates.Count)] : null;
             if (field == null || center == null)
             {
                 return;
             }
 
+            DamageTag tags = field.ResolveDamageTags(field.damageTags);
             foreach (Piece target in GetPiecesInNineGrid(center))
             {
-                DealEventDamageToPiece(field, target, 1);
+                DealEventDamageToPiece(field, target, 1, tags);
             }
         }
     }
@@ -3789,7 +3812,7 @@ public class LogicManager : MonoBehaviour
         Color color
     )
     {
-        if (sequence == null || field == null || amount <= 0)
+        if (sequence == null || field == null || amount == 0)
         {
             return;
         }
@@ -3803,7 +3826,11 @@ public class LogicManager : MonoBehaviour
             usePieceIcon = false,
             countingIcon = countingIcon,
             side = side,
-            displayText = amount.ToString(),
+            modifierPhase = amount > 0 ? DamageModifierPhase.Increase : DamageModifierPhase.Decrease,
+            sourceCardId = field.id,
+            title = field.cardName + "・場地效果",
+            hasContribution = true, contribution = amount,
+            displayText = Mathf.Abs(amount).ToString(),
             worldPosition = worldPosition,
             color = color
         });

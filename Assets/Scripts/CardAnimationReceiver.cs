@@ -80,7 +80,7 @@ public class CardAnimationReceiver : MonoBehaviour, ICardAnimationReceiver
                 Quaternion.Euler(animation.effectRotationEuler);
 
             GameObject effectObject =
-                Object.Instantiate(
+                SceneObjectTemplates.SpawnEffect(
                 animation.effectPrefab,
                 position,
                 rotation,
@@ -106,11 +106,11 @@ public class CardAnimationReceiver : MonoBehaviour, ICardAnimationReceiver
         }
         else
         {
-            AudioSource.PlayClipAtPoint(
-                animation.sound,
-                effectRoot.position,
-                animation.soundVolume
-            );
+            GameObject sound = SceneObjectTemplates.Spawn("One shot audio");
+            sound.transform.position = effectRoot.position;
+            var source = sound.GetComponent<AudioSource>();
+            source.clip = animation.sound; source.volume = animation.soundVolume; source.Play();
+            Object.Destroy(sound, animation.sound.length);
         }
     }
 

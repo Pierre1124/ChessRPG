@@ -1,0 +1,3 @@
+PASS Assets/Scenes/StartScene.unity: 12 templates, 26 Source Han Sans texts, no missing scripts or Chinese glyphs, saved UI references
+PASS Assets/Scenes/ChessScene.unity: 12 templates, 88 Source Han Sans texts, no missing scripts or Chinese glyphs, saved UI references
+PASS Assets/Scenes/CardScene.unity: 12 templates, 21 Source Han Sans texts, no missing scripts or Chinese glyphs, saved UI references

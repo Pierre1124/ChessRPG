@@ -19,8 +19,10 @@ public sealed class CardTargetFeedback : MonoBehaviour
     private CardGlowGraphic recycleGlow;
     private float refreshAt;
     private MaterialPropertyBlock tintProperties;
-    private static readonly Color ValidColor = new Color(0.12f, 0.86f, 0.94f);
-    private static readonly Color FocusColor = new Color(1f, 0.76f, 0.25f);
+    [SerializeField] private Color ValidColor = new Color(0.12f, 0.86f, 0.94f);
+    [SerializeField] private Color FocusColor = new Color(1f, 0.76f, 0.25f);
+    [SerializeField, Min(0.001f)] private float normalWidth = 0.035f;
+    [SerializeField, Min(0.001f)] private float focusWidth = 0.07f;
 
     /// <summary>在 Unity 主執行緒生命週期內建立原生材質屬性，避免建構時呼叫原生 API。</summary>
     private void Awake()
@@ -31,9 +33,9 @@ public sealed class CardTargetFeedback : MonoBehaviour
     /// <summary>建立單次拖曳使用的獨立提示物件與回收區外光暈。</summary>
     public static CardTargetFeedback Create(CardHandManager manager, CardDefinition definition, TMP_FontAsset font)
     {
-        var root = new GameObject("Card target feedback");
+        var root = SceneObjectTemplates.Spawn("Card target feedback", manager.transform);
         root.transform.SetParent(manager.transform, false);
-        var feedback = root.AddComponent<CardTargetFeedback>();
+        var feedback = root.GetComponent<CardTargetFeedback>();
         feedback.hand = manager;
         feedback.card = definition;
         Shader shader = Shader.Find("Universal Render Pipeline/Unlit");
@@ -90,7 +92,7 @@ public sealed class CardTargetFeedback : MonoBehaviour
             tintProperties.SetColor("_BaseColor", focused ? FocusColor : ValidColor);
             tintProperties.SetColor("_Color", focused ? FocusColor : ValidColor);
             entry.Value.SetPropertyBlock(tintProperties);
-            entry.Value.widthMultiplier = focused ? 0.07f : 0.035f;
+            entry.Value.widthMultiplier = focused ? focusWidth : normalWidth;
         }
         hint.text = overRecycle ? "放開以回收" : validHover ? "放開以使用" :
             hovered != null ? "此目標不符合卡牌條件" : targets.Count == 0 ? "目前沒有可使用目標，可拖至回收區" :
@@ -110,9 +112,9 @@ public sealed class CardTargetFeedback : MonoBehaviour
     private void AddMarker(Component target)
     {
         if (material == null) return;
-        var go = new GameObject("Legal card target");
+        var go = SceneObjectTemplates.Spawn("Legal card target", transform);
         go.transform.SetParent(transform);
-        var line = go.AddComponent<LineRenderer>();
+        var line = go.GetComponent<LineRenderer>();
         line.sharedMaterial = material;
         line.useWorldSpace = true;
         line.loop = true;
@@ -143,24 +145,9 @@ public sealed class CardTargetFeedback : MonoBehaviour
     /// <summary>建立不攔截滑鼠的提示文字，沿用手牌中文字型。</summary>
     private void CreateHint(TMP_FontAsset font)
     {
-        var go = new GameObject("Card drop hint", typeof(RectTransform), typeof(Image));
-        go.transform.SetParent(hand.CardGameUiRoot, false);
+        var go = SceneObjectTemplates.Spawn("Card drop hint", hand.CardGameUiRoot);
         hintPanel = go.GetComponent<RectTransform>();
-        hintPanel.pivot = new Vector2(0, 1);
-        hintPanel.sizeDelta = new Vector2(440, 52);
-        go.GetComponent<Image>().color = new Color(0.02f, 0.04f, 0.06f, 0.94f);
-        go.GetComponent<Image>().raycastTarget = false;
-        var label = new GameObject("Text", typeof(RectTransform), typeof(TextMeshProUGUI));
-        label.transform.SetParent(go.transform, false);
-        hint = label.GetComponent<TextMeshProUGUI>();
-        hint.font = font != null ? font : TMP_Settings.defaultFontAsset;
-        hint.fontSize = 24;
-        hint.alignment = TextAlignmentOptions.Center;
-        hint.raycastTarget = false;
-        hint.rectTransform.anchorMin = Vector2.zero;
-        hint.rectTransform.anchorMax = Vector2.one;
-        hint.rectTransform.sizeDelta = Vector2.zero;
-        hint.rectTransform.anchoredPosition = Vector2.zero;
+        hint = go.GetComponentInChildren<TMP_Text>(true);
     }
 
     /// <summary>立即隱藏提示，避免 Destroy 延後一幀留下可見物件。</summary>
