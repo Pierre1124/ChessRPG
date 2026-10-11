@@ -969,6 +969,8 @@ public class LogicManager : MonoBehaviour
             usePieceIcon = false,
             countingIcon = DamageCountingIcon.Heal,
             side = DamageStepSide.Attack,
+            modifierPhase = DamageModifierPhase.Activation,
+            sourceCardId = sourcePiece.cardDefinition?.id ?? "J03",
             title = "護城河・治療",
             hasContribution = true, contribution = resolvedHeal,
             displayText = resolvedHeal.ToString(),
@@ -1085,6 +1087,8 @@ public class LogicManager : MonoBehaviour
             usePieceIcon = powerGridStatus == null ||
                 powerGridStatus.icon == null,
             side = DamageStepSide.Attack,
+            modifierPhase = DamageModifierPhase.Activation,
+            sourceCardId = powerGridStatus?.sourceCardId ?? "J04",
             title = "電網・傷害",
             hasContribution = true, contribution = resolvedDamage,
             displayText = resolvedDamage.ToString(),

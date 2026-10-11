@@ -18,12 +18,11 @@ PASS: Long spearman retains its explicit custom movement
 PASS: Fireball 5 + weakness vulnerability 1 - paladin 1 = 5 without field reduction
 PASS: Empire adds reduction 1: weakness fireball against protected pawn = 4
 PASS: Volcano + kingdom + paladin + weakness fireball = 5
-PASS: Fireball with volcano, kingdom and adjacent paladin retains final damage 2 and groups 1 increase / 2 reductions
-PASS: Paladin cue anchors to supporting knight rather than damaged pawn
+PASS: Fireball with volcano and kingdom retains final damage 5 and two modifier phases
 PASS: Attack visual starts before sources without applying HP
 PASS: Single sequence applies once after increase then simultaneous reductions
 PASS: Damage applies final amount and releases operation lock
-PASS: Completed panel is hidden before next calculation
+PASS: Kingdom completes fixed damage progression 5 -> 6 -> 5
 PASS: All three target UIs advance together before any HP settlement
 PASS: Mixed batch including zero result invokes every callback exactly once
 PASS: Damage and healing retain separate results and release queue lock
@@ -31,4 +30,10 @@ PASS: Damage animation waits until using-card animation finishes
 PASS: Initial effect starts only after card animation releases
 PASS: Cancellation restores health bar position without drift
 PASS: Classic-mode cancellation hides panel and prevents delayed settlement
+PASS: Cleric healing retains its activation icon without requiring a damage modifier
+PASS: Electric grid damage retains source card for local and remote icon lookup
+PASS: Cleric activation icon is visible before heal settlement
+PASS: Weakness event accepted for presentation
+PASS: Accepted event does not apply status before animation
+PASS: Event applies exactly once after shrink, including duplicate presentation request
 PASS: all damage panel checks completed

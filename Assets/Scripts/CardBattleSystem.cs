@@ -1313,7 +1313,9 @@ public class CardBattleSystem
             usePieceIcon = visualIcon == null,
             countingIcon = GetCountingIcon(damageContext.tags),
             side = DamageStepSide.Attack,
-            sourceCardId = damageContext.sourceCard?.id,
+            modifierPhase = damageContext.sourceStatus != null || (damageContext.sourceCard != null && damageContext.sourceCard.cardType != CardType.Event)
+                ? DamageModifierPhase.Activation : DamageModifierPhase.None,
+            sourceCardId = damageContext.sourceStatus?.definition?.sourceCardId ?? damageContext.sourceCard?.id,
             title = damageContext.sourceCard != null ? damageContext.sourceCard.cardName : "基礎傷害",
             hasContribution = true, contribution = damage,
             displayText = damage.ToString(),
@@ -1396,7 +1398,9 @@ public class CardBattleSystem
             usePieceIcon = source != null,
             countingIcon = GetCountingIcon(damageContext.tags),
             side = DamageStepSide.Attack,
-            sourceCardId = damageContext.sourceCard?.id,
+            modifierPhase = damageContext.sourceStatus != null || (damageContext.sourceCard != null && damageContext.sourceCard.cardType != CardType.Event)
+                ? DamageModifierPhase.Activation : DamageModifierPhase.None,
+            sourceCardId = damageContext.sourceStatus?.definition?.sourceCardId ?? damageContext.sourceCard?.id,
             title = damageContext.sourceCard != null ? damageContext.sourceCard.cardName : "基礎傷害",
             hasContribution = true, contribution = damage,
             displayText = damage.ToString(),
@@ -1605,7 +1609,9 @@ public class CardBattleSystem
             usePieceIcon = visualIcon == null,
             countingIcon = DamageCountingIcon.Heal,
             side = DamageStepSide.Attack,
-            title = "基礎治療",
+            modifierPhase = DamageModifierPhase.Activation,
+            sourceCardId = source?.cardDefinition?.id,
+            title = source?.cardDefinition?.cardName ?? "治療來源",
             hasContribution = true, contribution = Mathf.Max(0, baseAmount),
             displayText = Mathf.Max(0, baseAmount).ToString(),
             worldPosition = source != null
@@ -2724,6 +2730,8 @@ public class CardBattleSystem
                     visualIcon
                 );
 
+            sequence.steps[0].sourceCardId = status?.definition?.sourceCardId ?? animationCard?.id ?? owner.cardDefinition?.id;
+            sequence.steps[0].title = status?.definition?.statusName ?? animationCard?.cardName ?? "治療來源";
             logic.PlayDamageCalculation(
                 sequence,
                 () =>

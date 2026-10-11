@@ -119,6 +119,7 @@ public class CardHandManager : MonoBehaviour
     private int waitingTextDotCount = 1;
     private bool wasWaitingForPlayer;
     private bool isUsingCardAnimationPlaying;
+    private bool pendingEventOperationLocked;
     public bool IsUsingCardAnimationPlaying => isUsingCardAnimationPlaying;
     private Transform lastPlayedCardTargetTransform;
 
@@ -151,6 +152,7 @@ public class CardHandManager : MonoBehaviour
     {
         rpgDisabled = true;
         StopAllCoroutines();
+        ReleasePendingEventLock();
         canDrawThisTurn = false;
         remoteOpponentHandCount = -1;
         whiteDeck.Clear();
@@ -924,6 +926,11 @@ public class CardHandManager : MonoBehaviour
     )
     {
         if (IsRpgDisabled) return;
+        if (isUsingCardAnimationPlaying)
+        {
+            if (cardObject != null) Destroy(cardObject);
+            return;
+        }
         if (card == null)
         {
             if (cardObject != null)
@@ -2082,8 +2089,7 @@ public class CardHandManager : MonoBehaviour
             logicManager.isWhiteTurn ? whiteHand : blackHand;
         if (!currentHand.Contains(card)) return false;
 
-        if (!card.skill.ResolveEvent(
-            new CardSkillContext(logicManager, target, card)))
+        if (card.skill == null)
         {
             ShowAlarm("卡片不能使用");
             return false;
@@ -2091,6 +2097,7 @@ public class CardHandManager : MonoBehaviour
 
         currentHand.Remove(card);
         SetLastPlayedCardTarget(target.transform);
+        StartCoroutine(ResolveEventAfterPresentation(card, target));
         CardPlayFeedback.Show(target.transform);
         OperateLogUI.LogCard(
             logicManager.isWhiteTurn,
@@ -2119,7 +2126,7 @@ public class CardHandManager : MonoBehaviour
         bool removeFromHand = true
     )
     {
-        if (IsRpgDisabled) return false;
+        if (IsRpgDisabled || pendingEventOperationLocked) return false;
         if (
             logicManager == null ||
             string.IsNullOrEmpty(cardId) ||
@@ -2152,10 +2159,7 @@ public class CardHandManager : MonoBehaviour
         {
             accepted =
                 card.CanApplyTo(target, logicManager) &&
-                card.skill != null &&
-                card.skill.ResolveEvent(
-                    new CardSkillContext(logicManager, target, card)
-                );
+                card.skill != null;
         }
         else
         {
@@ -2180,6 +2184,11 @@ public class CardHandManager : MonoBehaviour
         {
             currentHand.Remove(card);
         }
+        if (card.cardType == CardType.Event)
+        {
+            SetLastPlayedCardTarget(target.transform);
+            StartCoroutine(ResolveEventAfterPresentation(card, target));
+        }
         logicManager.RefreshBoardFieldEffects();
         logicManager.UpdateCheckMap();
         Refresh(logicManager.isWhiteTurn);
@@ -2195,6 +2204,36 @@ public class CardHandManager : MonoBehaviour
             $"Cell={targetCoordinate}"
         );
         return true;
+    }
+
+    /// <summary>保留已接受事件的目標，等展示與縮小全部結束才套用效果；停用或普通棋模式不重播。</summary>
+    private IEnumerator ResolveEventAfterPresentation(CardDefinition card, Piece target)
+    {
+        pendingEventOperationLocked = true;
+        logicManager.PushOperationLock("PendingEvent");
+        try
+        {
+            if (!isUsingCardAnimationPlaying) PlayUsingCardAnimation(card, null);
+            // 至少跨一幀，避免缺少展示素材時在出牌接受流程內提早套用。
+            yield return null;
+            while (isUsingCardAnimationPlaying) yield return null;
+            if (IsRpgDisabled || !isActiveAndEnabled || target == null) yield break;
+            if (!card.skill.ResolveEvent(new CardSkillContext(logicManager, target, card)))
+                Debug.LogWarning("事件卡在展示後未能套用：" + card.id);
+            logicManager.RefreshBoardFieldEffects();
+            logicManager.UpdateCheckMap();
+            Refresh(logicManager.isWhiteTurn);
+            multiplayerGameController?.BroadcastState(logicManager.isWhiteTurn, logicManager.whiteHealth, logicManager.blackHealth);
+        }
+        finally { ReleasePendingEventLock(); }
+    }
+
+    /// <summary>結算或取消事件時僅釋放自己持有的操作鎖。</summary>
+    private void ReleasePendingEventLock()
+    {
+        if (!pendingEventOperationLocked) return;
+        pendingEventOperationLocked = false;
+        if (logicManager != null) logicManager.PopOperationLock("PendingEvent");
     }
 
     /// <summary>

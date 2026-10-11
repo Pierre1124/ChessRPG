@@ -43,7 +43,7 @@ public enum DamageStepSide
     Defense
 }
 
-public enum DamageModifierPhase { None, Increase, Decrease }
+public enum DamageModifierPhase { None, Increase, Decrease, Activation }
 
 public class DamageCalculationStep
 {
@@ -95,6 +95,8 @@ public class DamageCalculationVisualizer : MonoBehaviour
     [SerializeField] private Image damageResultFlyBackground;
     [SerializeField] private TMP_Text damageResultFlyText;
     [SerializeField] private TMP_FontAsset resolutionFont;
+    [SerializeField] private TMP_Text finalDamageText;
+    public string DisplayedFinalDamage => finalDamageText != null ? finalDamageText.text : "";
 
     [Header("Counting Icons")]
     [SerializeField] private Sprite attackIcon;
@@ -201,6 +203,7 @@ public class DamageCalculationVisualizer : MonoBehaviour
             blackHealthTarget = FindNamedTransform("BlackHP");
         }
 
+        if (finalDamageText == null) finalDamageText = FindChildComponent<TMP_Text>(transform, "FinalDMG");
         if (damageResultFly == null)
         {
             Transform fly = FindChildRecursive(transform, "DamageResultFly");
@@ -334,6 +337,7 @@ public class DamageCalculationVisualizer : MonoBehaviour
         // 出牌展示與傷害佇列可同時啟動；先等既有出牌動畫完成再播來源階段。
         CardHandManager hand = FindFirstObjectByType<CardHandManager>();
         while (hand != null && hand.isActiveAndEnabled && hand.IsUsingCardAnimationPlaying) yield return null;
+        UpdateFinalDamageText(sequences, DamageModifierPhase.None);
         InvokeAll(onCaptureVisuals);
         float initialDuration = captureDelay;
         foreach (var sequence in sequences)
@@ -348,9 +352,12 @@ public class DamageCalculationVisualizer : MonoBehaviour
                 if (animation != null && animation.timing == CardAnimationTiming.OnDamageDealt)
                     initialDuration = Mathf.Max(initialDuration, animation.effectLifetime);
         }
+        yield return PlayModifierPhase(sequences, DamageModifierPhase.Activation);
         yield return new WaitForSecondsRealtime(initialDuration);
         yield return PlayModifierPhase(sequences, DamageModifierPhase.Increase);
+        UpdateFinalDamageText(sequences, DamageModifierPhase.Increase);
         yield return PlayModifierPhase(sequences, DamageModifierPhase.Decrease);
+        UpdateFinalDamageText(sequences, DamageModifierPhase.Decrease);
         var flyingSequences = new List<DamageCalculationSequence>();
         var flyingViews = new List<DamageResultFlyView>();
         for (int i = 0; i < sequences.Count; i++)
@@ -381,6 +388,31 @@ public class DamageCalculationVisualizer : MonoBehaviour
         onComplete?.Invoke();
     }
 
+    /// <summary>依已演完的階段更新固定文字；批次逐目標列出，傷害與治療不互相抵銷。</summary>
+    private void UpdateFinalDamageText(IReadOnlyList<DamageCalculationSequence> sequences, DamageModifierPhase completed)
+    {
+        if (finalDamageText == null) return;
+        var lines = new List<string>();
+        foreach (var sequence in sequences)
+        {
+            if (sequence == null) continue;
+            long value = sequence.finalDamage;
+            foreach (var step in sequence.steps)
+            {
+                if (step == null || !step.hasContribution) continue;
+                if ((step.modifierPhase == DamageModifierPhase.Increase && completed == DamageModifierPhase.None) ||
+                    (step.modifierPhase == DamageModifierPhase.Decrease && completed != DamageModifierPhase.Decrease))
+                    value -= step.contribution;
+            }
+            string label = sequence.isHealing ? "最終回復:" : "最終傷害:";
+            string target = sequences.Count > 1 ? (sequence.damagedWhitePlayer ? "白方" : "黑方") +
+                (sequence.target != null ? sequence.target.GetCoordinates().ToString() : "") + " " : "";
+            lines.Add(target + label + Math.Max(0L, value));
+        }
+        finalDamageText.text = string.Join("\n", lines);
+        finalDamageText.gameObject.SetActive(lines.Count > 0);
+    }
+
     /// <summary>同一階段所有來源在同一幀啟動，等待最長的來源演出後一起收起。</summary>
     private IEnumerator PlayModifierPhase(IReadOnlyList<DamageCalculationSequence> sequences, DamageModifierPhase phase)
     {
@@ -403,7 +435,7 @@ public class DamageCalculationVisualizer : MonoBehaviour
                 if (sprite == null && card != null) sprite = card.skillImage != null ? card.skillImage : card.cardImage;
                 if (sprite == null) sprite = ResolveIcon(step, sequence) ?? GetCountingIcon(step.countingIcon);
                 GetResolutionPanel(VisibleModifierCount++).ShowSource(step, sprite, stack);
-                if (card == null) continue;
+                if (card == null || phase == DamageModifierPhase.Activation) continue;
                 CardAnimationEvents.Play(step.iconPiece, sequence.target, card, CardAnimationTiming.OnDamageModifier);
                 foreach (var animation in card.animations)
                     if (animation != null && animation.timing == CardAnimationTiming.OnDamageModifier)

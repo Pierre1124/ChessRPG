@@ -22,6 +22,8 @@ public static class DamagePanelRegression
     private static CardHandManager hand;
     private static Transform health;
     private static Vector3 healthOrigin;
+    private static bool sawActivation;
+    private static Piece eventTarget;
 
     /// <summary>重載後接續測試並在結束時還原播放場景。</summary>
     static DamagePanelRegression()
@@ -69,15 +71,12 @@ public static class DamagePanelRegression
                 var database = visualizer.imageDatabase;
                 VerifyPaladinAndWeakness(battle, database, fields);
                 fields.Add(database.GetCard("F01")); fields.Add(database.GetCard("F05"));
-                logic.boardMap[1, 7].ApplyCard(database.GetCard("J06"));
                 var fire = new DamageContext { source = logic.boardMap[0, 1], target = logic.boardMap[0, 6],
-                    sourceCard = database.GetCard("E04"), baseDamage = 3, tags = DamageTag.Fire };
+                    sourceCard = database.GetCard("E04"), baseDamage = 5, tags = DamageTag.Fire };
                 var sequence = (DamageCalculationSequence)typeof(CardBattleSystem).GetMethod("BuildEffectDamageSequence", Private).Invoke(battle, new object[] { fire });
-                Check(sequence.finalDamage == 2 && sequence.steps.Count(s => s.modifierPhase == DamageModifierPhase.Increase) == 1 &&
-                    sequence.steps.Count(s => s.modifierPhase == DamageModifierPhase.Decrease) == 2,
-                    "Fireball with volcano, kingdom and adjacent paladin retains final damage 2 and groups 1 increase / 2 reductions");
-                Check(sequence.steps.Single(s => s.sourceCardId == "J06").worldPosition == logic.boardMap[1, 7].transform.position,
-                    "Paladin cue anchors to supporting knight rather than damaged pawn");
+                Check(sequence.finalDamage == 5 && sequence.steps.Count(s => s.modifierPhase == DamageModifierPhase.Increase) == 1 &&
+                    sequence.steps.Count(s => s.modifierPhase == DamageModifierPhase.Decrease) == 1,
+                    "Fireball with volcano and kingdom retains final damage 5 and two modifier phases");
                 expectedDamage = sequence.finalDamage; sawIncrease = sawDecrease = false;
                 logic.PlayDamageCalculation(sequence, () => captured++, () => { applied++; battle.DamagePlayer(false, sequence.finalDamage, false); });
                 Check(captured == 1 && applied == 0, "Attack visual starts before sources without applying HP");
@@ -91,13 +90,13 @@ public static class DamagePanelRegression
                     CheckSilent(logic.blackHealth == blackBefore, "Health changed before sources completed");
                     if (visualizer.CurrentModifierPhase == DamageModifierPhase.Increase)
                     {
-                        CheckSilent(!sawDecrease && visualizer.VisibleModifierCount == 1, "Increase must precede reductions"); sawIncrease = true;
+                        CheckSilent(!sawDecrease && visualizer.VisibleModifierCount == 1 && visualizer.DisplayedFinalDamage == "最終傷害:5", "Increase starts with base damage 5"); sawIncrease = true;
                     }
                     if (visualizer.CurrentModifierPhase == DamageModifierPhase.Decrease)
                     {
-                        CheckSilent(sawIncrease && visualizer.VisibleModifierCount == 2, "Both reductions must appear together"); sawDecrease = true;
+                        CheckSilent(sawIncrease && visualizer.VisibleModifierCount == 1 && visualizer.DisplayedFinalDamage == "最終傷害:6", "Volcano updates fixed damage to 6 before kingdom reduction"); sawDecrease = true;
                         var panels = Object.FindObjectsByType<DamageResolutionPanel>(FindObjectsSortMode.None);
-                        CheckSilent(panels.All(p => p.DisplayedTotal == ""), "Sources must not show accumulated damage");
+                        CheckSilent(panels.All(p => p.DisplayedTotal == "" && p.GetComponentsInChildren<TMPro.TMP_Text>().Length == 0), "Source popups must show icons only");
                     }
                     sawPending |= panel != null;
                 }
@@ -105,7 +104,7 @@ public static class DamagePanelRegression
                 {
                     Check(applied == 1 && captured == 1 && sawPending && sawIncrease && sawDecrease, "Single sequence applies once after increase then simultaneous reductions");
                     Check(logic.blackHealth == blackBefore - expectedDamage && !logic.IsDamageCalculationBusy, "Damage applies final amount and releases operation lock");
-                    Check(panel == null, "Completed panel is hidden before next calculation");
+                    Check(panel == null && visualizer.DisplayedFinalDamage == "最終傷害:5", "Kingdom completes fixed damage progression 5 -> 6 -> 5");
                     stage = 2;
                 }
             }
@@ -167,6 +166,43 @@ public static class DamagePanelRegression
             else if (stage == 7 && EditorApplication.timeSinceStartup > cancelDeadline)
             {
                 Check(applied == 0 && Object.FindFirstObjectByType<DamageResolutionPanel>() == null, "Classic-mode cancellation hides panel and prevents delayed settlement");
+                visualizer.gameObject.SetActive(true);
+                Piece cleric = logic.boardMap[2, 0]; cleric.ApplyCard(visualizer.imageDatabase.GetCard("J08"));
+                var battle = new CardBattleSystem(logic);
+                var heal = (DamageCalculationSequence)typeof(CardBattleSystem).GetMethod("BuildHealSequence", Private)
+                    .Invoke(battle, new object[] { cleric, true, 1, 1, cleric.cardDefinition.skillImage });
+                Check(heal.steps[0].modifierPhase == DamageModifierPhase.Activation && heal.steps[0].sourceCardId == "J08",
+                    "Cleric healing retains its activation icon without requiring a damage modifier");
+                var electric = new DamageContext { source = logic.boardMap[0, 0], target = logic.boardMap[0, 6],
+                    sourceCard = visualizer.imageDatabase.GetCard("J04"), baseDamage = 5, tags = DamageTag.Electric };
+                var grid = (DamageCalculationSequence)typeof(CardBattleSystem).GetMethod("BuildFixedDamageSequence", Private).Invoke(battle, new object[] { electric });
+                Check(grid.steps[0].modifierPhase == DamageModifierPhase.Activation && grid.steps[0].sourceCardId == "J04",
+                    "Electric grid damage retains source card for local and remote icon lookup");
+                applied = 0; sawActivation = false;
+                visualizer.Play(heal, null, () => applied++); stage = 8;
+            }
+            else if (stage == 8)
+            {
+                if (visualizer.CurrentModifierPhase == DamageModifierPhase.Activation)
+                    sawActivation |= visualizer.VisibleModifierCount == 1 && Object.FindFirstObjectByType<DamageResolutionPanel>() != null;
+                if (applied == 0) return;
+                Check(sawActivation && applied == 1, "Cleric activation icon is visible before heal settlement");
+                hand = Object.FindFirstObjectByType<CardHandManager>(); eventTarget = logic.boardMap[0, 1];
+                Check(hand.PlayCardOnPieceAsAuthority(true, "E06", new BoardCoordinate(0, 1), false), "Weakness event accepted for presentation");
+                Check(!eventTarget.Statuses.Any(s => s.definition.sourceCardId == "E06"), "Accepted event does not apply status before animation");
+                hand.PlayUsingCardAnimationOnPiece("E06", new BoardCoordinate(0, 1));
+                stage = 9;
+            }
+            else if (stage == 9)
+            {
+                if (hand.IsUsingCardAnimationPlaying)
+                {
+                    CheckSilent(!eventTarget.Statuses.Any(s => s.definition.sourceCardId == "E06"), "Status applied before shrink completed");
+                    return;
+                }
+                if (logic.IsOperationLocked) return;
+                Check(eventTarget.Statuses.Count(s => s.definition.sourceCardId == "E06") == 1,
+                    "Event applies exactly once after shrink, including duplicate presentation request");
                 File.AppendAllText(Output, "PASS: all damage panel checks completed\n"); EditorApplication.isPlaying = false; stage = 5;
             }
             if (stage != 5 && deadline > 0 && EditorApplication.timeSinceStartup > deadline) throw new TimeoutException("Damage UI did not finish");

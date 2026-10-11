@@ -51,11 +51,14 @@ public sealed class DamageResolutionPanel : MonoBehaviour
         LateUpdate();
     }
 
-    /// <summary>在修正來源頭上顯示圖示與名稱，不逐步顯示累計數字。</summary>
+    /// <summary>在修正來源頭上只顯示圖示，計算數字交由固定 FinalDMG 呈現。</summary>
     public void ShowSource(DamageCalculationStep step, Sprite sprite, int stack)
     {
         anchor = step.worldPosition; sourceStack = stack; PresentedSteps = 1;
-        source.text = SourceTitle(step); total.text = ""; total.gameObject.SetActive(false);
+        source.text = ""; source.gameObject.SetActive(false);
+        total.text = ""; total.gameObject.SetActive(false);
+        Image background = bubble.GetComponent<Image>();
+        if (background != null) background.enabled = false;
         icon.sprite = sprite; icon.enabled = sprite != null;
         gameObject.SetActive(true); changedAt = Time.unscaledTime;
         LateUpdate();
