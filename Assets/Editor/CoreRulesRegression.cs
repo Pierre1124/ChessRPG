@@ -47,6 +47,19 @@ public static class CoreRulesRegression
         check(!new PieceDefinition { moveRules = new List<PieceMoveRule> { null } }.HasMoveRules, "Null-only move list preserves standard movement");
         check(new PieceDefinition { moveRules = new List<PieceMoveRule> { new PieceMoveRule() } }.HasMoveRules,
             "Explicit move rules still override standard movement");
+        var net = new BoardFieldEffectZone { type = BoardFieldEffectType.ElectricNet,
+            cells = new List<UnityEngine.Vector2Int> { new UnityEngine.Vector2Int(2, 2), new UnityEngine.Vector2Int(2, 3) } };
+        var nets = new List<BoardFieldEffectZone> { net, net };
+        check(ElectricNetCrossing.Collect(new UnityEngine.Vector2Int(2, 1), new UnityEngine.Vector2Int(2, 4), false, nets).Count == 2,
+            "Electric traversal hits each token once even with overlapping zones");
+        check(ElectricNetCrossing.Collect(new UnityEngine.Vector2Int(2, 2), new UnityEngine.Vector2Int(2, 3), false, nets).Count == 1,
+            "Electric traversal excludes origin and includes landing cell");
+        check(ElectricNetCrossing.Collect(new UnityEngine.Vector2Int(1, 0), new UnityEngine.Vector2Int(2, 2), true, nets).Count == 1,
+            "Knight landing on token triggers electric damage");
+        check(ElectricNetCrossing.Collect(new UnityEngine.Vector2Int(1, 1), new UnityEngine.Vector2Int(3, 2), true, nets).Count == 0,
+            "Knight does not cross intermediate token cells");
+        check(ElectricNetCrossing.Collect(new UnityEngine.Vector2Int(2, 2), new UnityEngine.Vector2Int(2, 2), false, nets).Count == 0,
+            "Stationary piece does not retrigger token");
         foreach (DamageTag tag in new[] { DamageTag.None, DamageTag.Fire, DamageTag.Electric, DamageTag.Poison, DamageTag.Curse, DamageTag.True, DamageTag.Cost })
         {
             bool fixedDamage = tag == DamageTag.True || tag == DamageTag.Cost;

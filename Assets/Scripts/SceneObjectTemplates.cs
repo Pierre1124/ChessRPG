@@ -5,7 +5,7 @@ using UnityEngine;
 /// <summary>場景內可編輯的可變數量物件樣板；執行時只複製已設計的階層。</summary>
 public sealed class SceneObjectTemplates : MonoBehaviour
 {
-    [Serializable] public class Entry { public string key; public GameObject template; public GameObject sourcePrefab; }
+    [Serializable] public class Entry { public string key; public GameObject template; public GameObject sourcePrefab; public Transform runtimeParent; }
     public List<Entry> templates = new List<Entry>();
 
     /// <summary>從本場景樣板產生副本，缺少配置時明確報錯，不再臨時拼裝介面。</summary>
@@ -14,7 +14,7 @@ public sealed class SceneObjectTemplates : MonoBehaviour
         var library = FindFirstObjectByType<SceneObjectTemplates>(FindObjectsInactive.Include);
         Entry entry = library != null ? library.templates.Find(item => item.key == key) : null;
         if (entry == null || entry.template == null) throw new InvalidOperationException("場景缺少物件樣板：" + key);
-        GameObject copy = Instantiate(entry.template, parent, false);
+        GameObject copy = Instantiate(entry.template, parent != null ? parent : entry.runtimeParent, false);
         copy.name = key; copy.SetActive(active); return copy;
     }
 

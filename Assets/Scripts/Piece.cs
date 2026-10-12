@@ -827,6 +827,7 @@ public abstract class Piece : MonoBehaviour
 
         Vector2 currentCoordinates =
             GetCoordinates();
+        List<ElectricNetCrossing> electricCrossings = logicManager.CollectElectricNetCrossings(this, currentCoordinates, newPosition);
         Vector3 startWorldPosition = transform.position;
         Vector3 endWorldPosition =
             new Vector3(
@@ -850,6 +851,7 @@ public abstract class Piece : MonoBehaviour
 
         UpdateBoardMap();
 
+        logicManager.ResolveElectricNetCrossings(this, electricCrossings);
         logicManager.OnPieceMoved(this);
     }
 

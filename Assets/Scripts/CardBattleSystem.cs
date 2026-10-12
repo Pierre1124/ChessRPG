@@ -569,6 +569,23 @@ public class CardBattleSystem
         );
     }
 
+    /// <summary>穿越電網採用一般承傷計算及既有演出；傷害圖示位於經過的 Token 格。</summary>
+    public void DealElectricNetCrossing(Piece target, ElectricNetCrossing crossing)
+    {
+        var context = new DamageContext { target = target, sourceCard = crossing.card,
+            baseDamage = 1, tags = DamageTag.Electric | DamageTag.Token,
+            trigger = CardEffectTrigger.AfterOwnerMoves };
+        var sequence = BuildEffectDamageSequence(context);
+        var step = sequence.steps[0];
+        step.modifierPhase = DamageModifierPhase.Activation;
+        step.sourceCardId = crossing.card?.id ?? "J04";
+        step.title = "電網 Token";
+        step.icon = crossing.card?.skillImage;
+        step.worldPosition = new Vector3(crossing.cell.x, target.transform.position.y, crossing.cell.y);
+        logic.PlayDamageCalculation(sequence, null,
+            () => DamagePlayer(sequence.damagedWhitePlayer, sequence.finalDamage, false, context));
+    }
+
     /// <summary>
     /// 處理事件卡對棋子造成的傷害。
     /// </summary>

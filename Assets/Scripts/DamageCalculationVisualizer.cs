@@ -426,15 +426,17 @@ public class DamageCalculationVisualizer : MonoBehaviour
             foreach (var step in sequence.steps)
             {
                 if (step == null || step.modifierPhase != phase) continue;
-                string key = step.sourceCardId + "|" + step.title + "|" + step.worldPosition.ToString("R");
+                Piece anchorPiece = step.iconPiece != null ? step.iconPiece : sequence.target;
+                Vector3 anchorPosition = anchorPiece != null ? anchorPiece.transform.position : step.worldPosition;
+                string key = step.sourceCardId + "|" + step.title + "|" + anchorPosition.ToString("R");
                 if (!shown.Add(key)) continue;
-                positions.TryGetValue(step.worldPosition, out int stack);
-                positions[step.worldPosition] = stack + 1;
+                positions.TryGetValue(anchorPosition, out int stack);
+                positions[anchorPosition] = stack + 1;
                 CardDefinition card = string.IsNullOrEmpty(step.sourceCardId) ? null : imageDatabase.GetCard(step.sourceCardId);
                 Sprite sprite = step.icon;
                 if (sprite == null && card != null) sprite = card.skillImage != null ? card.skillImage : card.cardImage;
                 if (sprite == null) sprite = ResolveIcon(step, sequence) ?? GetCountingIcon(step.countingIcon);
-                GetResolutionPanel(VisibleModifierCount++).ShowSource(step, sprite, stack);
+                GetResolutionPanel(VisibleModifierCount++).ShowSource(step, sprite, stack, sequence.target);
                 if (card == null || phase == DamageModifierPhase.Activation) continue;
                 CardAnimationEvents.Play(step.iconPiece, sequence.target, card, CardAnimationTiming.OnDamageModifier);
                 foreach (var animation in card.animations)
@@ -484,7 +486,9 @@ public class DamageCalculationVisualizer : MonoBehaviour
     {
         // 傷害字型由場景樣板指定，不再於執行期建立另一套字型。
         while (resolutionPanels.Count <= index)
-            resolutionPanels.Add(DamageResolutionPanel.Create(runtimeResolutionFont != null ? runtimeResolutionFont : resolutionFont));
+            resolutionPanels.Add(null);
+        if (resolutionPanels[index] == null)
+            resolutionPanels[index] = DamageResolutionPanel.Create(runtimeResolutionFont != null ? runtimeResolutionFont : resolutionFont);
         return resolutionPanels[index];
     }
 

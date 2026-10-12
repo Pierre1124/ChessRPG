@@ -2,6 +2,11 @@ PASS: Empty serialized move definition preserves standard movement
 PASS: Null move list preserves standard movement
 PASS: Null-only move list preserves standard movement
 PASS: Explicit move rules still override standard movement
+PASS: Electric traversal hits each token once even with overlapping zones
+PASS: Electric traversal excludes origin and includes landing cell
+PASS: Knight landing on token triggers electric damage
+PASS: Knight does not cross intermediate token cells
+PASS: Stationary piece does not retrigger token
 PASS: None outgoing bonus/weakening policy
 PASS: None vulnerability/reduction policy
 PASS: None final truce override

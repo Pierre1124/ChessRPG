@@ -1,0 +1,563 @@
+PASS preserved 86 text font/material/size settings
+PASS ChessScene: 14 editable prefab templates
+SceneRoot
+  miain
+    pillers
+    pillers (1)
+    ground
+    Walls
+      Plane
+      Plane (1)
+      Plane (2)
+      Plane (3)
+    Light Probe Group
+    Point.003 (1)
+    Point (1)
+    Point (2)
+    Point (3)
+    Point (4)
+    Point (6)
+  book
+  candle
+    New Prefab 17
+    CHs0
+    Point
+  door
+  Full roof
+    top roof.000
+    top roof.001
+    top roof.002
+    top roof.003
+    top roof.004
+    top roof.005
+    top roof.006
+    top roof.007
+    top roof.008
+    top roof.009
+    top roof.010
+    top roof.011
+    top roof.012
+    top roof.013
+  chandiler
+    fire (3)
+    fire (4)
+    fire (5)
+    fire (6)
+    Point Light
+    Point Light (1)
+    Point Light (2)
+    Point Light (3)
+    chandelier
+  Window
+    window00
+  bookcase (4)
+    book case.005
+    book case.006
+  chair
+  tabel
+  bookcase (1)
+    book case.005
+    book case.006
+  bookcase
+    book case.005
+    book case.006
+  bookcase (2)
+    book case.005
+    book case.006
+  bookcase (3)
+    book case.005
+    book case.006
+  chair (1)
+  bookcase (5)
+    book case.005
+    book case.006
+  bookcase (6)
+    book case.005
+    book case.006
+  window
+    New Prefab 15 (1)
+  chandiler (1)
+    fire (3)
+    fire (4)
+    fire (5)
+    fire (6)
+    Point Light
+    Point Light (1)
+    Point Light (2)
+    Point Light (3)
+    chandelier
+  CH0
+    fire
+    Point Light
+    candel.001
+  CH (1)
+    fire
+    Point Light
+    candel.001
+  CH (2)
+    fire
+    Point Light
+    candel.001
+  CH (3)
+    fire
+    Point Light
+    candel.001
+  CH (4)
+    fire
+    Point Light
+    candel.001
+  CH (5)
+    fire
+    Point Light
+    candel.001
+  candle (1)
+    New Prefab 17
+    CHs0
+    Point
+  Directional Light
+Main Camera
+Global Volume
+Board
+  FieldCardPlace
+  FieldCardPlace2
+  WhiteHandCard
+    Panel
+  BlackHandCard
+    Panel
+GameOverUI
+  Panel
+    Text (TMP)
+    Button
+      Text (TMP)
+PromotionUI
+  Panel
+    Text (TMP) (1)
+    Text (TMP) (2)
+    Text (TMP) (3)
+    Text (TMP) (4)
+SettingsUI
+  ConfirmationPopUp
+    Text (TMP)
+    Button
+      Text (TMP)
+    Button
+      Text (TMP)
+  Panel
+    Toggle
+      Background
+        Checkmark
+      Text (TMP)
+    Toggle
+      Background
+        Checkmark
+      Text (TMP)
+    Slider
+      Background
+      Fill Area
+        Fill
+      Handle Slide Area
+        Handle
+    Button
+      Text (TMP)
+    Button
+      Image
+    Text (TMP)
+    Dropdown
+      Label
+      Arrow
+      Template
+        Viewport
+          Content
+            Item
+              Item Background
+              Item Checkmark
+              Item Label
+        Scrollbar
+          Sliding Area
+            Handle
+    WindowedToggle
+      Background
+        Checkmark
+      Label
+    Settings content
+      設定
+      操作
+        操作
+      操作
+        點擊按鍵欄位，再按新的鍵盤鍵或滑鼠按鍵
+        查看棋子資訊
+        
+          
+        按住旋轉視角
+        
+          
+        重設視角
+        
+          
+        啟用長按左鍵查看（1.5 秒）
+          啟用長按左鍵查看（1.5 秒）
+          Check
+            Enabled
+        左鍵：選取／移動 · Esc：取消／關閉（保留）
+        恢復預設按鍵
+          恢復預設按鍵
+      音效
+        音效
+      音效
+        遊戲音效
+          遊戲音效
+          Check
+            Enabled
+        音量
+        Slider
+          Fill
+          Handle
+        音效與音量即時套用
+      顯示
+        顯示
+      顯示
+        回合切換時旋轉鏡頭
+          回合切換時旋轉鏡頭
+          Check
+            Enabled
+        解析度
+        Dropdown(Clone)
+          Label
+          Arrow
+          Template
+            Viewport
+              Content
+                Item
+                  Item Background
+                  Item Checkmark
+                  Item Label
+            Scrollbar
+              Sliding Area
+                Handle
+        視窗模式
+          視窗模式
+          Check
+            Enabled
+        套用顯示設定
+          套用顯示設定
+        套用後有 12 秒確認，逾時自動還原。
+      卡牌外觀
+        卡牌外觀
+      卡牌外觀
+        可使用手牌光暈
+        柔和
+          柔和
+        青綠
+          青綠
+        細框
+          細框
+        金色
+          金色
+        呼吸
+          呼吸
+        天藍
+          天藍
+        關閉
+          關閉
+        紫色
+          紫色
+        亮度
+        Slider
+          Fill
+          Handle
+        Glow preview card
+          Playable card glow
+          可用卡牌
+          即時外觀預覽
+        恢復預設光暈
+          恢復預設光暈
+      對局
+        對局
+      對局
+        對局操作會再次確認
+        重新開始
+          重新開始
+        返回主選單
+          返回主選單
+      完成並返回
+        完成並返回
+      Settings confirmation
+        
+        確認
+          確認
+        取消
+          取消
+LayoutUI
+  Button (Legacy)
+    Image
+CardGameUI
+  TurnText
+  BlackHP
+    Background
+    Fill Area
+      Fill
+    HPText
+  WhiteHP
+    Background
+    Fill Area
+      Fill
+    HPText
+  HandCard
+  Draw
+    Text (TMP)
+  RecycleCard
+  CardInfro
+    CardEquip
+      CardEquipText
+    ChessType
+    ChessStatus
+    ChessATK
+      ATKText
+    ChessValue
+      ValueText
+    Close piece info
+      Label
+    Piece active skill
+      Label
+    Active skill availability
+  StatusInfo
+    Text
+  PhaseChange
+  Alarm
+  OperateLog
+    LogList
+      LogContent
+        LogText
+      Scrollbar
+        Sliding Area
+          Handle
+  UsingCard
+  Templates
+    Card glow
+    Status icon
+    Returning card slot
+    Card unavailable hint
+      Text
+    Card drop hint
+      Text
+    Prefab — CardImage
+      Playable card glow
+      CardLord
+        CardLordText
+      CardTagGroup
+        CardTag
+          CardLordText
+      CardName
+        CardNameText
+    Prefab — CardBack
+DMGSystem
+  DamageResultFly
+    DamageText
+  FinalDMG
+  Templates
+    Damage calculation
+      Floating calculation
+        Source icon
+        Text
+        Text
+    Prefab — DamageCalcStep
+      CountingIcon
+      Text
+BoardEffects
+  Templates
+    Legal card target
+    Card target feedback
+    Card played successfully
+    Card effect — J05 — white-red bolder
+      slash-white-red-bolder
+    Card effect — J07 — slash-green bolder
+      slash-white-green-bolder
+    Electric net token
+      VisualRoot
+    Moat token
+      VisualRoot
+AudioSystem
+  Templates
+    One shot audio
+Systems
+  LogicManager
+  InputManager
+  EventSystem
+  CardManager
+  MultiplayerGameController
+  SceneTemplates
+NetworkManager
+PASS preserved 26 text font/material/size settings
+PASS StartScene: 12 editable prefab templates
+Canvas
+  Background
+  Title
+  MainMenu
+    StartGame
+      Text
+    StartMuitiGame
+      Text
+    EditDeck
+      Text
+    SettingsLabel
+    ResolutionDropdown
+      Label
+    WindowedToggle
+      Background
+        Checkmark
+      Label
+  StartMenu
+    StartHost
+      Text
+    StartClient
+      Text
+    SettingsIP
+      Text Area
+        Placeholder
+        Text
+    GobackToMenu
+      Text
+  DeckEditorPanel
+    PanelBody
+      Header
+        DeckTitle
+        DeckCountText
+      CardScrollView
+        Viewport
+          CardContent
+            CardTemplate
+              SelectedMark
+              CardArt
+              CardName
+              CardType
+              CardDescription
+      Footer
+        SelectAll
+          Text
+        ClearDeck
+          Text
+        CloseDeck
+          Text
+        SaveDeck
+          Text
+  MenuStatus
+Main Camera
+NetworkSessionLauncher
+BoardEffects
+  Templates
+    Legal card target
+    Card target feedback
+    Card played successfully
+    Card effect — J05 — white-red bolder
+      slash-white-red-bolder
+    Card effect — J07 — slash-green bolder
+      slash-white-green-bolder
+AudioSystem
+  Templates
+    One shot audio
+Systems
+  EventSystem
+  SceneTemplates
+    Templates
+      Card glow
+      Damage calculation
+        Floating calculation
+          Source icon
+          Text
+          Text
+      Status icon
+      Returning card slot
+      Card unavailable hint
+        Text
+      Card drop hint
+        Text
+NetworkManager
+PASS preserved 21 text font/material/size settings
+PASS CardScene: 12 editable prefab templates
+Main Camera
+Directional Light
+CardGameUI
+  HandCard
+    CardImage
+      Playable card glow
+      Playable card glow
+      CardLord
+        CardLordText
+      CardTagGroup
+        CardTag
+          CardLordText
+      CardName
+        CardNameText
+    CardImage (1)
+      Playable card glow
+      Playable card glow
+      CardLord
+        CardLordText
+      CardTagGroup
+        CardTag
+          CardLordText
+      CardName
+        CardNameText
+    CardImage (2)
+      Playable card glow
+      Playable card glow
+      CardLord
+        CardLordText
+      CardTagGroup
+        CardTag
+          CardLordText
+      CardName
+        CardNameText
+    CardImage (3)
+      Playable card glow
+      Playable card glow
+      CardLord
+        CardLordText
+      CardTagGroup
+        CardTag
+          CardLordText
+      CardName
+        CardNameText
+  Templates
+    Card glow
+    Damage calculation
+      Floating calculation
+        Source icon
+        Text
+        Text
+    Status icon
+    Returning card slot
+    Card unavailable hint
+      Text
+    Card drop hint
+      Text
+    Prefab — CardImage
+      Playable card glow
+      CardLord
+        CardLordText
+      CardTagGroup
+        CardTag
+          CardLordText
+      CardName
+        CardNameText
+White Pawn
+  VisualRoot
+  Canvas
+    Text (TMP)
+    Name
+    Image
+BoardEffects
+  Templates
+    Legal card target
+    Card target feedback
+    Card played successfully
+    Card effect — J05 — white-red bolder
+      slash-white-red-bolder
+    Card effect — J07 — slash-green bolder
+      slash-white-green-bolder
+AudioSystem
+  Templates
+    One shot audio
+Systems
+  EventSystem
+  SceneTemplates

@@ -1,4 +1,8 @@
 Unified damage panel regression
+PASS: Damage icon uses world canvas under source piece
+PASS: Damage icon follows piece movement
+PASS: Hidden damage icon returns to its pool
+PASS: Removed piece falls back to saved board coordinates
 PASS: Real capture builder provides signed contributions matching final damage
 PASS: Network payload preserves source and signed change
 PASS: Equipped paladin retains both initial knight moves
@@ -36,4 +40,10 @@ PASS: Cleric activation icon is visible before heal settlement
 PASS: Weakness event accepted for presentation
 PASS: Accepted event does not apply status before animation
 PASS: Event applies exactly once after shrink, including duplicate presentation request
+PASS: Aligned rooks create electric token fixture
+PASS: Friendly bishop can move past electric token
+PASS: Friendly bishop crosses electric token and takes exactly 1 HP damage
+PASS: Enemy bishop can move past electric token
+PASS: Enemy bishop crossing the same grid also takes exactly 1 HP damage
+PASS: Closed electric grid does not create traversal damage
 PASS: all damage panel checks completed

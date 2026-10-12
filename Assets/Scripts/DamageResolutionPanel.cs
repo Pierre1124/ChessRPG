@@ -8,6 +8,14 @@ public sealed class DamageResolutionPanel : MonoBehaviour
     [SerializeField] private RectTransform bubble;
     [SerializeField] private TMP_Text source, total;
     [SerializeField] private Image icon;
+    [Header("Piece anchored icon")]
+    [SerializeField] private Vector3 pieceOffset = new Vector3(0f, 1.5f, 0f);
+    [SerializeField, Min(0.001f)] private float worldUnitsPerPixel = 0.0125f;
+    [SerializeField, Min(0f)] private float stackSpacing = 0.9f;
+    [SerializeField, Min(0f)] private float floatDistance = 0.12f;
+    private Transform poolParent;
+    private Transform attachedPiece;
+    public Transform AttachedPiece => attachedPiece;
     private DamageCalculationSequence sequence;
     private Vector3 anchor;
     private long running;
@@ -44,6 +52,7 @@ public sealed class DamageResolutionPanel : MonoBehaviour
         sourceStack = 0; total.gameObject.SetActive(true);
         sequence = value; running = 0; known = true; PresentedSteps = 0;
         anchor = value.target != null ? value.target.transform.position : value.resultStartWorldPosition;
+        AttachToPiece(value.target != null ? value.target.transform : null);
         source.text = value.isHealing ? "治療計算" : "傷害計算";
         total.text = "0"; icon.enabled = false;
         total.color = value.isHealing ? new Color(0.4f, 1f, 0.65f) : new Color(1f, 0.78f, 0.38f);
@@ -52,9 +61,10 @@ public sealed class DamageResolutionPanel : MonoBehaviour
     }
 
     /// <summary>在修正來源頭上只顯示圖示，計算數字交由固定 FinalDMG 呈現。</summary>
-    public void ShowSource(DamageCalculationStep step, Sprite sprite, int stack)
+    public void ShowSource(DamageCalculationStep step, Sprite sprite, int stack, Piece target = null)
     {
         anchor = step.worldPosition; sourceStack = stack; PresentedSteps = 1;
+        AttachToPiece(step.iconPiece != null ? step.iconPiece.transform : target != null ? target.transform : null);
         source.text = ""; source.gameObject.SetActive(false);
         total.text = ""; total.gameObject.SetActive(false);
         Image background = bubble.GetComponent<Image>();
@@ -85,23 +95,45 @@ public sealed class DamageResolutionPanel : MonoBehaviour
     }
 
     /// <summary>隱藏此目標的演出並保留物件供下次重用。</summary>
-    public void Hide() { gameObject.SetActive(false); }
+    public void Hide()
+    {
+        gameObject.SetActive(false);
+        attachedPiece = null;
+        transform.SetParent(poolParent, false);
+    }
 
-    /// <summary>跟隨目標格的投影位置，切換來源時稍微上飄。</summary>
+    /// <summary>圖示成為來源棋子的子物件；棋子已移除時改用保存的棋盤座標。</summary>
+    private void AttachToPiece(Transform owner)
+    {
+        if (poolParent == null) poolParent = transform.parent;
+        attachedPiece = owner;
+        transform.SetParent(owner, false);
+        Canvas canvas = GetComponent<Canvas>();
+        canvas.renderMode = RenderMode.WorldSpace;
+        canvas.worldCamera = Camera.main;
+        canvas.overrideSorting = true;
+        RectTransform rect = (RectTransform)transform;
+        rect.anchorMin = rect.anchorMax = rect.pivot = new Vector2(0.5f, 0.5f);
+        rect.sizeDelta = bubble.sizeDelta;
+        bubble.anchoredPosition = Vector2.zero;
+    }
+
+    /// <summary>以棋子的世界座標定位並面向鏡頭；抵消棋子縮放，避免不同棋種圖示大小不一致。</summary>
     private void LateUpdate()
     {
         Camera camera = Camera.main;
         if (camera == null || bubble == null) return;
-        Vector3 screen = camera.WorldToScreenPoint(anchor + Vector3.up * 1.1f);
-        bubble.gameObject.SetActive(screen.z > 0);
-        if (screen.z <= 0) return;
-        RectTransform root = (RectTransform)transform;
-        RectTransformUtility.ScreenPointToLocalPointInRectangle(root, screen, null, out Vector2 point);
-        point.y += sourceStack * (bubble.rect.height + 8f) + 48 + Mathf.Clamp01((Time.unscaledTime - changedAt) / 0.3f) * 10;
-        point.x = Mathf.Clamp(point.x, root.rect.xMin + 110, root.rect.xMax - 110);
-        point.y = Mathf.Clamp(point.y, root.rect.yMin + 44, root.rect.yMax - 44);
-        bubble.anchoredPosition = point;
+        if (attachedPiece != null) anchor = attachedPiece.position;
+        float rise = Mathf.Clamp01((Time.unscaledTime - changedAt) / 0.3f) * floatDistance;
+        transform.position = anchor + pieceOffset + Vector3.up * (sourceStack * stackSpacing + rise);
+        transform.rotation = camera.transform.rotation;
+        Vector3 parentScale = transform.parent != null ? transform.parent.lossyScale : Vector3.one;
+        transform.localScale = new Vector3(SafeScale(parentScale.x), SafeScale(parentScale.y), SafeScale(parentScale.z));
+        bubble.gameObject.SetActive(camera.WorldToScreenPoint(transform.position).z > 0);
     }
+
+    /// <summary>將 Prefab 像素尺寸換算為世界尺寸，並避開零縮放除法。</summary>
+    private float SafeScale(float scale) => Mathf.Abs(scale) > 0.0001f ? worldUnitsPerPixel / Mathf.Abs(scale) : worldUnitsPerPixel;
 
     /// <summary>以正式來源名稱優先，舊資料提供可讀替代名稱。</summary>
     public static string SourceTitle(DamageCalculationStep step)

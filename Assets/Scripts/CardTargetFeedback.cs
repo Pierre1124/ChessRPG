@@ -33,8 +33,7 @@ public sealed class CardTargetFeedback : MonoBehaviour
     /// <summary>建立單次拖曳使用的獨立提示物件與回收區外光暈。</summary>
     public static CardTargetFeedback Create(CardHandManager manager, CardDefinition definition, TMP_FontAsset font)
     {
-        var root = SceneObjectTemplates.Spawn("Card target feedback", manager.transform);
-        root.transform.SetParent(manager.transform, false);
+        var root = SceneObjectTemplates.Spawn("Card target feedback");
         var feedback = root.GetComponent<CardTargetFeedback>();
         feedback.hand = manager;
         feedback.card = definition;

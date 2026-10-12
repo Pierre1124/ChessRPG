@@ -155,9 +155,6 @@ public class LogicManager : MonoBehaviour
         new List<CardDefinition>();
     private readonly List<GameObject> boardFieldVisuals =
         new List<GameObject>();
-    private readonly List<Material> boardFieldVisualMaterials =
-        new List<Material>();
-    private Material boardFieldVisualMaterial;
     private bool isFieldFusionPlaying;
 
     private CardBattleSystem CardBattle
@@ -487,6 +484,25 @@ public class LogicManager : MonoBehaviour
 
         CardBattle.OnPieceMoved(piece);
         RefreshBoardFieldEffects();
+    }
+
+    /// <summary>在棋盤變動前保存電網穿越格；普通棋與非主機重播不產生本機傷害。</summary>
+    public List<ElectricNetCrossing> CollectElectricNetCrossings(Piece mover, Vector2 from, Vector2 to)
+    {
+        if (IsClassicChess || IsNetworkClientOnly || mover == null) return new List<ElectricNetCrossing>();
+        return ElectricNetCrossing.Collect(ToBoardCell(from), ToBoardCell(to), mover is Knight, GetActiveBoardFieldZones());
+    }
+
+    /// <summary>每個經過的 Token 各自結算 1 點電傷害，兩個陣營都適用。</summary>
+    public void ResolveElectricNetCrossings(Piece mover, List<ElectricNetCrossing> crossings)
+    {
+        if (IsClassicChess || IsNetworkClientOnly || mover == null || crossings == null || crossings.Count == 0) return;
+        BeginDamageCalculationBatch();
+        try
+        {
+            foreach (var crossing in crossings) CardBattle.DealElectricNetCrossing(mover, crossing);
+        }
+        finally { EndDamageCalculationBatch(); }
     }
 
     /// <summary>
@@ -1323,7 +1339,7 @@ public class LogicManager : MonoBehaviour
         {
             foreach (BoardFieldEffectZone zone in zones)
             {
-                if (zone.Contains(cursor))
+                if (zone.type == BoardFieldEffectType.Moat && zone.Contains(cursor))
                 {
                     fieldCell = cursor;
                     fieldType = zone.type;
@@ -1408,169 +1424,12 @@ public class LogicManager : MonoBehaviour
             return;
         }
 
-        GameObject root = new GameObject($"{type}Clone_{cell.x}_{cell.y}");
-        root.transform.SetParent(transform, false);
-        root.transform.position = new Vector3(
-            cell.x,
-            source.transform.position.y,
-            cell.y
-        );
+        GameObject root = SceneObjectTemplates.Spawn(type == BoardFieldEffectType.ElectricNet ? "Electric net token" : "Moat token");
+        root.name = $"{type}Clone_{cell.x}_{cell.y}";
+        root.transform.position = new Vector3(cell.x, source.transform.position.y, cell.y);
         root.transform.rotation = source.transform.rotation;
-        root.transform.localScale = source.transform.localScale;
-
-        bool copiedAnyRenderer = false;
-        Renderer[] renderers = source.GetComponentsInChildren<Renderer>();
-        foreach (Renderer sourceRenderer in renderers)
-        {
-            Mesh mesh = GetRendererMesh(sourceRenderer);
-            if (mesh == null)
-            {
-                continue;
-            }
-
-            GameObject part = new GameObject(sourceRenderer.name);
-            part.transform.SetParent(root.transform, false);
-            part.transform.localPosition =
-                source.transform.InverseTransformPoint(
-                    sourceRenderer.transform.position
-                );
-            part.transform.localRotation =
-                Quaternion.Inverse(source.transform.rotation) *
-                sourceRenderer.transform.rotation;
-            part.transform.localScale = sourceRenderer.transform.localScale;
-
-            MeshFilter meshFilter = part.AddComponent<MeshFilter>();
-            meshFilter.sharedMesh = mesh;
-
-            MeshRenderer meshRenderer = part.AddComponent<MeshRenderer>();
-            meshRenderer.sharedMaterial =
-                CreateBoardFieldVisualMaterial(
-                    sourceRenderer.sharedMaterial,
-                    type
-                );
-            copiedAnyRenderer = true;
-        }
-
-        if (!copiedAnyRenderer)
-        {
-            GameObject cube = GameObject.CreatePrimitive(PrimitiveType.Cube);
-            cube.name = "Fallback";
-            cube.transform.SetParent(root.transform, false);
-            cube.transform.localScale = new Vector3(0.7f, 0.7f, 0.7f);
-            Renderer renderer = cube.GetComponent<Renderer>();
-            if (renderer != null)
-            {
-                renderer.sharedMaterial =
-                    CreateBoardFieldVisualMaterial(null, type);
-            }
-
-            Collider collider = cube.GetComponent<Collider>();
-            if (collider != null)
-            {
-                Destroy(collider);
-            }
-        }
 
         boardFieldVisuals.Add(root);
-    }
-
-    /// <summary>
-    /// 取得指定 Renderer 對應的網格資料。
-    /// </summary>
-    private Mesh GetRendererMesh(Renderer renderer)
-    {
-        MeshFilter meshFilter = renderer.GetComponent<MeshFilter>();
-        if (meshFilter != null)
-        {
-            return meshFilter.sharedMesh;
-        }
-
-        SkinnedMeshRenderer skinnedRenderer =
-            renderer as SkinnedMeshRenderer;
-        return skinnedRenderer != null
-            ? skinnedRenderer.sharedMesh
-            : null;
-    }
-
-    /// <summary>
-    /// 建立場地標示所需的備援材質。
-    /// </summary>
-    private Material CreateFallbackBoardFieldVisualMaterial(
-        BoardFieldEffectType type
-    )
-    {
-        if (boardFieldVisualMaterial == null)
-        {
-            Shader shader = Shader.Find("Universal Render Pipeline/Lit");
-            if (shader == null)
-            {
-                shader = Shader.Find("Standard");
-            }
-
-            if (shader == null)
-            {
-                shader = Shader.Find("Sprites/Default");
-            }
-
-            boardFieldVisualMaterial = new Material(shader);
-        }
-
-        Material material = new Material(boardFieldVisualMaterial);
-        ApplyBoardFieldColor(material, type);
-        boardFieldVisualMaterials.Add(material);
-        return material;
-    }
-
-    /// <summary>
-    /// 依場地類型建立視覺標示材質。
-    /// </summary>
-    private Material CreateBoardFieldVisualMaterial(
-        Material sourceMaterial,
-        BoardFieldEffectType type
-    )
-    {
-        bool canUseSource =
-            sourceMaterial != null &&
-            sourceMaterial.shader != null &&
-            sourceMaterial.shader.name != "Hidden/InternalErrorShader";
-
-        if (!canUseSource)
-        {
-            return CreateFallbackBoardFieldVisualMaterial(type);
-        }
-
-        Material material = new Material(sourceMaterial);
-        ApplyBoardFieldColor(material, type);
-        boardFieldVisualMaterials.Add(material);
-        return material;
-    }
-
-    /// <summary>
-    /// 將場地顏色套用到指定材質。
-    /// </summary>
-    private void ApplyBoardFieldColor(
-        Material material,
-        BoardFieldEffectType type
-    )
-    {
-        if (material == null)
-        {
-            return;
-        }
-
-        Color color = type == BoardFieldEffectType.ElectricNet
-            ? new Color(0.55f, 0.18f, 1f, 0.8f)
-            : new Color(0.15f, 0.45f, 1f, 0.75f);
-
-        if (material.HasProperty("_BaseColor"))
-        {
-            material.SetColor("_BaseColor", color);
-        }
-
-        if (material.HasProperty("_Color"))
-        {
-            material.SetColor("_Color", color);
-        }
     }
 
     /// <summary>
@@ -1597,24 +1456,6 @@ public class LogicManager : MonoBehaviour
 
         boardFieldVisuals.Clear();
 
-        for (int i = boardFieldVisualMaterials.Count - 1; i >= 0; i--)
-        {
-            if (boardFieldVisualMaterials[i] == null)
-            {
-                continue;
-            }
-
-            if (Application.isPlaying)
-            {
-                Destroy(boardFieldVisualMaterials[i]);
-            }
-            else
-            {
-                DestroyImmediate(boardFieldVisualMaterials[i]);
-            }
-        }
-
-        boardFieldVisualMaterials.Clear();
     }
 
     /// <summary>

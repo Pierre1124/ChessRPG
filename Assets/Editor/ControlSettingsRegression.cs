@@ -40,7 +40,7 @@ public static class ControlSettingsRegression
     {
         if (!SessionState.GetBool(Running, false) || !EditorApplication.isPlaying) return;
         if (stage == 2) { if (EditorApplication.timeSinceStartup > deadline) EditorApplication.isPlaying = false; return; }
-        if (stage != 0) return;
+        if (stage != 0 || Time.timeSinceLevelLoad < 0.5f) return;
         SettingsUI settings = UnityEngine.Object.FindFirstObjectByType<SettingsUI>();
         if (settings == null || settings.panel == null || settings.panel.GetComponent<SettingsPanelView>() == null) return;
         stage = 1;
@@ -60,7 +60,11 @@ public static class ControlSettingsRegression
             check(ControlBindings.TrySet(GameControl.InspectPiece, (int)Key.F, out _) && PlayerPrefs.GetInt(keys[0]) == (int)Key.F,
                 "Rebinding writes persistent preference");
             ControlBindings.ResetDefaults();
+            check(settings.panel.transform.IsChildOf(settings.transform), "Settings panel belongs to SettingsUI");
             settings.ShowPanel();
+            Canvas.ForceUpdateCanvases();
+            var panelRect = (RectTransform)settings.panel.transform;
+            check(panelRect.lossyScale.x > 0 && panelRect.rect.width > 0 && panelRect.rect.height > 0, "Nested settings canvas has visible geometry");
             check(ControlBindings.SuppressGameplay, "Settings suppress gameplay shortcuts");
             Transform root = settings.panel.transform.Find("Settings content");
             foreach (string name in new[] { "操作", "音效", "顯示", "卡牌外觀", "對局" })

@@ -57,6 +57,7 @@ public static class DamagePanelRegression
                 deadline = EditorApplication.timeSinceStartup + 30;
                 foreach (string name in new[] { "stepDuration", "captureDelay", "flyDuration" })
                     typeof(DamageCalculationVisualizer).GetField(name, Private).SetValue(visualizer, 0.2f);
+                VerifyPieceAnchoring();
                 var battle = new CardBattleSystem(logic);
                 var context = new DamageContext { source = logic.boardMap[0, 1], target = logic.boardMap[0, 6] };
                 var actual = (DamageCalculationSequence)typeof(CardBattleSystem).GetMethod("BuildCaptureDamageSequence", Private).Invoke(battle, new object[] { context });
@@ -98,6 +99,7 @@ public static class DamagePanelRegression
                         var panels = Object.FindObjectsByType<DamageResolutionPanel>(FindObjectsSortMode.None);
                         CheckSilent(panels.All(p => p.DisplayedTotal == "" && p.GetComponentsInChildren<TMPro.TMP_Text>().Length == 0), "Source popups must show icons only");
                     }
+                    if (panel != null) CheckSilent(panel.AttachedPiece != null && panel.transform.parent == panel.AttachedPiece, "Damage icons must be children of their piece during playback");
                     sawPending |= panel != null;
                 }
                 else
@@ -203,12 +205,75 @@ public static class DamagePanelRegression
                 if (logic.IsOperationLocked) return;
                 Check(eventTarget.Statuses.Count(s => s.definition.sourceCardId == "E06") == 1,
                     "Event applies exactly once after shrink, including duplicate presentation request");
+                PrepareElectricTraversal();
+                stage = 10; deadline = EditorApplication.timeSinceStartup + 25;
+            }
+            else if (stage == 10 && !logic.IsDamageCalculationBusy)
+            {
+                Check(logic.whiteHealth == 99 && logic.blackHealth == 100, "Friendly bishop crosses electric token and takes exactly 1 HP damage");
+                logic.isWhiteTurn = false;
+                Piece bishop = logic.boardMap[5, 7];
+                Check(bishop.GetLegalMoves().Contains(new Vector2(0, 2)), "Enemy bishop can move past electric token");
+                bishop.Move(new Vector2(0, 2)); stage = 11;
+            }
+            else if (stage == 11 && !logic.IsDamageCalculationBusy)
+            {
+                Check(logic.whiteHealth == 99 && logic.blackHealth == 99, "Enemy bishop crossing the same grid also takes exactly 1 HP damage");
+                logic.boardMap[0, 3].CardRuntime.activeSkillDisabled = true;
+                logic.boardMap[7, 3].CardRuntime.activeSkillDisabled = true;
+                Check(logic.CollectElectricNetCrossings(logic.boardMap[0, 2], new Vector2(0, 2), new Vector2(2, 4)).Count == 0,
+                    "Closed electric grid does not create traversal damage");
                 File.AppendAllText(Output, "PASS: all damage panel checks completed\n"); EditorApplication.isPlaying = false; stage = 5;
             }
             if (stage != 5 && deadline > 0 && EditorApplication.timeSinceStartup > deadline) throw new TimeoutException("Damage UI did not finish");
         }
         catch (Exception ex) { File.AppendAllText(Output, "FAIL: " + ex + "\n"); EditorApplication.isPlaying = false; }
     }
+    /// <summary>驗證棋子子階層、移動跟隨、沒有棋子的座標備援與回收位置。</summary>
+    private static void VerifyPieceAnchoring()
+    {
+        var panel = DamageResolutionPanel.Create(null);
+        Transform pool = panel.transform.parent;
+        Piece piece = logic.boardMap[0, 1];
+        Vector3 original = piece.transform.position;
+        panel.ShowSource(new DamageCalculationStep { iconPiece = piece, worldPosition = original }, null, 0);
+        Check(panel.transform.parent == piece.transform && panel.GetComponent<Canvas>().renderMode == RenderMode.WorldSpace,
+            "Damage icon uses world canvas under source piece");
+        Vector3 initial = panel.transform.position;
+        piece.transform.position += Vector3.right;
+        typeof(DamageResolutionPanel).GetMethod("LateUpdate", Private).Invoke(panel, null);
+        Check(Mathf.Abs(panel.transform.position.x - initial.x - 1f) < 0.001f, "Damage icon follows piece movement");
+        piece.transform.position = original;
+        panel.Hide();
+        Check(panel.transform.parent == pool && !panel.gameObject.activeSelf, "Hidden damage icon returns to its pool");
+        panel.ShowSource(new DamageCalculationStep { worldPosition = new Vector3(3, 0, 4) }, null, 0);
+        Check(panel.transform.parent == null && Mathf.Abs(panel.transform.position.x - 3f) < 0.001f && Mathf.Abs(panel.transform.position.z - 4f) < 0.001f,
+            "Removed piece falls back to saved board coordinates");
+        panel.Hide(); Object.DestroyImmediate(panel.gameObject);
+    }
+
+    /// <summary>建立橫向電網，以實際棋子 Move 驗證敵我均可穿越且觸發傷害。</summary>
+    private static void PrepareElectricTraversal()
+    {
+        ((System.Collections.Generic.List<CardDefinition>)typeof(LogicManager).GetField("activeFieldCards", Private).GetValue(logic)).Clear();
+        foreach (Piece piece in logic.boardMap) if (piece != null) piece.ClearRpgState();
+        foreach (Vector2Int cell in new[] { new Vector2Int(3, 1), new Vector2Int(4, 6) })
+        {
+            Object.Destroy(logic.boardMap[cell.x, cell.y].gameObject); logic.boardMap[cell.x, cell.y] = null;
+        }
+        foreach (int x in new[] { 0, 7 })
+        {
+            Piece rook = logic.boardMap[x, 0]; logic.boardMap[x, 0] = null;
+            rook.transform.position = new Vector3(x, rook.transform.position.y, 3); logic.boardMap[x, 3] = rook;
+        }
+        logic.boardMap[0, 3].ApplyCard(visualizer.imageDatabase.GetCard("J04"));
+        Check(logic.GetActiveBoardFieldZones().Any(z => z.type == BoardFieldEffectType.ElectricNet), "Aligned rooks create electric token fixture");
+        logic.whiteHealth = logic.blackHealth = 100; logic.isWhiteTurn = true;
+        Piece mover = logic.boardMap[2, 0];
+        Check(mover.GetLegalMoves().Contains(new Vector2(6, 4)), "Friendly bishop can move past electric token");
+        mover.Move(new Vector2(6, 4));
+    }
+
     /// <summary>使用正式資產重現聖騎士走法及虛弱火球，區分易傷與場地減傷。</summary>
     private static void VerifyPaladinAndWeakness(CardBattleSystem battle, ChessCard database,
         System.Collections.Generic.List<CardDefinition> fields)

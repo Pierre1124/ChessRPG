@@ -22,7 +22,8 @@ public enum DamageTag
     Skill = 1 << 10,
     Status = 1 << 11,
     LastWill = 1 << 12,
-    Field = 1 << 13
+    Field = 1 << 13,
+    Token = 1 << 14
 }
 
 [Flags]
