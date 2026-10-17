@@ -20,13 +20,19 @@ MonoBehaviour:
     - type: 2
       amount: 0
     healthCost: 0
+    friendlyDamageBonus: 0
+    damageBonusUsesCaptureStacks: 0
+    blocksHealing: 0
+    requiresNoBoardCaptures: 0
+    lastWillDamage: 0
+    lastWillDamageTags: 0
     minimumTargetHealth: -1
     maximumTargetHealth: -1
     ruleNotes: "\u5C64\u6578\u8207\u91CD\u65BD\u898F\u5247\u5F85\u78BA\u8A8D\uFF1B\u9077\u79FB\u5148\u4FDD\u7559\u539F\u672C
       1 \u5C64\u53CA\u5237\u65B0\u6642\u9593\u884C\u70BA\u3002"
     cardType: 1
     cardName: "\u6BD2\u86C7"
-    targetTypes: 63
+    targetTypes: -1
     conditionCost: "\u7121"
     damageTags: 2564
     randomDamageTypes: 
@@ -34,7 +40,7 @@ MonoBehaviour:
     cardImage: {fileID: 21300000, guid: 885a885b8f5d76a4f8b8258c42c26722, type: 3}
     skillImage: {fileID: 21300000, guid: acf3e1743a87bf444a0fcf0633729e3a, type: 3}
     skillEffectPrefab: {fileID: 0}
-    skillSound: {fileID: 0}
+    skillSound: {fileID: 8300000, guid: e21521ecc764b1a498c92a42850e9006, type: 3}
     description: "\u6307\u5B9A\u4E00\u500B\u68CB\u5B50,\u9677\u5165\u4E2D\u6BD2,\u6301\u7E8C3\u56DE\u5408"
     tags:
     - "\u4E8B\u4EF6"
@@ -43,7 +49,13 @@ MonoBehaviour:
     conditions: []
     effects: []
     statusesToApply:
-    - statusName: "\u6BD2\u86C7"
+    - triggerEffectPrefab: {fileID: 0}
+      idleEffectPrefab: {fileID: 0}
+      triggerSound: {fileID: 0}
+      triggerEffectLifetime: 2
+      effectOffset: {x: 0, y: 0, z: 0}
+      triggerSoundVolume: 1
+      statusName: "\u6BD2\u86C7"
       sourceCardId: E09
       kind: 1
       icon: {fileID: 21300000, guid: acf3e1743a87bf444a0fcf0633729e3a, type: 3}

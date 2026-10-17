@@ -58,6 +58,7 @@ public static class DamagePanelRegression
                 foreach (string name in new[] { "stepDuration", "captureDelay", "flyDuration" })
                     typeof(DamageCalculationVisualizer).GetField(name, Private).SetValue(visualizer, 0.2f);
                 VerifyPieceAnchoring();
+                VerifyFeedbackInterfaces();
                 var battle = new CardBattleSystem(logic);
                 var context = new DamageContext { source = logic.boardMap[0, 1], target = logic.boardMap[0, 6] };
                 var actual = (DamageCalculationSequence)typeof(CardBattleSystem).GetMethod("BuildCaptureDamageSequence", Private).Invoke(battle, new object[] { context });
@@ -71,6 +72,7 @@ public static class DamagePanelRegression
                 var fields = (System.Collections.Generic.List<CardDefinition>)typeof(LogicManager).GetField("activeFieldCards", Private).GetValue(logic);
                 var database = visualizer.imageDatabase;
                 VerifyPaladinAndWeakness(battle, database, fields);
+                VerifyCombinedModifiers(battle, database);
                 fields.Add(database.GetCard("F01")); fields.Add(database.GetCard("F05"));
                 var fire = new DamageContext { source = logic.boardMap[0, 1], target = logic.boardMap[0, 6],
                     sourceCard = database.GetCard("E04"), baseDamage = 5, tags = DamageTag.Fire };
@@ -229,6 +231,31 @@ public static class DamagePanelRegression
         }
         catch (Exception ex) { File.AppendAllText(Output, "FAIL: " + ex + "\n"); EditorApplication.isPlaying = false; }
     }
+    /// <summary>驗證空素材安全、狀態素材複製、待機單一實例、觸發及移除清理。</summary>
+    private static void VerifyFeedbackInterfaces()
+    {
+        Check(Object.FindFirstObjectByType<BattleFeedback>() != null, "Scene has shared feedback audio interface");
+        var template = new GameObject("Feedback test prefab"); template.SetActive(false);
+        var asset = ScriptableObject.CreateInstance<CardAsset>();
+        asset.definition.id = "FeedbackTest";
+        asset.definition.statusesToApply.Add(new StatusDefinition { statusName = "FeedbackTest", idleEffectPrefab = template, triggerEffectPrefab = template });
+        var definition = asset.CreateDefinition().statusesToApply[0];
+        Check(definition.idleEffectPrefab == template && definition.triggerEffectPrefab == template, "Card clone preserves status effect references");
+        Piece owner = logic.boardMap[0, 1]; owner.ApplyStatus(definition, owner, false);
+        var status = owner.Statuses.Last(); var idle = status.idleEffectInstance;
+        BattleFeedback.StartStatusIdle(status);
+        Check(idle != null && idle.transform.parent == owner.transform && status.idleEffectInstance == idle, "Status idle effect attaches once to its piece");
+        int before = owner.transform.childCount;
+        BattleFeedback.PlayStatusTrigger(status);
+        Check(owner.transform.childCount == before + 1, "Status trigger instantiates configured effect with empty sound safely");
+        owner.RemoveStatusesByCardId("FeedbackTest");
+        Check(status.idleEffectInstance == null && !idle.activeSelf, "Removing status immediately disables idle effect");
+        owner.ApplyStatus(definition, owner, false); status = owner.Statuses.Last();
+        owner.ClearRpgState();
+        Check(status.idleEffectInstance == null, "Classic cleanup removes idle effects");
+        Object.DestroyImmediate(asset); Object.DestroyImmediate(template);
+    }
+
     /// <summary>驗證棋子子階層、移動跟隨、沒有棋子的座標備援與回收位置。</summary>
     private static void VerifyPieceAnchoring()
     {
@@ -315,6 +342,39 @@ public static class DamagePanelRegression
         fields.Clear(); fields.Add(database.GetCard("F01")); fields.Add(database.GetCard("F05"));
         Check(build().finalDamage == 5, "Volcano + kingdom + paladin + weakness fireball = 5");
         fields.Clear(); pawn.ClearRpgState(); paladin.ApplyCard(null);
+    }
+
+    /// <summary>驗證同方魔法師、移動中的血腥瑪莉、聖騎士本體及同源多效果。</summary>
+    private static void VerifyCombinedModifiers(CardBattleSystem battle, ChessCard database)
+    {
+        Piece queen = logic.boardMap[3, 0], mage = logic.boardMap[2, 0], target = logic.boardMap[1, 7];
+        var runtime = typeof(Piece).GetField("cardRuntime", Private);
+        // 僅裝入光環資料，避免裝備血腥瑪莉的移除國王副作用污染後續測試。
+        runtime.SetValue(queen, new CardRuntimeState(database.GetCard("J09")));
+        Func<DamageContext, DamageCalculationSequence> effect = context => (DamageCalculationSequence)typeof(CardBattleSystem)
+            .GetMethod("BuildEffectDamageSequence", Private).Invoke(battle, new object[] { context });
+        var hit = new DamageContext { source = mage, target = target, sourceCard = database.GetCard("J07"), baseDamage = 1, tags = DamageTag.Fire | DamageTag.Skill };
+        Check(effect(hit).finalDamage == 6, "Same-side Bloody Mary increases mage fire 1 to 6");
+        hit.tags = DamageTag.Electric | DamageTag.Skill;
+        Check(effect(hit).finalDamage == 1, "Mage electric remains fixed 1 despite Bloody Mary");
+        target.ApplyCard(database.GetCard("J06"));
+        hit.tags = DamageTag.Fire | DamageTag.Skill;
+        Check(effect(hit).finalDamage == 5, "Paladin protects itself: mage fire 1 + Mary 5 - reduction 1");
+        foreach (var status in database.GetCard("E07").statusesToApply) queen.ApplyStatus(status, queen, false);
+        logic.boardMap[3, 0] = null;
+        try
+        {
+            var capture = (DamageCalculationSequence)typeof(CardBattleSystem).GetMethod("BuildCaptureDamageSequence", Private)
+                .Invoke(battle, new object[] { new DamageContext { source = queen, target = target, tags = DamageTag.Capture | DamageTag.Physical } });
+            Check(capture.finalDamage == 5 + battle.GetEffectiveValue(target), "Moving Mary retains own 5 + berserker 1 - paladin 1; value remains unreduced");
+            Check(capture.steps.Any(s => s.sourceCardId == "E07") && capture.steps.Any(s => s.sourceCardId == "J09"), "Berserker and Mary preserve distinct source identities");
+            var routine = (System.Collections.IEnumerator)typeof(DamageCalculationVisualizer).GetMethod("PlayModifierPhase", Private)
+                .Invoke(visualizer, new object[] { new[] { capture }, DamageModifierPhase.Increase });
+            Check(routine.MoveNext() && visualizer.VisibleModifierCount == 1, "First modifier on same piece shown alone");
+            Check(routine.MoveNext() && visualizer.VisibleModifierCount == 1, "Second modifier on same piece shown in next wave");
+            Check(!routine.MoveNext() && visualizer.VisibleModifierCount == 0, "Both modifier waves complete and clean up");
+        }
+        finally { logic.boardMap[3, 0] = queen; queen.ClearRpgState(); target.ClearRpgState(); }
     }
 
     /// <summary>建立含加成與減免的展示序列，數值總和與最終結果一致。</summary>

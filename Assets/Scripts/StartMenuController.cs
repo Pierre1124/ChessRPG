@@ -39,6 +39,8 @@ public class StartMenuController : MonoBehaviour
         new Dictionary<string, int>();
     private readonly Dictionary<string, GameObject> cardItems =
         new Dictionary<string, GameObject>();
+    [SerializeField] public DeckEditorFilters deckFilters;
+    [SerializeField] public TMP_Text mainDeckSummary;
     private Resolution[] availableResolutions;
     private string openingCardId;
     [SerializeField, Tooltip("選單操作提示，可不指定並由程式建立。")] private TMP_Text statusText;
@@ -82,6 +84,7 @@ public class StartMenuController : MonoBehaviour
         }
 
         BindDisplaySettings();
+        RefreshMainDeckSummary();
     }
 
     /// <summary>
@@ -127,6 +130,7 @@ public class StartMenuController : MonoBehaviour
         CloseDeckEditor();
         SetPanelActive(startMenuPanel, false);
         SetPanelActive(mainMenuPanel, true);
+        RefreshMainDeckSummary();
     }
 
     /// <summary>
@@ -325,11 +329,11 @@ public class StartMenuController : MonoBehaviour
         deckEditorGroup.alpha = 1f;
         deckEditorGroup.interactable = true;
         deckEditorGroup.blocksRaycasts = true;
+        if (deckFilters != null) deckFilters.Bind(this);
         RebuildCardList();
         RefreshSelectionVisuals();
         LayoutRebuilder.ForceRebuildLayoutImmediate(cardContent);
         Canvas.ForceUpdateCanvases();
-        ShowStatusMessage("點擊卡片：1 張 → 2 張 → 指定起手 → 移除");
     }
 
     /// <summary>
@@ -344,6 +348,7 @@ public class StartMenuController : MonoBehaviour
 
         DeckStorage.Save(selectedCounts, openingCardId, cardLibrary.Cards);
         CloseDeckEditor();
+        RefreshMainDeckSummary();
         ShowStatusMessage("牌組已儲存");
     }
 
@@ -447,24 +452,13 @@ public class StartMenuController : MonoBehaviour
     /// </summary>
     private void ToggleCard(string cardId)
     {
-        int count = GetSelectedCount(cardId);
-        if (openingCardId == cardId)
+        int count = (GetSelectedCount(cardId) + 1) % (DeckStorage.DefaultMaxCopies + 1);
+        if (count == 0)
         {
             selectedCounts.Remove(cardId);
-            openingCardId = null;
+            if (openingCardId == cardId) openingCardId = null;
         }
-        else if (count <= 0)
-        {
-            selectedCounts[cardId] = 1;
-        }
-        else if (count < DeckStorage.DefaultMaxCopies)
-        {
-            selectedCounts[cardId] = count + 1;
-        }
-        else
-        {
-            openingCardId = cardId;
-        }
+        else selectedCounts[cardId] = count;
 
         RefreshSelectionVisuals();
     }
@@ -507,6 +501,8 @@ public class StartMenuController : MonoBehaviour
             }
         }
 
+        if (deckFilters != null) deckFilters.RefreshOpening(cardLibrary.Cards, selectedCounts, openingCardId);
+        ApplyDeckFilters();
         int total = cardLibrary != null ? cardLibrary.Cards.Count : 0;
         int selectedCopies = GetSelectedCopyCount();
         if (deckCountText != null)
@@ -519,6 +515,38 @@ public class StartMenuController : MonoBehaviour
         {
             saveDeckButton.interactable = selectedCopies > 0;
         }
+    }
+
+    /// <summary>獨立設定保證起手卡，只接受目前牌組中已選的卡片。</summary>
+    public void SelectOpeningCard(string id)
+    {
+        openingCardId = !string.IsNullOrEmpty(id) && GetSelectedCount(id) > 0 ? id : null;
+        RefreshSelectionVisuals();
+    }
+
+    /// <summary>搜尋與分類只改變可見清單，不修改牌組選擇。</summary>
+    public void ApplyDeckFilters()
+    {
+        int visible = 0;
+        foreach (var pair in cardItems)
+        {
+            var card = FindCard(pair.Key);
+            bool show = card != null && (deckFilters == null || deckFilters.Matches(card, GetSelectedCount(pair.Key)));
+            pair.Value.SetActive(show); if (show) visible++;
+        }
+        if (deckFilters != null) deckFilters.SetResultCount(visible, cardItems.Count);
+    }
+
+    /// <summary>主介面顯示已儲存牌組摘要，編輯草稿不會提前覆蓋存檔。</summary>
+    private void RefreshMainDeckSummary()
+    {
+        if (mainDeckSummary == null || cardLibrary == null) return;
+        var config = DeckStorage.LoadConfigOrDefault(cardLibrary.Cards);
+        int[] counts = new int[3];
+        foreach (var card in cardLibrary.Cards)
+            if (card != null && config.counts.TryGetValue(card.id, out int n)) counts[(int)card.cardType] += n;
+        var opening = FindCard(config.openingCardId);
+        mainDeckSummary.text = $"目前牌組 {config.TotalCount} 張  ·  轉職 {counts[0]} / 事件 {counts[1]} / 場地 {counts[2]}\n初始卡牌：{(opening != null ? opening.cardName : "隨機起手")}";
     }
 
     /// <summary>

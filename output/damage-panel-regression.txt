@@ -3,6 +3,12 @@ PASS: Damage icon uses world canvas under source piece
 PASS: Damage icon follows piece movement
 PASS: Hidden damage icon returns to its pool
 PASS: Removed piece falls back to saved board coordinates
+PASS: Scene has shared feedback audio interface
+PASS: Card clone preserves status effect references
+PASS: Status idle effect attaches once to its piece
+PASS: Status trigger instantiates configured effect with empty sound safely
+PASS: Removing status immediately disables idle effect
+PASS: Classic cleanup removes idle effects
 PASS: Real capture builder provides signed contributions matching final damage
 PASS: Network payload preserves source and signed change
 PASS: Equipped paladin retains both initial knight moves
@@ -22,6 +28,14 @@ PASS: Long spearman retains its explicit custom movement
 PASS: Fireball 5 + weakness vulnerability 1 - paladin 1 = 5 without field reduction
 PASS: Empire adds reduction 1: weakness fireball against protected pawn = 4
 PASS: Volcano + kingdom + paladin + weakness fireball = 5
+PASS: Same-side Bloody Mary increases mage fire 1 to 6
+PASS: Mage electric remains fixed 1 despite Bloody Mary
+PASS: Paladin protects itself: mage fire 1 + Mary 5 - reduction 1
+PASS: Moving Mary retains own 5 + berserker 1 - paladin 1; value remains unreduced
+PASS: Berserker and Mary preserve distinct source identities
+PASS: First modifier on same piece shown alone
+PASS: Second modifier on same piece shown in next wave
+PASS: Both modifier waves complete and clean up
 PASS: Fireball with volcano and kingdom retains final damage 5 and two modifier phases
 PASS: Attack visual starts before sources without applying HP
 PASS: Single sequence applies once after increase then simultaneous reductions

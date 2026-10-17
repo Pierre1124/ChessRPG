@@ -389,7 +389,8 @@ public class DamageCalculationVisualizer : MonoBehaviour
     }
 
     /// <summary>依已演完的階段更新固定文字；批次逐目標列出，傷害與治療不互相抵銷。</summary>
-    private void UpdateFinalDamageText(IReadOnlyList<DamageCalculationSequence> sequences, DamageModifierPhase completed)
+    private void UpdateFinalDamageText(IReadOnlyList<DamageCalculationSequence> sequences, DamageModifierPhase completed,
+        HashSet<DamageCalculationStep> played = null)
     {
         if (finalDamageText == null) return;
         var lines = new List<string>();
@@ -399,7 +400,7 @@ public class DamageCalculationVisualizer : MonoBehaviour
             long value = sequence.finalDamage;
             foreach (var step in sequence.steps)
             {
-                if (step == null || !step.hasContribution) continue;
+                if (step == null || !step.hasContribution || (played != null && played.Contains(step))) continue;
                 if ((step.modifierPhase == DamageModifierPhase.Increase && completed == DamageModifierPhase.None) ||
                     (step.modifierPhase == DamageModifierPhase.Decrease && completed != DamageModifierPhase.Decrease))
                     value -= step.contribution;
@@ -413,30 +414,41 @@ public class DamageCalculationVisualizer : MonoBehaviour
         finalDamageText.gameObject.SetActive(lines.Count > 0);
     }
 
-    /// <summary>同一階段所有來源在同一幀啟動，等待最長的來源演出後一起收起。</summary>
+    /// <summary>同一棋子的效果逐輪播放，不同棋子同輪並行，保留每次效果的圖示。</summary>
     private IEnumerator PlayModifierPhase(IReadOnlyList<DamageCalculationSequence> sequences, DamageModifierPhase phase)
     {
         CurrentModifierPhase = phase;
-        var shown = new HashSet<string>();
-        var positions = new Dictionary<Vector3, int>();
+        int round = 0;
+        var played = new HashSet<DamageCalculationStep>();
+        bool hasNext;
+        do
+        {
+        hasNext = false;
         float duration = Mathf.Max(0.05f, stepDuration);
         foreach (var sequence in sequences)
         {
             if (sequence == null) continue;
+            // 多目標各自保有播放進度，不因共用來源棋子互相等待。
+            var positions = new Dictionary<Vector3, int>();
             foreach (var step in sequence.steps)
             {
                 if (step == null || step.modifierPhase != phase) continue;
                 Piece anchorPiece = step.iconPiece != null ? step.iconPiece : sequence.target;
                 Vector3 anchorPosition = anchorPiece != null ? anchorPiece.transform.position : step.worldPosition;
-                string key = step.sourceCardId + "|" + step.title + "|" + anchorPosition.ToString("R");
-                if (!shown.Add(key)) continue;
                 positions.TryGetValue(anchorPosition, out int stack);
                 positions[anchorPosition] = stack + 1;
+                if (stack > round) hasNext = true;
+                if (stack != round) continue;
+                played.Add(step);
                 CardDefinition card = string.IsNullOrEmpty(step.sourceCardId) ? null : imageDatabase.GetCard(step.sourceCardId);
                 Sprite sprite = step.icon;
                 if (sprite == null && card != null) sprite = card.skillImage != null ? card.skillImage : card.cardImage;
                 if (sprite == null) sprite = ResolveIcon(step, sequence) ?? GetCountingIcon(step.countingIcon);
-                GetResolutionPanel(VisibleModifierCount++).ShowSource(step, sprite, stack, sequence.target);
+                GetResolutionPanel(VisibleModifierCount++).ShowSource(step, sprite, 0, sequence.target);
+                if (phase != DamageModifierPhase.Activation && step.iconPiece != null)
+                    foreach (var status in step.iconPiece.Statuses)
+                        if (status.definition != null && status.definition.statusName == step.title)
+                        { BattleFeedback.PlayStatusTrigger(status); break; }
                 if (card == null || phase == DamageModifierPhase.Activation) continue;
                 CardAnimationEvents.Play(step.iconPiece, sequence.target, card, CardAnimationTiming.OnDamageModifier);
                 foreach (var animation in card.animations)
@@ -445,7 +457,11 @@ public class DamageCalculationVisualizer : MonoBehaviour
             }
         }
         if (VisibleModifierCount > 0) yield return new WaitForSecondsRealtime(duration);
+        if (phase != DamageModifierPhase.Activation)
+            UpdateFinalDamageText(sequences, phase == DamageModifierPhase.Increase ? DamageModifierPhase.None : DamageModifierPhase.Increase, played);
         HideResolutionPanels(); VisibleModifierCount = 0;
+        round++;
+        } while (hasNext);
         CurrentModifierPhase = DamageModifierPhase.None;
     }
 

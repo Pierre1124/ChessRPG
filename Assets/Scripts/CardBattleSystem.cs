@@ -2001,7 +2001,9 @@ public class CardBattleSystem
                     effect,
                     previousValue,
                     result,
-                    owner.transform.position
+                    owner.transform.position,
+                    owner,
+                    status.definition.sourceCardId
                 );
             }
         }
@@ -2017,7 +2019,11 @@ public class CardBattleSystem
         bool white = source != null ? source.IsWhite : logic.isWhiteTurn;
         if (sequence.damageContext.sourceStatus != null && sequence.damageContext.sourceStatus.hasSourcePlayer)
             white = sequence.damageContext.sourceStatus.sourcePlayerIsWhite;
-        foreach (Piece owner in logic.boardMap)
+        var bonusOwners = new HashSet<Piece>();
+        foreach (Piece piece in logic.boardMap) if (piece != null) bonusOwners.Add(piece);
+        // 移動吃子時原格已清空，攻擊者仍須提供自身的光環加成。
+        if (source != null) bonusOwners.Add(source);
+        foreach (Piece owner in bonusOwners)
         {
             CardRuntimeState state = owner != null ? owner.CardRuntime : null;
             CardDefinition card = state != null ? state.definition : null;
@@ -2114,7 +2120,8 @@ public class CardBattleSystem
                     previousValue,
                     result,
                     source.transform.position,
-                    source
+                    source,
+                    status.definition.sourceCardId
                 );
             }
         }
@@ -2459,6 +2466,7 @@ public class CardBattleSystem
                 continue;
             }
 
+            BattleFeedback.PlayStatusTrigger(status);
             int previousCharges = status.charges;
             status.ConsumeIfNeeded();
 

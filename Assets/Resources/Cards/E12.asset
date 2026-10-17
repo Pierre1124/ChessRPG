@@ -20,12 +20,18 @@ MonoBehaviour:
     - type: 2
       amount: 0
     healthCost: 0
+    friendlyDamageBonus: 0
+    damageBonusUsesCaptureStacks: 0
+    blocksHealing: 0
+    requiresNoBoardCaptures: 0
+    lastWillDamage: 0
+    lastWillDamageTags: 0
     minimumTargetHealth: -1
     maximumTargetHealth: -1
     ruleNotes: 
     cardType: 1
     cardName: "\u5805\u5B88\u9663\u5730"
-    targetTypes: 63
+    targetTypes: -1
     conditionCost: "\u7121"
     damageTags: 0
     randomDamageTypes: 
@@ -41,7 +47,13 @@ MonoBehaviour:
     conditions: []
     effects: []
     statusesToApply:
-    - statusName: "\u5805\u5B88\u9663\u5730"
+    - triggerEffectPrefab: {fileID: 0}
+      idleEffectPrefab: {fileID: 0}
+      triggerSound: {fileID: 0}
+      triggerEffectLifetime: 2
+      effectOffset: {x: 0, y: 0, z: 0}
+      triggerSoundVolume: 1
+      statusName: "\u5805\u5B88\u9663\u5730"
       sourceCardId: E12
       kind: 0
       icon: {fileID: 21300000, guid: 101e1baef4259a342ba2cda1ee7797f5, type: 3}

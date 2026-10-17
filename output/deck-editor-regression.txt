@@ -1,0 +1,9 @@
+PASS Empty deck cannot be saved
+PASS Opening card selected independently from quantity
+PASS Adding second copy preserves opening choice
+PASS Job category hides event without changing deck
+PASS Keyword filters card ID
+PASS Selected-only filter excludes unselected cards
+PASS Save roundtrip preserves quantity and opening card
+PASS Removing last copy clears opening choice
+PASS Leaving without save discards draft

@@ -39,7 +39,7 @@ MonoBehaviour:
     cardImage: {fileID: 21300000, guid: c1d7d75a8f31165459809f0639082c71, type: 3}
     skillImage: {fileID: 21300000, guid: 241323197e4f7c146a5a4230ab1d5791, type: 3}
     skillEffectPrefab: {fileID: 0}
-    skillSound: {fileID: 0}
+    skillSound: {fileID: 8300000, guid: cfd5b47d51ebcf1408b4b2389916fa59, type: 3}
     description: "\u6240\u6709\u68CB\u5B50\u589E\u50B71,\u6301\u7E8C2\u56DE\u5408"
     tags:
     - "\u4E8B\u4EF6"
@@ -47,7 +47,13 @@ MonoBehaviour:
     conditions: []
     effects: []
     statusesToApply:
-    - statusName: "\u72C2\u6230\u58EB"
+    - triggerEffectPrefab: {fileID: 0}
+      idleEffectPrefab: {fileID: 0}
+      triggerSound: {fileID: 0}
+      triggerEffectLifetime: 2
+      effectOffset: {x: 0, y: 0, z: 0}
+      triggerSoundVolume: 1
+      statusName: "\u72C2\u6230\u58EB"
       sourceCardId: E07
       kind: 0
       icon: {fileID: 21300000, guid: 241323197e4f7c146a5a4230ab1d5791, type: 3}

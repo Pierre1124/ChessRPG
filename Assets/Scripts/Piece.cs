@@ -169,6 +169,7 @@ public abstract class Piece : MonoBehaviour
         status.sourcePlayerIsWhite = sourcePlayerIsWhite;
 
         statuses.Add(status);
+        BattleFeedback.StartStatusIdle(status);
 
         Debug.Log(
             $"狀態更新 持有者={DescribeSelf()} | " +
@@ -194,6 +195,7 @@ public abstract class Piece : MonoBehaviour
                     "Reason=Card replaced"
                 );
 
+                BattleFeedback.StopStatusIdle(statuses[i]);
                 statuses.RemoveAt(i);
             }
         }
@@ -220,6 +222,7 @@ public abstract class Piece : MonoBehaviour
                 $"[CardDebug][StatusRemoved] Owner={DescribeSelf()} | " +
                 $"Status={status.definition.statusName} | Reason=Replaced"
             );
+            BattleFeedback.StopStatusIdle(statuses[i]);
             statuses.RemoveAt(i);
             removed++;
         }
@@ -247,6 +250,7 @@ public abstract class Piece : MonoBehaviour
                 $"[CardDebug][StatusRemoved] Owner={DescribeSelf()} | " +
                 $"Status={status.definition.statusName} | Trigger={trigger}"
             );
+            BattleFeedback.StopStatusIdle(statuses[i]);
             statuses.RemoveAt(i);
             removed++;
         }
@@ -303,6 +307,7 @@ public abstract class Piece : MonoBehaviour
                 $"[CardDebug][StatusRemoved] Owner={DescribeSelf()} | " +
                 $"Status={status.definition.statusName} | Reason=DurationExpired"
             );
+            BattleFeedback.StopStatusIdle(statuses[i]);
             statuses.RemoveAt(i);
             removed++;
         }
@@ -377,6 +382,7 @@ public abstract class Piece : MonoBehaviour
     {
         cardDefinition = null;
         cardRuntime = null;
+        foreach (var status in statuses) BattleFeedback.StopStatusIdle(status);
         statuses.Clear();
         attack = 0;
         extraAttack = 0;

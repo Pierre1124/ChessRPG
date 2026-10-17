@@ -155,6 +155,13 @@ public class CardEffectData
 [Serializable]
 public class StatusDefinition
 {
+    [Header("狀態演出")]
+    public GameObject triggerEffectPrefab;
+    public GameObject idleEffectPrefab;
+    public AudioClip triggerSound;
+    [Min(0.05f)] public float triggerEffectLifetime = 2f;
+    public Vector3 effectOffset;
+    [Range(0f, 1f)] public float triggerSoundVolume = 1f;
     public string statusName;
     public string sourceCardId;
     public StatusKind kind;
@@ -360,6 +367,7 @@ public class CardRuntimeState
 [Serializable]
 public class StatusRuntime
 {
+    [NonSerialized] public GameObject idleEffectInstance;
     public StatusDefinition definition;
     public Piece owner;
     public Piece source;

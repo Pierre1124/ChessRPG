@@ -740,6 +740,7 @@ public class CardHandManager : MonoBehaviour
             $"Card={card.id} {card.cardName} | DrawReset=True"
         );
 
+        BattleFeedback.Play(CommonBattleSound.Recycle);
         CardRecycled?.Invoke(recycleEvent);
         Refresh(logicManager.isWhiteTurn);
         return true;
@@ -756,6 +757,7 @@ public class CardHandManager : MonoBehaviour
             return;
         }
 
+        BattleFeedback.ObserveHealth(logicManager.whiteHealth, logicManager.blackHealth);
         ResolveCardGameUiReferences();
         SetHealthUi(
             whiteHealthSlider,
@@ -846,6 +848,14 @@ public class CardHandManager : MonoBehaviour
                 receivedHand.Add(card);
             }
         }
+        if (remoteOpponentHandCount >= 0)
+        {
+            int oldCount = (state.recipientWhite ? whiteHand : blackHand).Count + remoteOpponentHandCount;
+            int newCount = receivedHand.Count + state.opponentHandCount;
+            if (newCount > oldCount) BattleFeedback.Play(CommonBattleSound.Draw);
+            else if (newCount < oldCount && remoteCanDrawThisTurn && !canDrawThisTurn)
+                BattleFeedback.Play(CommonBattleSound.Recycle);
+        }
         whiteDeck.Clear();
         blackDeck.Clear();
         whiteHand.Clear();
@@ -889,6 +899,7 @@ public class CardHandManager : MonoBehaviour
                 $"?拚??∠?={deck.Count - 1}"
             );
             deck.RemoveAt(0);
+            if (drawnCount == 0) BattleFeedback.Play(CommonBattleSound.Draw);
             drawnCount++;
         }
 
@@ -940,6 +951,7 @@ public class CardHandManager : MonoBehaviour
             return;
         }
 
+        BattleFeedback.Play(CommonBattleSound.CardUse);
         StartCoroutine(
             PlayUsingCardRoutine(card, cardObject)
         );

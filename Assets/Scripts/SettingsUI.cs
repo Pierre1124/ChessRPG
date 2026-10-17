@@ -43,9 +43,9 @@ public class SettingsUI : MonoBehaviour
         panel.SetActive(false);
     }
     /// <summary>即時靜音並保留玩家的音量值。</summary>
-    private void OnSoundChanged(bool value) { ApplyAudio(); SaveSettings(); }
+    private void OnSoundChanged(bool value) { ApplyAudio(); SaveSettings(); BattleFeedback.RefreshAudioSettings(); }
     /// <summary>即時更新音量與百分比，不逐幀寫入磁碟。</summary>
-    private void OnVolumeChanged(float value) { ApplyAudio(); SaveSettings(); }
+    private void OnVolumeChanged(float value) { ApplyAudio(); SaveSettings(); BattleFeedback.RefreshAudioSettings(); }
     /// <summary>立即更新回合切換時的相機旋轉。</summary>
     private void OnCameraChanged(bool value)
     {
