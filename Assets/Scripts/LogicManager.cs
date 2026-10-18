@@ -1673,6 +1673,7 @@ public class LogicManager : MonoBehaviour
                 new NetworkDamageCalculationSequence
                 {
                     damagedWhitePlayer = sequence.damagedWhitePlayer,
+                    presentationTags = (int)(sequence.damageContext != null ? sequence.damageContext.tags : sequence.presentationTags),
                     isHealing = sequence.isHealing,
                     isCapture = sequence.isCapture,
                     finalDamage = sequence.finalDamage,
@@ -1755,6 +1756,7 @@ public class LogicManager : MonoBehaviour
         DamageCalculationSequence sequence = new DamageCalculationSequence
         {
             damagedWhitePlayer = networkSequence.damagedWhitePlayer,
+            presentationTags = (DamageTag)networkSequence.presentationTags,
             isHealing = networkSequence.isHealing,
             isCapture = networkSequence.isCapture,
             finalDamage = networkSequence.finalDamage,

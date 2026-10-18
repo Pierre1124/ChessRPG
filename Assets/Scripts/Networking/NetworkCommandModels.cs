@@ -190,6 +190,7 @@ public class NetworkDamageCalculationBatch
 [Serializable]
 public class NetworkDamageCalculationSequence
 {
+    public int presentationTags;
     public bool damagedWhitePlayer;
     public bool isHealing;
     public bool isCapture;

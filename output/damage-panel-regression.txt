@@ -9,6 +9,23 @@ PASS: Status idle effect attaches once to its piece
 PASS: Status trigger instantiates configured effect with empty sound safely
 PASS: Removing status immediately disables idle effect
 PASS: Classic cleanup removes idle effects
+PASS: Presentation interface configured: Neutral
+PASS: Presentation interface configured: Fire
+PASS: Presentation interface configured: Poison
+PASS: Presentation interface configured: Curse
+PASS: Presentation interface configured: Electric
+PASS: Presentation interface configured: TrueDamage
+PASS: Presentation interface configured: Cost
+PASS: Presentation interface configured: Heal
+PASS: Presentation interface configured: AntiHeal
+PASS: Presentation interface configured: Trigger
+PASS: Fire result has configured red number and left icon
+PASS: Reused result switches to electric purple and electric icon
+PASS: Network presentation preserves resolved electric type
+PASS: Blocked heal selects anti-heal instead of damage or heal
+PASS: Positive healing selects healing presentation
+PASS: Typed effect spawns under DMGSystem at affected position (3.00, 1.00, 4.00)
+PASS: Cancel immediately hides typed effects
 PASS: Real capture builder provides signed contributions matching final damage
 PASS: Network payload preserves source and signed change
 PASS: Equipped paladin retains both initial knight moves

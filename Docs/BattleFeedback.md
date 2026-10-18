@@ -25,3 +25,30 @@
 
 素材欄位預設留空，請拖入自己的 AudioClip／特效 Prefab。
 各場景保有自己的共用音效設定；現有卡片動畫音效不會被替換。
+
+## 屬性數字與事件回饋
+在各場景 `AudioSystem > BattleFeedback > Presentation Styles` 編輯：
+
+| Type | 用途／預設顏色 |
+| --- | --- |
+| Neutral | 無屬性，白色 |
+| Fire | 火，紅色 |
+| Poison | 毒，黃綠色 |
+| Curse | 詛咒，紫紅色 |
+| Electric | 電，紫色 |
+| TrueDamage | 真實傷害，白色 |
+| Cost | 代價，橘色 |
+| Heal | 回復，綠色 |
+| AntiHeal | 禁療，灰色 |
+| Trigger | 一般來源／效果圖示觸發 |
+
+每類可設定 `Icon`、`Number Color`、`Font Style`、`Number Scale`、`Effect Prefab`、`Effect Offset`、`Effect Lifetime`、`Sound` 與 `Sound Volume`。
+數字沿用原本的 TMP 字體；左側圖示位於 `DamageResultFly/TypeIcon`，大小可直接在 Scene 或對應 Prefab 修改。
+電圖示暫用既有電網技能圖，真傷暫用攻擊圖；可替換成自己的專用圖示。新音效／特效欄位預設留空。
+
+- 類型音效／特效在最終數字出現時播放，零傷害不播放造成傷害回饋。
+- 一般 Trigger 隨每個來源圖示播放；禁療隨阻止回復的來源圖示播放，結果為 0 時改顯示禁療樣式。
+- 特效在受影響位置播放，物件收納於 `DMGSystem/TypeEffects`，到時或取消演出自動清理。
+- 原共同扣血／回血音效仍在實際 HP 變化時播放；兩組均指定素材時會分別播放。
+- 連線序列會保存已決定的屬性，客戶端不重新隨機。雙方須更新至同版程式。
+- 吃子最終數字仍是一個合計，不把不受減傷的「價值」拆成第二次扣血；外觀設定不改計算規則。

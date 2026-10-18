@@ -13,10 +13,57 @@ public sealed class BattleFeedback : MonoBehaviour
     public AudioClip drawSound;
     public AudioClip recycleSound;
     [Range(0f, 1f)] public float volume = 1f;
+    [Header("類型呈現：圖示、數字、特效與音效")]
+    public BattlePresentationStyle[] presentationStyles = new BattlePresentationStyle[0];
+    public Transform typeEffectRoot;
     private static BattleFeedback instance;
     private AudioSource output;
     private bool hasHealth;
     private int whiteHealth, blackHealth;
+    private readonly System.Collections.Generic.List<GameObject> typeEffects = new System.Collections.Generic.List<GameObject>();
+
+    /// <summary>取得場景中指定類型的外觀，未設定時沿用原飄字。</summary>
+    public static BattlePresentationStyle GetStyle(BattlePresentationType type)
+    {
+        if (instance == null) return null;
+        foreach (var style in instance.presentationStyles)
+            if (style != null && style.type == type) return style;
+        return null;
+    }
+
+    /// <summary>於演出時播放類型回饋；不在數值試算或網路同步時重複觸發。</summary>
+    public static void PlayType(BattlePresentationType type, Vector3 position)
+    {
+        var style = GetStyle(type);
+        if (style == null) return;
+        PlayClip(style.sound, style.soundVolume);
+        if (style.effectPrefab == null) return;
+        var effect = Instantiate(style.effectPrefab, position + style.effectOffset, Quaternion.identity);
+        effect.transform.SetParent(instance.typeEffectRoot != null ? instance.typeEffectRoot : instance.transform, true);
+        effect.SetActive(true);
+        instance.typeEffects.Add(effect);
+        instance.StartCoroutine(instance.RemoveTypeEffect(effect, style.effectLifetime));
+    }
+
+    /// <summary>使用真實時間清除一次性特效，暫停不延長其壽命。</summary>
+    private System.Collections.IEnumerator RemoveTypeEffect(GameObject effect, float lifetime)
+    {
+        yield return new WaitForSecondsRealtime(Mathf.Max(.05f, lifetime));
+        if (effect != null) Destroy(effect);
+        typeEffects.Remove(effect);
+    }
+
+    /// <summary>取消演出或切換普通棋局時立即移除本接口建立的特效。</summary>
+    public static void StopTypeEffects()
+    {
+        if (instance == null) return;
+        foreach (var effect in instance.typeEffects)
+            if (effect != null) { effect.SetActive(false); Destroy(effect); }
+        instance.typeEffects.Clear();
+    }
+
+    /// <summary>播放器停用時清理特效，避免協程停止後殘留。</summary>
+    private void OnDisable() { StopTypeEffects(); }
 
     /// <summary>登錄場景音效播放器，不建立額外的常駐物件。</summary>
     private void Awake()

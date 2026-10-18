@@ -59,6 +59,7 @@ public static class DamagePanelRegression
                     typeof(DamageCalculationVisualizer).GetField(name, Private).SetValue(visualizer, 0.2f);
                 VerifyPieceAnchoring();
                 VerifyFeedbackInterfaces();
+                VerifyTypedPresentation();
                 var battle = new CardBattleSystem(logic);
                 var context = new DamageContext { source = logic.boardMap[0, 1], target = logic.boardMap[0, 6] };
                 var actual = (DamageCalculationSequence)typeof(CardBattleSystem).GetMethod("BuildCaptureDamageSequence", Private).Invoke(battle, new object[] { context });
@@ -342,6 +343,50 @@ public static class DamagePanelRegression
         fields.Clear(); fields.Add(database.GetCard("F01")); fields.Add(database.GetCard("F05"));
         Check(build().finalDamage == 5, "Volcano + kingdom + paladin + weakness fireball = 5");
         fields.Clear(); pawn.ClearRpgState(); paladin.ApplyCard(null);
+    }
+
+    /// <summary>驗證屬性樣式、結果圖示重用與網路屬性保存。</summary>
+    private static void VerifyTypedPresentation()
+    {
+        foreach (BattlePresentationType type in Enum.GetValues(typeof(BattlePresentationType)))
+            Check(BattleFeedback.GetStyle(type) != null, "Presentation interface configured: " + type);
+        var fire = new DamageCalculationSequence { finalDamage = 1, damageContext = new DamageContext { tags = DamageTag.Fire } };
+        var show = typeof(DamageCalculationVisualizer).GetMethod("ShowDamageResultFly", Private, null,
+            new[] { typeof(DamageCalculationSequence) }, null);
+        show.Invoke(visualizer, new object[] { fire });
+        var root = (RectTransform)typeof(DamageCalculationVisualizer).GetField("damageResultFly", Private).GetValue(visualizer);
+        var number = root.GetComponentsInChildren<TMPro.TMP_Text>(true).First(t => t.name == "DamageText");
+        var icon = root.Find("TypeIcon").GetComponent<UnityEngine.UI.Image>();
+        Check(number.color == BattleFeedback.GetStyle(BattlePresentationType.Fire).numberColor && icon.sprite != null && icon.gameObject.activeSelf,
+            "Fire result has configured red number and left icon");
+        fire.damageContext.tags = DamageTag.Electric;
+        show.Invoke(visualizer, new object[] { fire });
+        Check(number.color == BattleFeedback.GetStyle(BattlePresentationType.Electric).numberColor && icon.sprite == BattleFeedback.GetStyle(BattlePresentationType.Electric).icon,
+            "Reused result switches to electric purple and electric icon");
+        var wire = JsonUtility.FromJson<NetworkDamageCalculationSequence>(JsonUtility.ToJson(new NetworkDamageCalculationSequence { presentationTags = (int)DamageTag.Electric }));
+        Check(BattlePresentationStyle.Resolve(new DamageCalculationSequence { presentationTags = (DamageTag)wire.presentationTags }) == BattlePresentationType.Electric,
+            "Network presentation preserves resolved electric type");
+        var blocked = new DamageCalculationSequence { isHealing = true, finalDamage = 0 };
+        blocked.steps.Add(new DamageCalculationStep { countingIcon = DamageCountingIcon.AntiHeal });
+        Check(BattlePresentationStyle.Resolve(blocked) == BattlePresentationType.AntiHeal, "Blocked heal selects anti-heal instead of damage or heal");
+        Check(BattlePresentationStyle.Resolve(new DamageCalculationSequence { isHealing = true, finalDamage = 3 }) == BattlePresentationType.Heal,
+            "Positive healing selects healing presentation");
+        var feedback = Object.FindFirstObjectByType<BattleFeedback>();
+        var fireStyle = BattleFeedback.GetStyle(BattlePresentationType.Fire);
+        var originalPrefab = fireStyle.effectPrefab;
+        var fixture = new GameObject("Type effect fixture"); fixture.SetActive(false);
+        try
+        {
+            fireStyle.effectPrefab = fixture;
+            BattleFeedback.PlayType(BattlePresentationType.Fire, new Vector3(3, 0, 4));
+            var effect = feedback.typeEffectRoot.GetChild(feedback.typeEffectRoot.childCount - 1);
+            Check(effect.gameObject.activeSelf && Vector3.Distance(effect.position, new Vector3(3, 0, 4) + fireStyle.effectOffset) < .001f,
+                "Typed effect spawns under DMGSystem at affected position " + effect.position);
+            BattleFeedback.StopTypeEffects();
+            Check(!effect.gameObject.activeSelf, "Cancel immediately hides typed effects");
+        }
+        finally { fireStyle.effectPrefab = originalPrefab; Object.DestroyImmediate(fixture); }
+        root.gameObject.SetActive(false);
     }
 
     /// <summary>驗證同方魔法師、移動中的血腥瑪莉、聖騎士本體及同源多效果。</summary>

@@ -11,6 +11,7 @@ using UnityEditor;
 public class DamageCalculationSequence
 {
     public DamageContext damageContext;
+    public DamageTag presentationTags;
     public Piece attacker;
     public Piece target;
     public bool damagedWhitePlayer;
@@ -445,6 +446,8 @@ public class DamageCalculationVisualizer : MonoBehaviour
                 if (sprite == null && card != null) sprite = card.skillImage != null ? card.skillImage : card.cardImage;
                 if (sprite == null) sprite = ResolveIcon(step, sequence) ?? GetCountingIcon(step.countingIcon);
                 GetResolutionPanel(VisibleModifierCount++).ShowSource(step, sprite, 0, sequence.target);
+                BattleFeedback.PlayType(step.countingIcon == DamageCountingIcon.AntiHeal
+                    ? BattlePresentationType.AntiHeal : BattlePresentationType.Trigger, anchorPosition);
                 if (phase != DamageModifierPhase.Activation && step.iconPiece != null)
                     foreach (var status in step.iconPiece.Statuses)
                         if (status.definition != null && status.definition.statusName == step.title)
@@ -515,7 +518,7 @@ public class DamageCalculationVisualizer : MonoBehaviour
     }
 
     /// <summary>停用時停止演出及隱藏外部 Canvas，避免延遲結算。</summary>
-    private void OnDisable() { StopAllCoroutines(); RestoreHealthPositions(); HideDamageCalcSteps(); HideDamageResultFlies(); HideResolutionPanels(); }
+    private void OnDisable() { StopAllCoroutines(); BattleFeedback.StopTypeEffects(); RestoreHealthPositions(); HideDamageCalcSteps(); HideDamageResultFlies(); HideResolutionPanels(); }
 
     /// <summary>離開場景時回收浮動 UI 及動態中文字型。</summary>
     private void OnDestroy()
@@ -730,6 +733,20 @@ public class DamageCalculationVisualizer : MonoBehaviour
             ? $"+{sequence.finalDamage}"
             : sequence.finalDamage.ToString();
 
+        var type = BattlePresentationStyle.Resolve(sequence);
+        var style = BattleFeedback.GetStyle(type);
+        view.text.fontStyle = style != null ? style.fontStyle : view.originalFontStyle;
+        view.text.fontSize = view.originalFontSize * (style != null ? style.numberScale : 1f);
+        if (style != null) view.text.color = style.numberColor;
+        if (view.typeIcon != null)
+        {
+            view.typeIcon.sprite = style?.icon;
+            view.typeIcon.gameObject.SetActive(style?.icon != null);
+            // 緊貼數字左側，不受數字位數影響，也不覆寫使用者的文字字體。
+            view.typeIcon.rectTransform.anchoredPosition = new Vector2(-view.text.preferredWidth * .5f - view.typeIcon.rectTransform.rect.width * .5f - 8f, 0);
+        }
+        if (sequence.finalDamage > 0) BattleFeedback.PlayType(type, sequence.resultStartWorldPosition);
+
         view.root.gameObject.SetActive(true);
     }
 
@@ -881,7 +898,10 @@ public class DamageCalculationVisualizer : MonoBehaviour
             {
                 root = viewRoot,
                 canvasGroup = group,
-                text = text
+                text = text,
+                typeIcon = FindChildComponent<Image>(viewRoot, "TypeIcon"),
+                originalFontSize = text != null ? text.fontSize : 36f,
+                originalFontStyle = text != null ? text.fontStyle : FontStyles.Normal
             });
         }
 
@@ -1188,6 +1208,9 @@ public class DamageCalculationVisualizer : MonoBehaviour
         public RectTransform root;
         public CanvasGroup canvasGroup;
         public TMP_Text text;
+        public Image typeIcon;
+        public float originalFontSize;
+        public FontStyles originalFontStyle;
     }
 
     private class DamageStepLayout
