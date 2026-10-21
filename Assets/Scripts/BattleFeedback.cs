@@ -104,7 +104,7 @@ public sealed class BattleFeedback : MonoBehaviour
         instance.output.mute = PlayerPrefs.GetInt("SoundEnabled", 1) == 0;
     }
 
-    /// <summary>只對實際生命變化播放聲音；首次同步及相同數值刷新保持安靜。</summary>
+    /// <summary>血條更新時只對實際生命變化播放共同音效；初次同步與重複刷新保持安靜。</summary>
     public static void ObserveHealth(int white, int black)
     {
         if (instance == null) return;

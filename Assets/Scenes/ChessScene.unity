@@ -22983,7 +22983,7 @@ MonoBehaviour:
     effectPrefab: {fileID: 0}
     effectOffset: {x: 0, y: 1, z: 0}
     effectLifetime: 2
-    sound: {fileID: 0}
+    sound: {fileID: 8300000, guid: 3510e31692e86764096e45d24d48e5bb, type: 3}
     soundVolume: 1
   - type: 2
     icon: {fileID: 300281893, guid: 665429b751e857e45b495c0b93b1dc94, type: 3}
@@ -22993,7 +22993,7 @@ MonoBehaviour:
     effectPrefab: {fileID: 0}
     effectOffset: {x: 0, y: 1, z: 0}
     effectLifetime: 2
-    sound: {fileID: 0}
+    sound: {fileID: 8300000, guid: e21521ecc764b1a498c92a42850e9006, type: 3}
     soundVolume: 1
   - type: 3
     icon: {fileID: -1405520293, guid: 665429b751e857e45b495c0b93b1dc94, type: 3}
@@ -23003,7 +23003,7 @@ MonoBehaviour:
     effectPrefab: {fileID: 0}
     effectOffset: {x: 0, y: 1, z: 0}
     effectLifetime: 2
-    sound: {fileID: 0}
+    sound: {fileID: 8300000, guid: 2899bcbb417f7c64eb47bd36b7c14866, type: 3}
     soundVolume: 1
   - type: 4
     icon: {fileID: 21300000, guid: 18fd32856477bc44b8b089eeb80c2667, type: 3}
@@ -23043,7 +23043,7 @@ MonoBehaviour:
     effectPrefab: {fileID: 0}
     effectOffset: {x: 0, y: 1, z: 0}
     effectLifetime: 2
-    sound: {fileID: 0}
+    sound: {fileID: 8300000, guid: 6041fc8ab7d88e4469a61aa82299ae46, type: 3}
     soundVolume: 1
   - type: 8
     icon: {fileID: -229054627, guid: 665429b751e857e45b495c0b93b1dc94, type: 3}

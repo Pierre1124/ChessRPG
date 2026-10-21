@@ -113,8 +113,13 @@ public class NetworkSessionLauncher : MonoBehaviourPunCallbacks
         }
 
         ShowFeedback("正在連線，請稍候");
-        Debug.Log($"[NetworkGame] Connecting to Photon. Room={roomName}");
-        bool started = PhotonNetwork.ConnectUsingSettings();
+        // ConnectUsingSettings overwrites GameVersion from AppSettings.AppVersion.
+        // Pass a copy so the protocol version survives without mutating the asset.
+        AppSettings settings = PhotonNetwork.PhotonServerSettings.AppSettings.CopyTo(new AppSettings());
+        settings.AppVersion = Application.version + "-private-cards-v1";
+        Debug.Log($"[NetworkGame] Connecting to Photon. Room={roomName} | " +
+            $"Region={settings.FixedRegion} | Version={settings.AppVersion}");
+        bool started = PhotonNetwork.ConnectUsingSettings(settings);
         if (!started)
         {
             ShowFeedback("無法開始連線，請稍後重試");
@@ -130,8 +135,12 @@ public class NetworkSessionLauncher : MonoBehaviourPunCallbacks
     /// </summary>
     public override void OnConnectedToMaster()
     {
+        Debug.Log($"[NetworkGame] Connected to Master | {ConnectionDetails}");
         JoinOrCreateConfiguredRoom();
     }
+
+    private string ConnectionDetails =>
+        $"Room={roomName} | Region={PhotonNetwork.CloudRegion} | Version={PhotonNetwork.AppVersion}";
 
     /// <summary>
     /// 加入房間後更新連線狀態，並依角色啟動場景或對局準備流程。
@@ -159,9 +168,16 @@ public class NetworkSessionLauncher : MonoBehaviourPunCallbacks
     /// </summary>
     public override void OnJoinRoomFailed(short returnCode, string message)
     {
-        ShowFeedback("無法加入房間，請確認房名、遊戲版本及是否已滿員，再重新加入");
+        string reason = returnCode == ErrorCode.GameDoesNotExist
+            ? "找不到房間，請確認房主已開房，且雙方暗語、伺服器區域與版本相同"
+            : returnCode == ErrorCode.GameFull
+                ? "房間已滿，請等待空位或更換暗語"
+                : returnCode == ErrorCode.GameClosed
+                    ? "房間已關閉，請房主重新開房"
+                    : "無法加入房間，請稍後重試";
+        ShowFeedback($"{reason}\n錯誤 {returnCode}｜區域 {PhotonNetwork.CloudRegion}｜版本 {PhotonNetwork.AppVersion}");
         Debug.LogError(
-            $"[NetworkGame] Join room failed: {returnCode} {message}"
+            $"[NetworkGame] Join room failed: {returnCode} {message} | {ConnectionDetails}"
         );
     }
 

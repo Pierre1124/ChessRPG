@@ -448,9 +448,12 @@ public class DamageCalculationVisualizer : MonoBehaviour
                 GetResolutionPanel(VisibleModifierCount++).ShowSource(step, sprite, 0, sequence.target);
                 BattleFeedback.PlayType(step.countingIcon == DamageCountingIcon.AntiHeal
                     ? BattlePresentationType.AntiHeal : BattlePresentationType.Trigger, anchorPosition);
-                if (phase != DamageModifierPhase.Activation && step.iconPiece != null)
+                if (phase == DamageModifierPhase.Activation && sequence.damageContext?.sourceStatus != null)
+                    BattleFeedback.PlayStatusTrigger(sequence.damageContext.sourceStatus);
+                else if (step.iconPiece != null)
                     foreach (var status in step.iconPiece.Statuses)
-                        if (status.definition != null && status.definition.statusName == step.title)
+                        if (status.definition != null && (status.definition.statusName == step.title ||
+                            (phase == DamageModifierPhase.Activation && !string.IsNullOrEmpty(step.sourceCardId) && status.definition.sourceCardId == step.sourceCardId)))
                         { BattleFeedback.PlayStatusTrigger(status); break; }
                 if (card == null || phase == DamageModifierPhase.Activation) continue;
                 CardAnimationEvents.Play(step.iconPiece, sequence.target, card, CardAnimationTiming.OnDamageModifier);
@@ -745,9 +748,12 @@ public class DamageCalculationVisualizer : MonoBehaviour
             // 緊貼數字左側，不受數字位數影響，也不覆寫使用者的文字字體。
             view.typeIcon.rectTransform.anchoredPosition = new Vector2(-view.text.preferredWidth * .5f - view.typeIcon.rectTransform.rect.width * .5f - 8f, 0);
         }
-        if (sequence.finalDamage > 0) BattleFeedback.PlayType(type, sequence.resultStartWorldPosition);
-
         view.root.gameObject.SetActive(true);
+        // 類型回饋跟隨圖示；共同扣血／回血音效由血條實際變化觸發。
+        if (sequence.finalDamage > 0)
+        {
+            BattleFeedback.PlayType(type, sequence.resultStartWorldPosition);
+        }
     }
 
     /// <summary>

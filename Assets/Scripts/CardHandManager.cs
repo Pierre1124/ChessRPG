@@ -757,7 +757,6 @@ public class CardHandManager : MonoBehaviour
             return;
         }
 
-        BattleFeedback.ObserveHealth(logicManager.whiteHealth, logicManager.blackHealth);
         ResolveCardGameUiReferences();
         SetHealthUi(
             whiteHealthSlider,
@@ -769,6 +768,7 @@ public class CardHandManager : MonoBehaviour
             blackHealthText,
             logicManager.blackHealth
         );
+        BattleFeedback.ObserveHealth(logicManager.whiteHealth, logicManager.blackHealth);
     }
 
     /// <summary>

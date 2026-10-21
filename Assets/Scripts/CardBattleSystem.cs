@@ -2449,6 +2449,7 @@ public class CardBattleSystem
             }
 
             bool triggeredAny = false;
+            bool hasPresentation = false;
 
             foreach (CardEffectData effect in status.definition.effects)
             {
@@ -2458,6 +2459,7 @@ public class CardBattleSystem
                 }
 
                 triggeredAny = true;
+                hasPresentation |= effect.effectType == CardEffectType.DamagePlayer || effect.effectType == CardEffectType.HealPlayer;
                 TriggerSingleEffect(owner, status, effect, trigger);
             }
 
@@ -2466,7 +2468,8 @@ public class CardBattleSystem
                 continue;
             }
 
-            BattleFeedback.PlayStatusTrigger(status);
+            // 傷害及回復由圖示演出播放回饋，不在試算／排隊時提早播放。
+            if (!hasPresentation) BattleFeedback.PlayStatusTrigger(status);
             int previousCharges = status.charges;
             status.ConsumeIfNeeded();
 
