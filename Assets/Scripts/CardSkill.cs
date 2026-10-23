@@ -1088,7 +1088,7 @@ public static class BoardFieldCardSkillUtility
     /// <summary>
     /// 尋找與來源城堡對齊且路徑符合條件的友方城堡。
     /// </summary>
-    private static Piece FindAlignedRookPartner(CardSkillContext context)
+    internal static Piece FindAlignedRookPartner(CardSkillContext context)
     {
         if (!IsValid(context)) return null;
 

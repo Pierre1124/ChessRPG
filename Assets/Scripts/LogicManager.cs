@@ -2569,13 +2569,100 @@ public class LogicManager : MonoBehaviour
         return squares[x, y];
     }
 
-    /// <summary>
-    /// 重新建立雙方棋子的攻擊範圍圖。
-    /// </summary>
+    /// <summary>預演出牌後的棋盤規則；不消耗資源、不觸發技能或修改攻擊圖。</summary>
+    public bool WouldCardLeaveKingInCheck(CardDefinition card, Piece target)
+    {
+        if (IsClassicChess || card == null || target == null || card.cardType == CardType.Field)
+            return false;
+
+        var savedCards = new Dictionary<Piece, CardDefinition>();
+        var savedRuntimes = new Dictionary<Piece, CardRuntimeState>();
+        Piece[,] savedBoard = (Piece[,])boardMap.Clone();
+        var savedPieces = new List<Piece>(piecesOnBoard);
+        foreach (Piece piece in boardMap)
+        {
+            if (piece == null || savedCards.ContainsKey(piece)) continue;
+            savedCards.Add(piece, piece.cardDefinition);
+            savedRuntimes.Add(piece, piece.CardRuntime);
+        }
+        try
+        {
+            if (card.cardType == CardType.JobChange)
+            {
+                target.SetCardForRulePreview(card, null);
+                if (card.id == "J03" || card.id == "J04")
+                {
+                    Piece partner = BoardFieldCardSkillUtility.FindAlignedRookPartner(
+                        new CardSkillContext(this, target, card));
+                    if (partner != null && partner.cardDefinition != card)
+                        partner.SetCardForRulePreview(card, null);
+                }
+                else if (card.id == "J09")
+                {
+                    for (int x = 0; x < 8; x++)
+                        for (int y = 0; y < 8; y++)
+                            if (boardMap[x, y] is King && boardMap[x, y].IsWhite == target.IsWhite)
+                                boardMap[x, y] = null;
+                }
+            }
+            else if (!card.useDataActions && (card.id == "E01" || card.id == "E03"))
+            {
+                BoardFieldEffectType type = GetBoardFieldEffectType(target);
+                Vector2 origin = target.GetCoordinates();
+                if (type != BoardFieldEffectType.None)
+                    foreach (Piece piece in savedCards.Keys)
+                    {
+                        Vector2 cell = piece.GetCoordinates();
+                        if (piece.IsWhite == target.IsWhite && GetBoardFieldEffectType(piece) == type &&
+                            (cell.x == origin.x || cell.y == origin.y))
+                            piece.SetCardForRulePreview(null, null);
+                    }
+                target.SetCardForRulePreview(null, null);
+            }
+
+            // 其餘現有事件只影響玩家血量／狀態，不移除或移動棋子。
+            var zones = IsClassicChess ? new List<BoardFieldEffectZone>() : GetActiveBoardFieldZones();
+            foreach (Piece attacker in boardMap)
+            {
+                if (attacker == null) continue;
+                foreach (Vector2 cell in GetEffectiveAttackedFields(attacker, zones))
+                {
+                    int x = Mathf.RoundToInt(cell.x), y = Mathf.RoundToInt(cell.y);
+                    if (x < 0 || x >= 8 || y < 0 || y >= 8) continue;
+                    Piece victim = boardMap[x, y];
+                    if (victim is King && victim.IsWhite != attacker.IsWhite) return true;
+                }
+            }
+            return false;
+        }
+        finally
+        {
+            foreach (Piece piece in savedCards.Keys)
+                piece.SetCardForRulePreview(savedCards[piece], savedRuntimes[piece]);
+            System.Array.Copy(savedBoard, boardMap, savedBoard.Length);
+            piecesOnBoard.Clear();
+            piecesOnBoard.AddRange(savedPieces);
+        }
+    }
+
+    private List<Vector2> GetEffectiveAttackedFields(Piece piece, List<BoardFieldEffectZone> zones)
+    {
+        List<Vector2> fields = piece.GetAttackedFields();
+        if (IsClassicChess || zones.Count == 0) return fields;
+        if (IsBoardFieldSource(piece, zones)) return new List<Vector2>();
+        Vector2Int start = ToBoardCell(piece.GetCoordinates());
+        fields.RemoveAll(cell => TryGetFirstFieldCellOnPath(piece, start, ToBoardCell(cell), zones,
+            out Vector2Int first, out _) && first != ToBoardCell(cell));
+        return fields;
+    }
+
+    /// <summary>重新建立雙方棋子的攻擊範圍圖，包含場地阻擋。</summary>
     public void UpdateCheckMap()
     {
         ResetCheckMap();
         UpdatePiecesOnBoard();
+
+        var zones = IsClassicChess ? new List<BoardFieldEffectZone>() : GetActiveBoardFieldZones();
 
         foreach (Piece piece in piecesOnBoard)
         {
@@ -2584,7 +2671,7 @@ public class LogicManager : MonoBehaviour
                 continue;
             }
 
-            List<Vector2> attackedFields = piece.GetAttackedFields();
+            List<Vector2> attackedFields = GetEffectiveAttackedFields(piece, zones);
             foreach (Vector2 field in attackedFields)
             {
                 int x = Mathf.RoundToInt(field.x);

@@ -286,10 +286,23 @@ public class CardDefinition
     /// </summary>
     public bool CanApplyTo(Piece target, LogicManager logicManager)
     {
+        return CanApplyTo(target, logicManager, out _);
+    }
+
+    public bool CanApplyTo(Piece target, LogicManager logicManager, out string reason)
+    {
+        reason = "卡片不能對此棋子使用";
         if (target == null || !MatchesTarget(target)) return false;
         if (!CardBattleSystem.ConditionsPass(
             this, target, logicManager, CardConditionTiming.OnPlay)) return false;
-        return skill.CanApply(new CardSkillContext(logicManager, target, this));
+        if (!skill.CanApply(new CardSkillContext(logicManager, target, this))) return false;
+        if (logicManager != null && logicManager.WouldCardLeaveKingInCheck(this, target))
+        {
+            reason = "使用後會使一方國王在走棋前被將軍，不能對此棋子使用";
+            return false;
+        }
+        reason = null;
+        return true;
     }
 
     /// <summary>

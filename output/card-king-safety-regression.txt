@@ -1,0 +1,12 @@
+PASS: Spearman cannot give check before moving
+PASS: Shared target validation rejects checking card
+PASS: Preview restores equipment
+PASS: Spearman first forward square is not attacked
+PASS: Dismissal cannot restore a checking pawn diagonal
+PASS: Dismissal may remove an existing check
+PASS: Dismissal cannot expose own king
+PASS: Moat blocks check rays
+PASS: Removing moat pair cannot reveal check
+PASS: Preview restores both moat endpoints
+PASS: Preview preserves attack map and board
+PASS: Keeping protective moat is allowed

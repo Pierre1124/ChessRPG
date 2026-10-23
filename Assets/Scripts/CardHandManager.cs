@@ -1905,7 +1905,7 @@ public class CardHandManager : MonoBehaviour
                 !card.CanApplyTo(target, logicManager)
             )
             {
-                ShowAlarm("卡片不能裝");
+                ShowCardTargetRejection(card, target);
                 return false;
             }
 
@@ -1925,7 +1925,7 @@ public class CardHandManager : MonoBehaviour
             !card.CanApplyTo(target, logicManager)
         )
         {
-            ShowAlarm("卡片不能裝");
+            ShowCardTargetRejection(card, target);
             Debug.Log(
                 $"鋆??∠?憭望? ?∠?={card.cardName} | " +
                 $"?格?={(target != null ? target.name : "None")} | " +
@@ -2073,7 +2073,7 @@ public class CardHandManager : MonoBehaviour
 
             if (!card.CanApplyTo(target, logicManager))
             {
-                ShowAlarm("卡片不能使用");
+                ShowCardTargetRejection(card, target);
                 return false;
             }
 
@@ -2089,7 +2089,7 @@ public class CardHandManager : MonoBehaviour
 
         if (target == null || !card.CanApplyTo(target, logicManager))
         {
-            ShowAlarm("卡片不能使用");
+            ShowCardTargetRejection(card, target);
             Debug.Log(
                 $"[CardDebug][EventRejected] Card={card.id} {card.cardName} | " +
                 $"Target={(target != null ? target.name : "None")}"
@@ -2216,6 +2216,13 @@ public class CardHandManager : MonoBehaviour
             $"Cell={targetCoordinate}"
         );
         return true;
+    }
+
+    /// <summary>顯示目標條件或國王安全檢查的拒絕原因。</summary>
+    private void ShowCardTargetRejection(CardDefinition card, Piece target)
+    {
+        card.CanApplyTo(target, logicManager, out string reason);
+        ShowAlarm(reason ?? "卡片不能對此棋子使用");
     }
 
     /// <summary>保留已接受事件的目標，等展示與縮小全部結束才套用效果；停用或普通棋模式不重播。</summary>

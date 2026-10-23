@@ -63,6 +63,13 @@ public abstract class Piece : MonoBehaviour
         get { return statuses; }
     }
 
+    // 僅供同步規則預演使用；呼叫端必須在 finally 還原，不觸發裝卸效果。
+    internal void SetCardForRulePreview(CardDefinition card, CardRuntimeState runtime)
+    {
+        cardDefinition = card;
+        cardRuntime = runtime;
+    }
+
     /// <summary>
     /// 將卡牌裝備到棋子，更新執行期資料並處理裝卸效果。
     /// </summary>
@@ -518,7 +525,7 @@ public abstract class Piece : MonoBehaviour
 
         foreach (PieceMoveRule rule in activeDefinition.moveRules)
         {
-            if (rule == null)
+            if (rule == null || (includeEmpty && !rule.canCaptureEnemy))
             {
                 continue;
             }
