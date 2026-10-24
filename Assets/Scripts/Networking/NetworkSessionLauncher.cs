@@ -29,7 +29,7 @@ public class NetworkSessionLauncher : MonoBehaviourPunCallbacks
     private void Awake()
     {
         PhotonNetwork.AutomaticallySyncScene = true;
-        PhotonNetwork.GameVersion = Application.version + "-private-cards-v1";
+        PhotonNetwork.GameVersion = Application.version + "-private-cards-v1-match-flow-v2";
     }
 
     /// <summary>
@@ -116,7 +116,7 @@ public class NetworkSessionLauncher : MonoBehaviourPunCallbacks
         // ConnectUsingSettings overwrites GameVersion from AppSettings.AppVersion.
         // Pass a copy so the protocol version survives without mutating the asset.
         AppSettings settings = PhotonNetwork.PhotonServerSettings.AppSettings.CopyTo(new AppSettings());
-        settings.AppVersion = Application.version + "-private-cards-v1";
+        settings.AppVersion = Application.version + "-private-cards-v1-match-flow-v2";
         Debug.Log($"[NetworkGame] Connecting to Photon. Room={roomName} | " +
             $"Region={settings.FixedRegion} | Version={settings.AppVersion}");
         bool started = PhotonNetwork.ConnectUsingSettings(settings);

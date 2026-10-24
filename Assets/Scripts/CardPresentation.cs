@@ -28,7 +28,7 @@ public static class CardPresentation
             cardObject.transform,
             "CardLord",
             "CardLordText",
-            card.description
+            card.DisplayDescription
         );
         ApplyTags(cardObject.transform, card.tags);
     }
@@ -95,7 +95,8 @@ public static class CardPresentation
         TMP_Text text = FindChildComponent<TMP_Text>(root, childName);
         if (text != null)
         {
-            text.text = value;
+            if (childName == "CardLordText") CardKeywordText.Bind(text, value);
+            else text.text = value;
         }
     }
 

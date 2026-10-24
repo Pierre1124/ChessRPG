@@ -26,6 +26,96 @@ public class GameFlowUI : MonoBehaviour
     private readonly Dictionary<string, GameObject> persistentAlarms =
         new Dictionary<string, GameObject>();
 
+    private GameObject decisionRoot;
+    private string decisionKey;
+    private LogicManager decisionLogic;
+
+    /// <summary>獨立於設定及勝利面板的確認層，暫停時仍可操作。</summary>
+    public static void ShowDecision(string key, string message, Action accept, Action cancel,
+        string acceptText = "確認", string cancelText = "取消")
+    {
+        GameFlowUI ui = ResolveInstance();
+        if (ui == null) return;
+        ui.CloseDecision();
+        ui.decisionKey = key;
+        ui.decisionLogic = FindFirstObjectByType<LogicManager>();
+        ui.decisionLogic?.PushOperationLock("MatchDecision");
+        var root = new GameObject("MatchDecision", typeof(RectTransform), typeof(Canvas), typeof(CanvasScaler), typeof(GraphicRaycaster));
+        // A root overlay canvas fills the screen even when GameFlowUI is below a scaled canvas.
+        ui.decisionRoot = root;
+        var canvas = root.GetComponent<Canvas>();
+        canvas.renderMode = RenderMode.ScreenSpaceOverlay;
+        canvas.overrideSorting = true;
+        canvas.sortingOrder = 32000;
+        var scaler = root.GetComponent<CanvasScaler>();
+        scaler.uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize;
+        scaler.referenceResolution = new Vector2(1920, 1080);
+        scaler.matchWidthOrHeight = 0.5f;
+        var shade = new GameObject("Backdrop", typeof(RectTransform), typeof(Image));
+        shade.transform.SetParent(root.transform, false);
+        var shadeRect = (RectTransform)shade.transform;
+        shadeRect.anchorMin = Vector2.zero; shadeRect.anchorMax = Vector2.one;
+        shadeRect.offsetMin = shadeRect.offsetMax = Vector2.zero;
+        shade.GetComponent<Image>().color = new Color(0, 0, 0, 0.85f);
+        TMP_Text source = ui.alarmTemplate != null ? ui.alarmTemplate.GetComponentInChildren<TMP_Text>(true) : null;
+        TMP_FontAsset font = source != null ? source.font : TMP_Settings.defaultFontAsset;
+        var textObject = new GameObject("Message", typeof(RectTransform), typeof(TextMeshProUGUI));
+        textObject.transform.SetParent(root.transform, false);
+        var textRect = (RectTransform)textObject.transform;
+        textRect.sizeDelta = new Vector2(900, 200); textRect.anchoredPosition = new Vector2(0, 90);
+        var label = textObject.GetComponent<TextMeshProUGUI>();
+        label.font = font; label.text = message; label.fontSize = 32;
+        label.alignment = TextAlignmentOptions.Center; label.raycastTarget = false;
+        if (accept != null) CreateActionButton(root.transform, "Accept", acceptText, new Vector2(-190, -100),
+            new Vector2(340, 64), font, () => { ui.CloseDecision(); accept(); });
+        CreateActionButton(root.transform, "Cancel", cancelText, new Vector2(accept == null ? 0 : 190, -100),
+            new Vector2(340, 64), font, () => { ui.CloseDecision(); cancel?.Invoke(); });
+    }
+
+    public static void HideDecision(string key)
+    {
+        if (instance != null && instance.decisionKey == key) instance.CloseDecision();
+    }
+
+    private void CloseDecision()
+    {
+        if (decisionRoot != null) { decisionRoot.SetActive(false); Destroy(decisionRoot); }
+        decisionRoot = null;
+        decisionKey = null;
+        if (decisionLogic != null) decisionLogic.PopOperationLock("MatchDecision");
+        decisionLogic = null;
+    }
+
+    private void OnDestroy()
+    {
+        CloseDecision();
+        if (instance == this) instance = null;
+    }
+
+    /// <summary>新增操作按鈕時沿用現有 TMP 字型，不複製舊的事件監聽。</summary>
+    public static Button CreateActionButton(Transform parent, string name, string title, Vector2 position,
+        Vector2 size, TMP_FontAsset font, UnityEngine.Events.UnityAction action)
+    {
+        var obj = new GameObject(name, typeof(RectTransform), typeof(Image), typeof(Button));
+        obj.transform.SetParent(parent, false);
+        var rect = (RectTransform)obj.transform;
+        rect.anchorMin = rect.anchorMax = rect.pivot = new Vector2(0.5f, 0.5f);
+        rect.anchoredPosition = position; rect.sizeDelta = size;
+        obj.GetComponent<Image>().color = new Color(0.14f, 0.32f, 0.38f);
+        var button = obj.GetComponent<Button>();
+        button.targetGraphic = obj.GetComponent<Image>();
+        button.onClick.AddListener(action);
+        var textObj = new GameObject("Label", typeof(RectTransform), typeof(TextMeshProUGUI));
+        textObj.transform.SetParent(obj.transform, false);
+        var textRect = (RectTransform)textObj.transform;
+        textRect.anchorMin = Vector2.zero; textRect.anchorMax = Vector2.one;
+        textRect.offsetMin = new Vector2(8, 4); textRect.offsetMax = new Vector2(-8, -4);
+        var label = textObj.GetComponent<TextMeshProUGUI>();
+        label.font = font; label.text = title; label.fontSize = 24;
+        label.alignment = TextAlignmentOptions.Center; label.raycastTarget = false;
+        return button;
+    }
+
     /// <summary>
     /// 登錄共用提示實例，補齊引用並隱藏樣板。
     /// </summary>

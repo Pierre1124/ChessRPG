@@ -27,6 +27,9 @@ public class MultiplayerGameController :
     private const byte EventRestartRequest = 14;
     private const byte EventSideAssignment = 15;
     private const byte EventActiveSkillResult = 16;
+    private const byte EventRestartStatus = 17;
+    private const byte EventSurrenderRequest = 18;
+    private const byte EventRestartCommit = 19;
     private const string RoomPropertyMasterWhite = "MasterWhite";
     private const string RoomPropertyClassicChess = "ClassicChess";
 
@@ -60,6 +63,11 @@ public class MultiplayerGameController :
     private bool hasFirstRemoteClientDeck;
     private bool isReturningToStartScene;
     private bool isRestartingGame;
+    private readonly RestartAgreement restartAgreement = new RestartAgreement();
+    private string visibleRestartId;
+    private float restartDeadline;
+    private bool restartRequestSent;
+    private float restartRequestDeadline;
     private bool submittedLocalDeck;
     private bool sideAssignmentReady;
     private bool masterPlaysWhite = true;
@@ -122,6 +130,7 @@ public class MultiplayerGameController :
     {
         get
         {
+            if (isRestartingGame || isReturningToStartScene) return false;
             if (!PhotonNetwork.InRoom)
             {
                 return true;
@@ -151,6 +160,9 @@ public class MultiplayerGameController :
     {
         ResolveReferences();
         PhotonNetwork.AutomaticallySyncScene = true;
+        // The result screen sets timeScale to zero. PUN otherwise stops dispatching
+        // invitations, approvals and leave notifications because FixedUpdate stops.
+        PhotonNetwork.MinimalTimeScaleToDispatchInFixedUpdate = 0.01f;
         TryReadSideAssignmentFromRoom();
     }
 
@@ -213,21 +225,19 @@ public class MultiplayerGameController :
     }
 
     /// <summary>
-    /// 主機偵測玩家離房後重設牌組準備狀態並重新開局。
+    /// 玩家離房時取消邀請並保留結果畫面，不單方面重開。
     /// </summary>
     public override void OnPlayerLeftRoom(Player otherPlayer)
     {
-        if (!PhotonNetwork.IsMasterClient)
-        {
-            return;
-        }
-
+        ClearRestartInvitation();
         hasFirstRemoteClientDeck = false;
-        Debug.Log(
-            $"[NetworkGame][ClientDisconnected] Actor={otherPlayer.ActorNumber}"
-        );
-        Debug.Log("[NetworkGame][DisconnectedRestart] Resetting game for reconnect.");
-        RestartGameAsAuthority();
+        if (!isReturningToStartScene && !isRestartingGame)
+        {
+            GameFlowUI.Show("對手已離開，請返回主選單重新開房");
+            ResolveReferences();
+            if (logicManager != null && !logicManager.IsGameOver)
+                logicManager.ApplyRemoteGameOver("對手已離開對局");
+        }
     }
 
     /// <summary>
@@ -322,28 +332,141 @@ public class MultiplayerGameController :
     }
 
     /// <summary>
-    /// 本機是主機時重新開局，否則向主機傳送重新開始要求。
+    /// 連線對局提出雙方同意邀請；本機對局直接重開。
     /// </summary>
     public void RequestRestartGame()
     {
-        Time.timeScale = 1f;
         RefreshModeFromPhoton();
 
         if (!IsOnline)
         {
-            LogicManager.SetNextGameMode(false);
+            Time.timeScale = 1f;
+            LogicManager.SetNextGameMode(logicManager != null && logicManager.IsClassicChess);
             LoadSceneLocal(gameSceneName);
             return;
         }
 
+        if (!CanGameplayOperate || isRestartingGame || isReturningToStartScene)
+        { GameFlowUI.Show("請等待雙方準備完成"); return; }
+        if (restartRequestSent || !string.IsNullOrEmpty(visibleRestartId))
+        { GameFlowUI.Show("重開邀請處理中，請在確認視窗回覆"); return; }
+        restartRequestSent = true;
+        restartRequestDeadline = Time.unscaledTime + 35f;
         if (PhotonNetwork.IsMasterClient)
+            HandleRestartVote(PhotonNetwork.LocalPlayer.ActorNumber, string.Empty, true);
+        else
         {
-            RestartGameAsAuthority();
+            RaiseToMaster(EventRestartRequest, new object[] { string.Empty, true });
+            GameFlowUI.Show("已送出重開邀請，等待對方同意");
+        }
+    }
+
+    /// <summary>邀請以不受勝利畫面暫停影響的時間逾時。</summary>
+    private void Update()
+    {
+        if (PhotonNetwork.IsMasterClient && restartAgreement.IsPending && Time.unscaledTime >= restartDeadline)
+            CancelRestartInvitation(3);
+        if (restartRequestSent && string.IsNullOrEmpty(visibleRestartId) && Time.unscaledTime >= restartRequestDeadline)
+        {
+            restartRequestSent = false;
+            GameFlowUI.Show("重開要求逾時，請再試一次");
+        }
+    }
+
+    private void HandleRestartVote(int actor, string invitationId, bool accept)
+    {
+        if (!PhotonNetwork.IsMasterClient || !CanGameplayOperate || isRestartingGame || isReturningToStartScene) return;
+        if (restartAgreement.IsPending && Time.unscaledTime >= restartDeadline)
+        { CancelRestartInvitation(3); return; }
+        int master = PhotonNetwork.MasterClient.ActorNumber;
+        int remote = GetRemoteActorNumber();
+        if (actor != master && actor != remote) return;
+        if (string.IsNullOrEmpty(invitationId))
+        {
+            if (!accept) return;
+            if (!restartAgreement.IsPending)
+            {
+                restartAgreement.Begin(actor, actor == master ? remote : master);
+                restartDeadline = Time.unscaledTime + 30f;
+            }
+            // A second request is not an acceptance of an unseen invitation.
+            PublishRestartStatus(0);
             return;
         }
+        if (!restartAgreement.Reply(invitationId, actor, accept)) return;
+        if (!accept) { CancelRestartInvitation(1); return; }
+        if (restartAgreement.IsApproved)
+        {
+            RestartGameAsAuthority(logicManager != null && logicManager.IsClassicChess);
+        }
+    }
 
-        GameFlowUI.Show("已向主機要求重新開始");
-        RaiseToMaster(EventRestartRequest, string.Empty);
+    private void PublishRestartStatus(int status)
+    {
+        object[] data = { restartAgreement.Id, restartAgreement.Requester, status };
+        RaiseToOthers(EventRestartStatus, data);
+        ApplyRestartStatus((string)data[0], (int)data[1], status);
+    }
+
+    private void CancelRestartInvitation(int status)
+    {
+        if (restartAgreement.IsPending) PublishRestartStatus(status);
+        ClearRestartInvitation();
+    }
+
+    private void ApplyRestartStatus(string id, int requester, int status)
+    {
+        if (status != 0)
+        {
+            if (visibleRestartId != id) return;
+            ClearRestartInvitation();
+            GameFlowUI.Show(status == 1 ? "重開邀請已拒絕或取消" : status == 3 ? "重開邀請已逾時" : "對局已結束，重開邀請已取消");
+            return;
+        }
+        visibleRestartId = id;
+        restartRequestSent = false;
+        bool requestedByMe = requester == PhotonNetwork.LocalPlayer.ActorNumber;
+        GameFlowUI.ShowDecision("Restart", requestedByMe
+            ? "已邀請重新開始，等待對方同意（30 秒）"
+            : "對方邀請重新開始對局（30 秒）\n只有雙方同意才會清除目前棋局。",
+            requestedByMe ? null : (System.Action)(() => ReplyToRestart(id, true)),
+            () => ReplyToRestart(id, false), "同意重開", requestedByMe ? "取消邀請" : "拒絕");
+    }
+
+    private void ReplyToRestart(string id, bool accept)
+    {
+        if (id != visibleRestartId || !IsOnline) return;
+        if (PhotonNetwork.IsMasterClient) HandleRestartVote(PhotonNetwork.LocalPlayer.ActorNumber, id, accept);
+        else RaiseToMaster(EventRestartRequest, new object[] { id, accept });
+    }
+
+    private void ClearRestartInvitation()
+    {
+        restartAgreement.Clear();
+        visibleRestartId = null;
+        restartRequestSent = false;
+        GameFlowUI.HideDecision("Restart");
+    }
+
+    public void RequestSurrender()
+    {
+        ResolveReferences();
+        if (logicManager == null || logicManager.IsGameOver || !CanGameplayOperate || isRestartingGame || isReturningToStartScene) return;
+        if (!IsOnline)
+            logicManager.Surrender(logicManager.isWhiteTurn);
+        else if (PhotonNetwork.IsMasterClient)
+            SurrenderAsAuthority(PhotonNetwork.LocalPlayer.ActorNumber);
+        else RaiseToMaster(EventSurrenderRequest, string.Empty);
+    }
+
+    private void SurrenderAsAuthority(int actor)
+    {
+        ResolveReferences();
+        if (!PhotonNetwork.IsMasterClient || !CanGameplayOperate || isRestartingGame || isReturningToStartScene ||
+            logicManager == null || logicManager.IsGameOver) return;
+        PlayerSide side = GetSideForActor(actor);
+        if (side == PlayerSide.None) return;
+        logicManager.Surrender(side == PlayerSide.White);
     }
 
     /// <summary>
@@ -362,6 +485,7 @@ public class MultiplayerGameController :
     /// </summary>
     public void RequestReturnToStart()
     {
+        ClearRestartInvitation();
         Time.timeScale = 1f;
         RefreshModeFromPhoton();
 
@@ -754,6 +878,7 @@ public class MultiplayerGameController :
             return;
         }
 
+        CancelRestartInvitation(2);
         RaiseToOthers(EventGameOver, result);
     }
 
@@ -763,6 +888,9 @@ public class MultiplayerGameController :
     public void OnEvent(EventData photonEvent)
     {
         if (!PhotonNetwork.InRoom || PhotonNetwork.CurrentRoom == null || PhotonNetwork.MasterClient == null) return;
+        if (logicManager != null && logicManager.IsGameOver &&
+            ((photonEvent.Code >= EventCommandRequest && photonEvent.Code <= EventFieldCardResult) ||
+             photonEvent.Code == EventActiveSkillResult)) return;
         if (!NetworkInputPolicy.IsTrustedSender(photonEvent.Code, photonEvent.Sender,
             PhotonNetwork.MasterClient.ActorNumber, PhotonNetwork.IsMasterClient,
             PhotonNetwork.CurrentRoom.Players.ContainsKey(photonEvent.Sender))) return;
@@ -826,12 +954,24 @@ public class MultiplayerGameController :
                 StartCoroutine(ShutdownAndLoadStartSceneRoutine());
                 break;
             case EventRestartRequest:
-                if (PhotonNetwork.IsMasterClient)
+                var vote = (object[])photonEvent.CustomData;
+                HandleRestartVote(photonEvent.Sender, (string)vote[0], (bool)vote[1]);
+                break;
+            case EventRestartStatus:
+                var status = (object[])photonEvent.CustomData;
+                ApplyRestartStatus((string)status[0], (int)status[1], (int)status[2]);
+                break;
+            case EventSurrenderRequest:
+                SurrenderAsAuthority(photonEvent.Sender);
+                break;
+            case EventRestartCommit:
+                if (!PhotonNetwork.IsMasterClient && !isRestartingGame && !isReturningToStartScene)
                 {
-                    Debug.Log(
-                        $"[NetworkGame][RestartRequested] Sender={photonEvent.Sender}"
-                    );
-                    RestartGameAsAuthority();
+                    ClearRestartInvitation();
+                    isRestartingGame = true;
+                    Time.timeScale = 1f;
+                    LogicManager.SetNextGameMode((bool)((object[])photonEvent.CustomData)[0]);
+                    PhotonNetwork.LoadLevel(gameSceneName);
                 }
                 break;
             case EventSideAssignment:
@@ -1836,6 +1976,8 @@ public class MultiplayerGameController :
             return;
         }
 
+        ClearRestartInvitation();
+        Time.timeScale = 1f;
         isRestartingGame = true;
         LogicManager.SetNextGameMode(classicChess);
         sideAssignmentReady = false;
@@ -1883,6 +2025,9 @@ public class MultiplayerGameController :
             yield break;
         }
         if (!PhotonNetwork.IsMasterClient) yield break;
+        // PUN scene properties do not reload a peer already in this same scene.
+        RaiseToOthers(EventRestartCommit, new object[] { classicChess });
+        PhotonNetwork.SendAllOutgoingCommands();
         PhotonNetwork.LoadLevel(gameSceneName);
         Debug.Log($"[NetworkGame][Restart] ClassicChess={classicChess} | Scene={gameSceneName}");
     }
@@ -1898,13 +2043,15 @@ public class MultiplayerGameController :
         }
 
         isReturningToStartScene = true;
+        ClearRestartInvitation();
+        Time.timeScale = 1f;
 
         yield return new WaitForSecondsRealtime(0.1f);
 
         if (PhotonNetwork.IsConnected)
         {
             PhotonNetwork.Disconnect();
-            yield return null;
+            while (PhotonNetwork.IsConnected) yield return null;
         }
 
         LoadSceneLocal(startSceneName);
@@ -1920,6 +2067,7 @@ public class MultiplayerGameController :
             return;
         }
 
+        Time.timeScale = 1f;
         SceneManager.LoadScene(sceneName);
     }
 

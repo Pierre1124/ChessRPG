@@ -20,6 +20,7 @@ public class InputManager : MonoBehaviour
     private float holdStartedAt;
     private Vector2 holdStartScreenPosition;
     private Piece heldPiece;
+    private CardKeywordEntry heldTokenInfo;
 
     /// <summary>
     /// 以目前滑鼠位置執行 UI 射線檢查。
@@ -69,6 +70,7 @@ public class InputManager : MonoBehaviour
     /// </summary>
     private void Update()
     {
+        if (CardKeywordPopup.IsOpen) { isHoldingMouse = false; heldPiece = null; heldTokenInfo = null; return; }
         if (ControlBindings.SuppressGameplay) { isHoldingMouse = false; heldPiece = null; return; }
         if (Keyboard.current != null && Keyboard.current.escapeKey.wasPressedThisFrame)
         { cardInfoUI?.Hide(); ClearSelection(); }
@@ -77,7 +79,7 @@ public class InputManager : MonoBehaviour
         {
             isHoldingMouse = false;
             ClearSelection();
-            cardInfoUI?.Show(GetPieceAtScreenPosition(Mouse.current.position.ReadValue()));
+            ShowInspection(Mouse.current.position.ReadValue());
             return;
         }
         if (
@@ -111,13 +113,13 @@ public class InputManager : MonoBehaviour
             Mouse.current.leftButton.isPressed &&
             !didShowPieceInfo &&
             (logicManager == null || !logicManager.IsClassicChess) &&
-            heldPiece != null &&
+            (heldPiece != null || heldTokenInfo != null) &&
             Vector2.Distance(holdStartScreenPosition, mousePosition) <= 12f &&
             Time.unscaledTime - holdStartedAt >= pieceInfoHoldSeconds
         )
         {
             didShowPieceInfo = true;
-            cardInfoUI?.Show(heldPiece);
+            ShowInspection(mousePosition);
             return;
         }
 
@@ -139,6 +141,28 @@ public class InputManager : MonoBehaviour
         heldPiece = IsPointerOverUi(screenPosition)
             ? null
             : GetPieceAtScreenPosition(screenPosition);
+        heldTokenInfo = heldPiece == null && !IsPointerOverUi(screenPosition) ? GetTokenInfoAtScreenPosition(screenPosition) : null;
+    }
+
+    private void ShowInspection(Vector2 position)
+    {
+        Piece piece = GetPieceAtScreenPosition(position);
+        if (piece != null) { cardInfoUI?.Show(piece); return; }
+        var token = GetTokenInfoAtScreenPosition(position);
+        cardInfoUI?.Hide();
+        if (token != null) CardKeywordPopup.Show(token);
+    }
+
+    private CardKeywordEntry GetTokenInfoAtScreenPosition(Vector2 position)
+    {
+        if (Camera.main == null || logicManager == null || logicManager.IsClassicChess) return null;
+        if (!Physics.Raycast(Camera.main.ScreenPointToRay(position), out RaycastHit hit)) return null;
+        var square = hit.transform.GetComponentInParent<Square>();
+        var token = hit.transform.GetComponentInParent<BoardFieldTokenInfo>();
+        if (square == null && token == null) return null;
+        Vector2Int cell = token != null ? token.cell : new Vector2Int(
+            Mathf.RoundToInt(square.transform.position.x), Mathf.RoundToInt(square.transform.position.z));
+        return logicManager.GetBoardFieldTokenInfo(cell);
     }
 
     /// <summary>

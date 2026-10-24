@@ -1,4 +1,5 @@
 using UnityEngine;
+using System.Collections.Generic;
 
 public class CardSkillContext
 {
@@ -1056,100 +1057,55 @@ public sealed class CardSkill
 
 public static class BoardFieldCardSkillUtility
 {
-    /// <summary>
-    /// 判斷是否存在符合場地連線條件的同列或同行城堡。
-    /// </summary>
+    private static readonly HashSet<LogicManager> equippingBoards = new HashSet<LogicManager>();
+
+    /// <summary>判斷是否存在有空格且路徑暢通的友方城堡連線。</summary>
     public static bool HasAlignedRookPartner(CardSkillContext context)
     {
-        return FindAlignedRookPartner(context) != null;
+        return FindConnectedRookPartners(context).Count > 0;
     }
 
-    /// <summary>
-    /// 將場地連線相關卡牌套用到符合條件的城堡夥伴。
-    /// </summary>
-    public static void EquipAlignedRookPartner(CardSkillContext context, string logName)
+    /// <summary>一次套用所有相連城堡，避免 OnEquip 遞迴選回既有搭檔而漏掉分支。</summary>
+    public static void EquipAlignedRookPartner(CardSkillContext context, string logName, bool preserveOtherCards = false)
     {
-        if (!IsValid(context)) return;
-        Piece partner = FindAlignedRookPartner(context);
-        if (partner == null) return;
-
-        if (partner.cardDefinition != context.sourceCard)
+        if (!IsValid(context) || !equippingBoards.Add(context.logic)) return;
+        try
         {
-            Debug.Log(
-                $"[CardDebug][FieldAutoEquip] Card={logName} | " +
-                $"Owner={Describe(context.owner)} | Partner={Describe(partner)}"
-            );
-            partner.ApplyCard(context.sourceCard);
-        }
-
-        context.logic.RefreshBoardFieldEffects();
-    }
-
-    /// <summary>
-    /// 尋找與來源城堡對齊且路徑符合條件的友方城堡。
-    /// </summary>
-    internal static Piece FindAlignedRookPartner(CardSkillContext context)
-    {
-        if (!IsValid(context)) return null;
-
-        Piece bestPartner = null;
-        int bestDistance = int.MaxValue;
-        Vector2 ownerPosition = context.owner.GetCoordinates();
-
-        for (int x = 0; x < 8; x++)
-        {
-            for (int y = 0; y < 8; y++)
+            foreach (Piece partner in FindConnectedRookPartners(context, preserveOtherCards))
             {
-                Piece candidate = context.logic.boardMap[x, y];
-                if (candidate == null || candidate == context.owner ||
-                    !(candidate is Rook) ||
-                    candidate.IsWhite != context.owner.IsWhite) continue;
-
-                Vector2 candidatePosition = candidate.GetCoordinates();
-                bool aligned =
-                    Mathf.RoundToInt(ownerPosition.x) == Mathf.RoundToInt(candidatePosition.x) ||
-                    Mathf.RoundToInt(ownerPosition.y) == Mathf.RoundToInt(candidatePosition.y);
-                if (!aligned) continue;
-
-                int distance =
-                    Mathf.Abs(Mathf.RoundToInt(ownerPosition.x - candidatePosition.x)) +
-                    Mathf.Abs(Mathf.RoundToInt(ownerPosition.y - candidatePosition.y));
-                if (distance <= 1 ||
-                    !IsPathClear(context.logic, ownerPosition, candidatePosition)) continue;
-
-                bool paired = candidate.cardDefinition == context.sourceCard;
-                bool bestPaired = bestPartner != null &&
-                    bestPartner.cardDefinition == context.sourceCard;
-                if (bestPartner == null || (paired && !bestPaired) ||
-                    (paired == bestPaired && distance < bestDistance))
-                {
-                    bestPartner = candidate;
-                    bestDistance = distance;
-                }
+                if (partner.cardDefinition == context.sourceCard) continue;
+                if (preserveOtherCards && partner.cardDefinition != null) continue;
+                Debug.Log($"[CardDebug][FieldAutoEquip] Card={logName} | Owner={Describe(context.owner)} | Partner={Describe(partner)}");
+                partner.ApplyCard(context.sourceCard);
             }
+            context.logic.RefreshBoardFieldEffects();
         }
-
-        return bestPartner;
+        finally { equippingBoards.Remove(context.logic); }
     }
 
-    /// <summary>
-    /// 檢查兩個棋盤位置之間是否沒有棋子阻擋。
-    /// </summary>
-    private static bool IsPathClear(LogicManager logic, Vector2 start, Vector2 end)
+    /// <summary>出牌與將軍預判共用完整連線集合，包含經其他城堡延伸的平行列。</summary>
+    internal static List<Piece> FindConnectedRookPartners(CardSkillContext context, bool preserveOtherCards = false)
     {
-        Vector2Int startCell = Vector2Int.RoundToInt(start);
-        Vector2Int endCell = Vector2Int.RoundToInt(end);
-        Vector2Int direction = new Vector2Int(
-            startCell.x == endCell.x ? 0 : startCell.x < endCell.x ? 1 : -1,
-            startCell.y == endCell.y ? 0 : startCell.y < endCell.y ? 1 : -1
-        );
-        Vector2Int cursor = startCell + direction;
-        while (cursor != endCell)
-        {
-            if (logic.boardMap[cursor.x, cursor.y] != null) return false;
-            cursor += direction;
-        }
-        return true;
+        var partners = new List<Piece>();
+        if (!IsValid(context)) return partners;
+        var cells = FieldRookConnections.Collect(Vector2Int.RoundToInt(context.owner.GetCoordinates()),
+            cell => context.logic.boardMap[cell.x, cell.y] != null,
+            cell => context.logic.boardMap[cell.x, cell.y] is Rook rook && rook.IsWhite == context.owner.IsWhite &&
+                (!preserveOtherCards || rook.cardDefinition == null || rook.cardDefinition.id == context.sourceCard.id));
+        foreach (Vector2Int cell in cells) partners.Add(context.logic.boardMap[cell.x, cell.y]);
+        return partners;
+    }
+
+    /// <summary>己方回合開始時從既有場地端點延伸至新對齊的空裝備城堡，不覆蓋其他職業。</summary>
+    public static void RefreshConnectionsOnTurn(LogicManager logic, bool white)
+    {
+        if (logic == null || logic.IsClassicChess) return;
+        var sources = new List<Piece>();
+        foreach (Piece piece in logic.boardMap)
+            if (piece is Rook && piece.IsWhite == white && piece.cardDefinition != null &&
+                (piece.cardDefinition.id == "J03" || piece.cardDefinition.id == "J04")) sources.Add(piece);
+        foreach (Piece source in sources)
+            EquipAlignedRookPartner(new CardSkillContext(logic, source, source.cardDefinition), "回合開始場地連線", true);
     }
 
     /// <summary>

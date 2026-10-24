@@ -18,6 +18,7 @@ public class GameOverUI : MonoBehaviour
         multiplayerGameController =
             FindFirstObjectByType<MultiplayerGameController>();
 
+        EnsureReturnButton();
         if (panel != null)
         {
             panel.SetActive(false);
@@ -58,11 +59,10 @@ public class GameOverUI : MonoBehaviour
     {
         if (IsRestartBlocked())
         {
-            Debug.Log("[NetworkGame] Restart blocked while waiting for player.");
+            GameFlowUI.Show("對手尚未就緒或已離開，請返回主選單");
             return;
         }
 
-        Time.timeScale = 1f;
         MultiplayerGameController flow = GetMultiplayerGameController();
         if (flow != null)
         {
@@ -70,8 +70,46 @@ public class GameOverUI : MonoBehaviour
         }
         else
         {
+            Time.timeScale = 1f;
             UnityEngine.SceneManagement.SceneManager.LoadScene("ChessScene");
         }
+    }
+
+    private void EnsureReturnButton()
+    {
+        if (panel == null || panel.transform.Find("ReturnToMenu") != null) return;
+        var restart = panel.GetComponentInChildren<UnityEngine.UI.Button>(true);
+        if (restart == null) return;
+        var rect = (RectTransform)restart.transform;
+        // The original restart button uses stretched anchors, negative sizeDelta and scale 3.
+        // Give both actions stable dimensions instead of copying that geometry.
+        rect.anchorMin = rect.anchorMax = rect.pivot = new Vector2(0.5f, 0.5f);
+        rect.localScale = Vector3.one;
+        rect.sizeDelta = new Vector2(360, 64);
+        rect.anchoredPosition = new Vector2(0, -100);
+        var restartLabel = restart.GetComponentInChildren<TMP_Text>(true);
+        if (restartLabel != null)
+        {
+            restartLabel.text = "重新開始";
+            restartLabel.fontSize = 26;
+            restartLabel.rectTransform.localScale = Vector3.one;
+            restartLabel.rectTransform.anchorMin = Vector2.zero;
+            restartLabel.rectTransform.anchorMax = Vector2.one;
+            restartLabel.rectTransform.offsetMin = new Vector2(8, 4);
+            restartLabel.rectTransform.offsetMax = new Vector2(-8, -4);
+        }
+        var button = GameFlowUI.CreateActionButton(rect.parent, "ReturnToMenu", "返回主選單",
+            new Vector2(0, -184), new Vector2(360, 64),
+            winnerText != null ? winnerText.font : TMP_Settings.defaultFontAsset, ReturnToStartMenu);
+        var added = (RectTransform)button.transform;
+        added.anchorMin = rect.anchorMin; added.anchorMax = rect.anchorMax; added.pivot = rect.pivot;
+    }
+
+    public void ReturnToStartMenu()
+    {
+        MultiplayerGameController flow = GetMultiplayerGameController();
+        if (flow != null) flow.RequestReturnToStart();
+        else { Time.timeScale = 1f; UnityEngine.SceneManagement.SceneManager.LoadScene("StartScene"); }
     }
 
     /// <summary>

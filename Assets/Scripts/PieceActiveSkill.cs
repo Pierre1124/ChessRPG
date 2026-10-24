@@ -57,6 +57,7 @@ public static class PieceActiveSkill
         if (logic == null || logic.IsClassicChess) return;
         foreach (Piece piece in logic.boardMap)
             if (HasSkill(piece) && piece.IsWhite == white) piece.CardRuntime.activeSkillDisabled = false;
+        BoardFieldCardSkillUtility.RefreshConnectionsOnTurn(logic, white);
         logic.RefreshBoardFieldEffects();
     }
 }

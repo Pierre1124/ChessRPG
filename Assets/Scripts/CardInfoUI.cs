@@ -282,12 +282,12 @@ public class CardInfoUI : MonoBehaviour
 
         if (cardLord != null)
         {
-            SetText(
+            CardKeywordText.Bind(
                 FindChildComponent<TMP_Text>(
                     cardLord,
                     "CardLordText"
                 ),
-                card.description
+                card.DisplayDescription
             );
         }
 
@@ -365,7 +365,7 @@ public class CardInfoUI : MonoBehaviour
         foreach (Graphic graphic in
             cardObject.GetComponentsInChildren<Graphic>(true))
         {
-            graphic.raycastTarget = false;
+            graphic.raycastTarget = graphic.GetComponent<CardKeywordText>() != null;
         }
     }
 

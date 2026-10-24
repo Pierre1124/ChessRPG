@@ -1,6 +1,40 @@
 using System;
 using System.Collections.Generic;
 
+/// <summary>主機持有的雙人重開邀請；邀請者已同意，僅指定對手能補上第二票。</summary>
+public sealed class RestartAgreement
+{
+    public string Id { get; private set; }
+    public int Requester { get; private set; }
+    public int Opponent { get; private set; }
+    public bool IsApproved { get; private set; }
+    public bool IsPending => !string.IsNullOrEmpty(Id);
+
+    public void Begin(int requester, int opponent)
+    {
+        if (IsPending || requester <= 0 || opponent <= 0 || requester == opponent) return;
+        Id = Guid.NewGuid().ToString("N");
+        Requester = requester;
+        Opponent = opponent;
+        IsApproved = false;
+    }
+
+    public bool Reply(string id, int actor, bool accept)
+    {
+        if (!IsPending || IsApproved || id != Id || (actor != Requester && actor != Opponent)) return false;
+        if (accept && actor != Opponent) return false;
+        IsApproved = accept;
+        return true;
+    }
+
+    public void Clear()
+    {
+        Id = null;
+        Requester = Opponent = 0;
+        IsApproved = false;
+    }
+}
+
 /// <summary>集中處理不依賴場景的連線輸入驗證。</summary>
 public sealed class NetworkInputPolicy
 {
@@ -10,7 +44,7 @@ public sealed class NetworkInputPolicy
     public static bool IsTrustedSender(byte code, int sender, int master, bool localIsMaster, bool isRoomMember)
     {
         if (!isRoomMember || master <= 0) return false;
-        bool request = code == 1 || code == 2 || code == 3 || code == 14;
+        bool request = code == 1 || code == 2 || code == 3 || code == 14 || code == 18;
         return request ? localIsMaster : sender == master;
     }
 
@@ -47,7 +81,7 @@ public sealed class NetworkInputPolicy
     {
         if (code == 1 || code == 6 || code == 7 || code == 12 || code == 13)
             return payload is string text && text.Length <= (code == 6 ? 262144 : 8192);
-        if (code == 14) return true;
+        if (code == 18) return payload is string surrender && surrender == string.Empty;
         string schema;
         switch (code)
         {
@@ -61,6 +95,9 @@ public sealed class NetworkInputPolicy
             case 11: schema = "ibss"; break;
             case 15: schema = "ib"; break;
             case 16: schema = "ibii"; break;
+            case 14: schema = "sb"; break;
+            case 17: schema = "sii"; break;
+            case 19: schema = "b"; break;
             default: return false;
         }
         if (!(payload is object[] fields) || fields.Length != schema.Length) return false;

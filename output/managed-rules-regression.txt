@@ -1,7 +1,69 @@
+PASS: Keywords prefer complete terms and support aliases
+PASS: Keyword formatting is idempotent
+PASS: Keywords preserve rich text styling
+PASS: Keywords do not nest existing links
+PASS: Keywords respect noparse text
+PASS: English aliases do not match inside identifiers
+PASS: Empty and non-keyword descriptions remain intact
+PASS: Link resolves its detailed definition
+PASS: Unknown links cannot open glossary entries
+PASS: Job card uses summary without replacing full rules
+PASS: Empty summary falls back to full description
+PASS: Other card types retain their original descriptions
 PASS: Empty serialized move definition preserves standard movement
 PASS: Null move list preserves standard movement
 PASS: Null-only move list preserves standard movement
 PASS: Explicit move rules still override standard movement
+PASS: Field card connects every rook across parallel rows without duplicates
+PASS: Field network is independent of selected endpoint (0, 0)
+PASS: Field network is independent of selected endpoint (3, 0)
+PASS: Field network is independent of selected endpoint (6, 0)
+PASS: Field network is independent of selected endpoint (0, 3)
+PASS: Field network is independent of selected endpoint (3, 3)
+PASS: Field network is independent of selected endpoint (6, 3)
+PASS: Collinear rooks connect through intermediate friendly endpoint
+PASS: Intervening piece blocks the field network
+PASS: Enemy rook blocks connection to friendly rook beyond
+PASS: Adjacent and diagonal rooks do not create a field
+PASS: One vote never restarts: 1
+PASS: Requester cannot supply second vote: 1
+PASS: Nonparticipant cannot approve: 1
+PASS: Stale invitation rejected: 1
+PASS: Simultaneous request does not silently consent: 1
+PASS: Both participants approve: 1
+PASS: Duplicate acceptance ignored: 1
+PASS: Disconnect or timeout clears old votes: 1
+PASS: New invitation cannot reuse previous approval: 1
+PASS: Opponent can decline: 1
+PASS: Requester can cancel: 1
+PASS: One vote never restarts: 2
+PASS: Requester cannot supply second vote: 2
+PASS: Nonparticipant cannot approve: 2
+PASS: Stale invitation rejected: 2
+PASS: Simultaneous request does not silently consent: 2
+PASS: Both participants approve: 2
+PASS: Duplicate acceptance ignored: 2
+PASS: Disconnect or timeout clears old votes: 2
+PASS: New invitation cannot reuse previous approval: 2
+PASS: Opponent can decline: 2
+PASS: Requester can cancel: 2
+PASS: Host accepts match request 14
+PASS: Client rejects match request 14
+PASS: Reject outsider match request 14
+PASS: Host accepts match request 18
+PASS: Client rejects match request 18
+PASS: Reject outsider match request 18
+PASS: Accept master match result 17
+PASS: Reject forged match result 17
+PASS: Accept master match result 19
+PASS: Reject forged match result 19
+PASS: Reject legacy single-click restart
+PASS: Accept typed restart response
+PASS: Reject malformed restart vote
+PASS: Accept surrender without caller-selected side
+PASS: Reject caller-selected surrender side
+PASS: Accept classic-mode reload
+PASS: Reject malformed reload
 PASS: Electric traversal hits each token once even with overlapping zones
 PASS: Electric traversal excludes origin and includes landing cell
 PASS: Knight landing on token triggers electric damage

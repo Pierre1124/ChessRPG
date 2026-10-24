@@ -142,17 +142,30 @@ public class SettingsUI : MonoBehaviour
         if (displayPending) return;
         if (multiplayerGameController != null && !multiplayerGameController.CanGameplayOperate)
         { GameFlowUI.Show("請等待玩家加入或對局同步完成"); return; }
-        view.ShowConfirmation("重新開始對局？\n目前棋局進度將會清除。", ConfirmRestart, CancelRestart, "重新開始", "取消");
+        view.ShowConfirmation("重新開始對局？\n連線對局需雙方同意才會重開。", ConfirmRestart, CancelRestart, "重新開始", "取消");
     }
     /// <summary>再次驗證狀態並執行重新開始。</summary>
     public void ConfirmRestart()
     {
         if (multiplayerGameController != null && !multiplayerGameController.CanGameplayOperate)
         { CancelRestart(); GameFlowUI.Show("目前無法重新開始，請稍後再試"); return; }
-        PlayerPrefs.Save(); Time.timeScale = 1f; ReleaseLock();
+        goBack();
         if (multiplayerGameController != null) multiplayerGameController.RequestRestartGame();
-        else UnityEngine.SceneManagement.SceneManager.LoadScene("ChessScene");
+        else { Time.timeScale = 1f; UnityEngine.SceneManagement.SceneManager.LoadScene("ChessScene"); }
     }
+    public void ShowSurrenderConfirmation()
+    {
+        if (displayPending || logicManager == null || logicManager.IsGameOver) return;
+        if (multiplayerGameController != null && !multiplayerGameController.CanGameplayOperate)
+        { GameFlowUI.Show("請等待雙方準備完成"); return; }
+        view.ShowConfirmation("確定投降？\n投降後由對方獲勝。", () =>
+        {
+            goBack();
+            if (multiplayerGameController != null) multiplayerGameController.RequestSurrender();
+            else logicManager.Surrender(logicManager.isWhiteTurn);
+        }, CancelRestart, "確認投降", "繼續對局");
+    }
+
     /// <summary>返回主選單前先確認，避免誤觸直接離開。</summary>
     public void ReturnToStartMenu()
     {

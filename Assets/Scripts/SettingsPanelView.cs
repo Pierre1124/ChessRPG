@@ -130,6 +130,8 @@ public sealed class SettingsPanelView : MonoBehaviour
     public void Initialize(SettingsUI settings)
     {
         owner = settings;
+        if (pages != null && pages.Length > 4 && pages[4].transform.Find("投降") == null)
+            MakeButton(pages[4].transform, "投降", new Vector2(0, -130), new Vector2(440, 52), owner.ShowSurrenderConfirmation);
         for (int i = 0; i < tabs.Length; i++) { int n = i; Bind(tabs[i], () => SelectPage(n)); }
         for (int i = 0; i < bindingButtons.Length; i++) { GameControl action = (GameControl)i; Bind(bindingButtons[i], () => BeginBinding(action)); }
         for (int i = 0; i < styles.Length; i++)
@@ -145,6 +147,11 @@ public sealed class SettingsPanelView : MonoBehaviour
         BindNamed("恢復預設按鍵", () => { ControlBindings.ResetDefaults(); longPress.SetIsOnWithoutNotify(false); RefreshBindings(); bindingHint.text = "已恢復預設按鍵"; });
         BindNamed("恢復預設光暈", () => { CardGlowSettings.ResetDefaults(); RefreshGlow(); });
         BindNamed("套用顯示設定", owner.ApplyDisplayChanges);
+        if (pages != null && pages.Length > 4)
+        {
+            Transform surrender = pages[4].transform.Find("投降");
+            if (surrender != null) Bind(surrender.GetComponent<Button>(), owner.ShowSurrenderConfirmation);
+        }
         BindNamed("重新開始", owner.ShowRestartConfirmation); BindNamed("返回主選單", owner.ReturnToStartMenu);
         BindNamed("完成並返回", owner.goBack);
         RefreshBindings(); RefreshGlow(); SelectPage(0); HideConfirmation();
@@ -263,6 +270,7 @@ public sealed class SettingsPanelView : MonoBehaviour
         Label(content, "對局操作會再次確認", new Vector2(0, 150), new Vector2(800, 48), 26);
         MakeButton(content, "重新開始", new Vector2(0, 45), new Vector2(440, 52), owner.ShowRestartConfirmation);
         MakeButton(content, "返回主選單", new Vector2(0, -45), new Vector2(440, 52), owner.ReturnToStartMenu);
+        MakeButton(content, "投降", new Vector2(0, -130), new Vector2(440, 52), owner.ShowSurrenderConfirmation);
         content = root;
         MakeButton(root, "完成並返回", new Vector2(0, -337), new Vector2(440, 48), owner.goBack);
         SelectPage(0);

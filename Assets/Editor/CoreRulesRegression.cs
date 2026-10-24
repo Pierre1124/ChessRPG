@@ -42,11 +42,83 @@ public static class CoreRulesRegression
     /// <summary>執行無 Unity 執行階段依賴的測試，亦可由命令列驗證程式呼叫。</summary>
     public static void RunManagedChecks(Action<bool, string> check)
     {
+        CardKeywordRegression.RunManagedChecks(check);
         check(!new PieceDefinition().HasMoveRules, "Empty serialized move definition preserves standard movement");
         check(!new PieceDefinition { moveRules = null }.HasMoveRules, "Null move list preserves standard movement");
         check(!new PieceDefinition { moveRules = new List<PieceMoveRule> { null } }.HasMoveRules, "Null-only move list preserves standard movement");
         check(new PieceDefinition { moveRules = new List<PieceMoveRule> { new PieceMoveRule() } }.HasMoveRules,
             "Explicit move rules still override standard movement");
+        var fieldRooks = new HashSet<UnityEngine.Vector2Int>
+        {
+            new UnityEngine.Vector2Int(0, 0), new UnityEngine.Vector2Int(3, 0), new UnityEngine.Vector2Int(6, 0),
+            new UnityEngine.Vector2Int(0, 3), new UnityEngine.Vector2Int(3, 3), new UnityEngine.Vector2Int(6, 3)
+        };
+        var fieldOccupied = new HashSet<UnityEngine.Vector2Int>(fieldRooks);
+        var connected = FieldRookConnections.Collect(new UnityEngine.Vector2Int(0, 0), fieldOccupied.Contains, fieldRooks.Contains);
+        check(connected.Count == 5 && new HashSet<UnityEngine.Vector2Int>(connected).Count == 5,
+            "Field card connects every rook across parallel rows without duplicates");
+        foreach (var origin in fieldRooks)
+            check(FieldRookConnections.Collect(origin, fieldOccupied.Contains, fieldRooks.Contains).Count == 5,
+                "Field network is independent of selected endpoint " + origin);
+        fieldRooks.Clear(); fieldOccupied.Clear();
+        fieldRooks.UnionWith(new[] { new UnityEngine.Vector2Int(0, 0), new UnityEngine.Vector2Int(3, 0), new UnityEngine.Vector2Int(6, 0) });
+        fieldOccupied.UnionWith(fieldRooks);
+        check(FieldRookConnections.Collect(new UnityEngine.Vector2Int(0, 0), fieldOccupied.Contains, fieldRooks.Contains).Count == 2,
+            "Collinear rooks connect through intermediate friendly endpoint");
+        fieldOccupied.Add(new UnityEngine.Vector2Int(1, 0));
+        check(FieldRookConnections.Collect(new UnityEngine.Vector2Int(0, 0), fieldOccupied.Contains, fieldRooks.Contains).Count == 0,
+            "Intervening piece blocks the field network");
+        fieldOccupied.Remove(new UnityEngine.Vector2Int(1, 0));
+        fieldRooks.Remove(new UnityEngine.Vector2Int(3, 0));
+        check(FieldRookConnections.Collect(new UnityEngine.Vector2Int(0, 0), fieldOccupied.Contains, fieldRooks.Contains).Count == 0,
+            "Enemy rook blocks connection to friendly rook beyond");
+        fieldRooks.Clear(); fieldOccupied.Clear();
+        fieldRooks.UnionWith(new[] { new UnityEngine.Vector2Int(0, 0), new UnityEngine.Vector2Int(1, 0), new UnityEngine.Vector2Int(3, 3) });
+        fieldOccupied.UnionWith(fieldRooks);
+        check(FieldRookConnections.Collect(new UnityEngine.Vector2Int(0, 0), fieldOccupied.Contains, fieldRooks.Contains).Count == 0,
+            "Adjacent and diagonal rooks do not create a field");
+        foreach (int requester in new[] { 1, 2 })
+        {
+            int opponent = requester == 1 ? 2 : 1;
+            var agreement = new RestartAgreement();
+            agreement.Begin(requester, opponent);
+            string id = agreement.Id;
+            check(agreement.IsPending && !agreement.IsApproved, "One vote never restarts: " + requester);
+            check(!agreement.Reply(id, requester, true), "Requester cannot supply second vote: " + requester);
+            check(!agreement.Reply(id, 99, true), "Nonparticipant cannot approve: " + requester);
+            check(!agreement.Reply("expired", opponent, true), "Stale invitation rejected: " + requester);
+            agreement.Begin(opponent, requester);
+            check(agreement.Id == id && !agreement.IsApproved, "Simultaneous request does not silently consent: " + requester);
+            check(agreement.Reply(id, opponent, true) && agreement.IsApproved, "Both participants approve: " + requester);
+            check(!agreement.Reply(id, opponent, true), "Duplicate acceptance ignored: " + requester);
+            agreement.Clear();
+            check(!agreement.IsPending && !agreement.IsApproved && !agreement.Reply(id, opponent, true),
+                "Disconnect or timeout clears old votes: " + requester);
+            agreement.Begin(requester, opponent);
+            check(agreement.Id != id && !agreement.Reply(id, opponent, true), "New invitation cannot reuse previous approval: " + requester);
+            check(agreement.Reply(agreement.Id, opponent, false) && !agreement.IsApproved, "Opponent can decline: " + requester);
+            agreement.Clear();
+            agreement.Begin(requester, opponent);
+            check(agreement.Reply(agreement.Id, requester, false) && !agreement.IsApproved, "Requester can cancel: " + requester);
+        }
+        foreach (byte request in new byte[] { 14, 18 })
+        {
+            check(NetworkInputPolicy.IsTrustedSender(request, 2, 1, true, true), "Host accepts match request " + request);
+            check(!NetworkInputPolicy.IsTrustedSender(request, 2, 1, false, true), "Client rejects match request " + request);
+            check(!NetworkInputPolicy.IsTrustedSender(request, 99, 1, true, false), "Reject outsider match request " + request);
+        }
+        foreach (byte result in new byte[] { 17, 19 })
+        {
+            check(NetworkInputPolicy.IsTrustedSender(result, 1, 1, false, true), "Accept master match result " + result);
+            check(!NetworkInputPolicy.IsTrustedSender(result, 2, 1, true, true), "Reject forged match result " + result);
+        }
+        check(!NetworkInputPolicy.IsValidPayload(14, ""), "Reject legacy single-click restart");
+        check(NetworkInputPolicy.IsValidPayload(14, new object[] { "invitation", true }), "Accept typed restart response");
+        check(!NetworkInputPolicy.IsValidPayload(14, new object[] { "invitation", "yes" }), "Reject malformed restart vote");
+        check(NetworkInputPolicy.IsValidPayload(18, ""), "Accept surrender without caller-selected side");
+        check(!NetworkInputPolicy.IsValidPayload(18, "White"), "Reject caller-selected surrender side");
+        check(NetworkInputPolicy.IsValidPayload(19, new object[] { true }), "Accept classic-mode reload");
+        check(!NetworkInputPolicy.IsValidPayload(19, true), "Reject malformed reload");
         var net = new BoardFieldEffectZone { type = BoardFieldEffectType.ElectricNet,
             cells = new List<UnityEngine.Vector2Int> { new UnityEngine.Vector2Int(2, 2), new UnityEngine.Vector2Int(2, 3) } };
         var nets = new List<BoardFieldEffectZone> { net, net };

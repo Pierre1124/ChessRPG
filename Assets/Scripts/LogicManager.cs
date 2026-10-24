@@ -211,9 +211,11 @@ public class LogicManager : MonoBehaviour
         }
     }
 
+    public bool IsGameOver { get; private set; }
+
     public bool IsOperationLocked
     {
-        get { return IsDamageCalculationBusy || externalOperationLockCount > 0; }
+        get { return IsGameOver || IsDamageCalculationBusy || externalOperationLockCount > 0; }
     }
 
     public bool HasDeferredFullGameRestart
@@ -249,6 +251,7 @@ public class LogicManager : MonoBehaviour
     /// </summary>
     public void Initialize()
     {
+        IsGameOver = false;
         Time.timeScale = 1f;
         isWhiteTurn = true;
         isPromotionActive = false;
@@ -753,6 +756,7 @@ public class LogicManager : MonoBehaviour
         if (IsClassicChess) return;
 
         List<BoardFieldEffectZone> zones = GetActiveBoardFieldZones();
+        var renderedCells = new HashSet<(BoardFieldEffectType, Vector2Int)>();
         foreach (BoardFieldEffectZone zone in zones)
         {
             Piece visualSource = zone.firstSource != null
@@ -761,7 +765,8 @@ public class LogicManager : MonoBehaviour
 
             foreach (Vector2Int cell in zone.cells)
             {
-                CreateBoardFieldVisual(visualSource, cell, zone.type);
+                if (renderedCells.Add((zone.type, cell)))
+                    CreateBoardFieldVisual(visualSource, cell, zone.type);
             }
         }
     }
@@ -1243,6 +1248,20 @@ public class LogicManager : MonoBehaviour
                     continue;
                 }
 
+                bool hasIntermediateSource = false;
+                foreach (Piece intermediate in sources)
+                {
+                    if (intermediate == null || intermediate == first || intermediate == second ||
+                        intermediate.IsWhite != first.IsWhite) continue;
+                    Vector2Int cell = ToBoardCell(intermediate.GetCoordinates());
+                    if ((firstCell.x == secondCell.x && cell.x == firstCell.x &&
+                         cell.y > Mathf.Min(firstCell.y, secondCell.y) && cell.y < Mathf.Max(firstCell.y, secondCell.y)) ||
+                        (firstCell.y == secondCell.y && cell.y == firstCell.y &&
+                         cell.x > Mathf.Min(firstCell.x, secondCell.x) && cell.x < Mathf.Max(firstCell.x, secondCell.x)))
+                    { hasIntermediateSource = true; break; }
+                }
+                if (hasIntermediateSource) continue;
+
                 BoardFieldEffectZone zone = BuildFieldZone(
                     type,
                     first,
@@ -1429,7 +1448,29 @@ public class LogicManager : MonoBehaviour
         root.transform.position = new Vector3(cell.x, source.transform.position.y, cell.y);
         root.transform.rotation = source.transform.rotation;
 
+        var tokenInfo = root.GetComponent<BoardFieldTokenInfo>();
+        if (tokenInfo == null) tokenInfo = root.AddComponent<BoardFieldTokenInfo>();
+        tokenInfo.type = type;
+        tokenInfo.cell = cell;
+
         boardFieldVisuals.Add(root);
+    }
+
+    public CardKeywordEntry GetBoardFieldTokenInfo(Vector2Int cell)
+    {
+        var descriptions = new List<string>();
+        var names = new List<string>();
+        foreach (var visual in boardFieldVisuals)
+        {
+            if (visual == null || !visual.activeInHierarchy) continue;
+            var token = visual.GetComponent<BoardFieldTokenInfo>();
+            if (token == null || token.cell != cell || token.Entry == null || names.Contains(token.Entry.term)) continue;
+            names.Add(token.Entry.term);
+            descriptions.Add(token.Entry.term + "\n" + token.Entry.description);
+        }
+        return names.Count == 0 ? null : new CardKeywordEntry {
+            id = "board-token", term = string.Join("／", names), description = string.Join("\n\n", descriptions)
+        };
     }
 
     /// <summary>
@@ -2592,10 +2633,9 @@ public class LogicManager : MonoBehaviour
                 target.SetCardForRulePreview(card, null);
                 if (card.id == "J03" || card.id == "J04")
                 {
-                    Piece partner = BoardFieldCardSkillUtility.FindAlignedRookPartner(
-                        new CardSkillContext(this, target, card));
-                    if (partner != null && partner.cardDefinition != card)
-                        partner.SetCardForRulePreview(card, null);
+                    foreach (Piece partner in BoardFieldCardSkillUtility.FindConnectedRookPartners(
+                        new CardSkillContext(this, target, card)))
+                        if (partner.cardDefinition != card) partner.SetCardForRulePreview(card, null);
                 }
                 else if (card.id == "J09")
                 {
@@ -3095,7 +3135,7 @@ public class LogicManager : MonoBehaviour
     /// </summary>
     private void ShowGameOver(string result)
     {
-        if (IsNetworkClientOnly)
+        if (IsNetworkClientOnly || IsGameOver)
         {
             return;
         }
@@ -3109,6 +3149,8 @@ public class LogicManager : MonoBehaviour
     /// </summary>
     private void ShowGameOverLocal(string result)
     {
+        if (IsGameOver) return;
+        IsGameOver = true;
         Debug.Log($"[CardDebug][GameOver] Result={result}");
 
         if (gameOverUI != null)
@@ -3121,6 +3163,13 @@ public class LogicManager : MonoBehaviour
         }
 
         Time.timeScale = 0f;
+    }
+
+    /// <summary>投降不依賴目前回合，僅權威端可結算並廣播勝負。</summary>
+    public void Surrender(bool whiteSurrenders)
+    {
+        if (IsNetworkClientOnly || IsGameOver) return;
+        ShowGameOver(whiteSurrenders ? "白方投降，黑方獲勝" : "黑方投降，白方獲勝");
     }
 
     /// <summary>

@@ -1,0 +1,16 @@
+PASS: Assets/Scenes/StartScene.unity has resolution template
+PASS: Assets/Scenes/StartScene.unity owns independent template
+PASS: Assets/Scenes/StartScene.unity contains option Toggle
+PASS: Assets/Scenes/StartScene.unity option text belongs to Toggle
+PASS: Assets/Scenes/StartScene.unity populates available resolutions
+PASS: Assets/Scenes/StartScene.unity passes TMP runtime template validation
+PASS: Assets/Scenes/StartScene.unity keeps template hidden until opening
+PASS: Assets/Scenes/StartScene.unity selection updates caption and emits one callback
+PASS: Assets/Scenes/ChessScene.unity has resolution template
+PASS: Assets/Scenes/ChessScene.unity owns independent template
+PASS: Assets/Scenes/ChessScene.unity contains option Toggle
+PASS: Assets/Scenes/ChessScene.unity option text belongs to Toggle
+PASS: Assets/Scenes/ChessScene.unity populates available resolutions
+PASS: Assets/Scenes/ChessScene.unity passes TMP runtime template validation
+PASS: Assets/Scenes/ChessScene.unity keeps template hidden until opening
+PASS: Assets/Scenes/ChessScene.unity selection updates caption and emits one callback

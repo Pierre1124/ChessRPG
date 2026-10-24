@@ -1,0 +1,28 @@
+{
+  "source": "output/card-rules-current.md：2026-10-09 全局規則 Excel 原文；指示物細節補充自 2026-10-24 使用者提供的轉職截圖。",
+  "entries": [
+    {"id":"job", "term":"轉職", "description":"為棋子裝備卡片。一枚棋子只能裝備一張轉職卡。"},
+    {"id":"event", "term":"事件", "description":"一次性發動的效果。"},
+    {"id":"field", "term":"場地", "description":"放置於場地區的卡片，永久存在，最多只能放置 2 張。欄位跟效果雙方共用。特定 2 張卡放置後會自動合成為更高階的場地卡。"},
+    {"id":"token", "term":"指示物", "aliases":["Token", "token"], "description":"特定卡片產生的特殊棋子。個別指示物的效果與消失條件依來源卡片規定。"},
+    {"id":"last-word", "term":"遺言", "description":"棋子被吃子時發動效果。"},
+    {"id":"damage-up", "term":"增傷", "description":"增加當次造成的傷害。實際適用與否依傷害屬性判定。"},
+    {"id":"weaken", "term":"弱化", "description":"減少當次造成的傷害。實際適用與否依傷害屬性判定。"},
+    {"id":"vulnerable", "term":"易傷", "description":"增加當次受到的傷害。實際適用與否依傷害屬性判定。"},
+    {"id":"reduction", "term":"減傷", "description":"減少當次受到的傷害。實際適用與否依傷害屬性判定。"},
+    {"id":"attack", "term":"攻擊力", "description":"棋子吃子時，對方受到的傷害。"},
+    {"id":"value", "term":"價值", "description":"棋子被吃子時，我方受到的傷害。"},
+    {"id":"truce", "term":"休戰", "description":"最終傷害歸 0。"},
+    {"id":"no-heal", "term":"禁療", "description":"最終治療歸 0。"},
+    {"id":"active", "term":"主動技能", "description":"部分轉職卡持有的特殊技能。使用方式與效果依該卡片敘述。"},
+    {"id":"fire", "term":"火屬性", "description":"適用一般增傷、弱化、易傷、減傷，以及屬性增傷。"},
+    {"id":"electric", "term":"電屬性", "description":"不受一般增傷、弱化影響。適用易傷、減傷，以及屬性增傷。"},
+    {"id":"poison", "term":"毒屬性", "description":"不受一般增傷、弱化影響。適用易傷、減傷，以及屬性增傷。"},
+    {"id":"curse", "term":"詛咒屬性", "description":"不受一般增傷、弱化影響。適用易傷、減傷，以及屬性增傷。"},
+    {"id":"normal", "term":"無屬性", "description":"適用一般增傷、弱化、易傷、減傷；不適用屬性增傷。"},
+    {"id":"true", "term":"真實傷害", "aliases":["真傷"], "description":"不受一般增傷、弱化、易傷、減傷及屬性增傷影響。"},
+    {"id":"cost", "term":"代價傷害", "description":"不受一般增傷、弱化、易傷、減傷及屬性增傷影響。"},
+    {"id":"moat-token", "term":"護城河Token", "aliases":["護城河指示物"], "description":"由護城河召喚的指示物。無法被操作或作為目標。當棋子嘗試通過時，會將其阻攔；當來源卡片被破壞時消失。"},
+    {"id":"net-token", "term":"電網Token", "aliases":["電網指示物"], "description":"由電網召喚的指示物。無法被操作或作為目標。棋子通過時，對其造成 1 點電屬性傷害；當來源卡片被破壞或關閉電網時消失。"}
+  ]
+}

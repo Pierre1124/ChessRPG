@@ -10,3 +10,53 @@ PASS: Removing moat pair cannot reveal check
 PASS: Preview restores both moat endpoints
 PASS: Preview preserves attack map and board
 PASS: Keeping protective moat is allowed
+PASS: J03 creates all seven adjacent links across parallel rows and columns
+PASS: J03 never creates a token on intermediate castle
+PASS: J03 never creates a token on intermediate castle
+PASS: J03 never creates a token on intermediate castle
+PASS: J03 never creates a token on intermediate castle
+PASS: J03 never creates a token on intermediate castle
+PASS: J03 never creates a token on intermediate castle
+PASS: J03 never creates a token on intermediate castle
+PASS: J03 never creates a token on intermediate castle
+PASS: J03 never creates a token on intermediate castle
+PASS: J03 never creates a token on intermediate castle
+PASS: J03 never creates a token on intermediate castle
+PASS: J03 never creates a token on intermediate castle
+PASS: J03 never creates a token on intermediate castle
+PASS: J03 never creates a token on intermediate castle
+PASS: J03 covers both rows and all three columns
+PASS: J03 preview restores every connected endpoint
+PASS: J03 actual equip reaches every parallel castle
+PASS: J03 actual equip creates every connection
+PASS: J03 initially has only the original two-castle connection
+PASS: J03 opponent turn does not extend friendly field
+PASS: J03 own turn connects a third rook that aligned after equipping
+PASS: J03 repeated turn refresh neither reapplies card nor duplicates zones
+PASS: J03 late connection respects intervening pieces
+PASS: J03 automatic turn refresh preserves other equipment
+PASS: J04 creates all seven adjacent links across parallel rows and columns
+PASS: J04 never creates a token on intermediate castle
+PASS: J04 never creates a token on intermediate castle
+PASS: J04 never creates a token on intermediate castle
+PASS: J04 never creates a token on intermediate castle
+PASS: J04 never creates a token on intermediate castle
+PASS: J04 never creates a token on intermediate castle
+PASS: J04 never creates a token on intermediate castle
+PASS: J04 never creates a token on intermediate castle
+PASS: J04 never creates a token on intermediate castle
+PASS: J04 never creates a token on intermediate castle
+PASS: J04 never creates a token on intermediate castle
+PASS: J04 never creates a token on intermediate castle
+PASS: J04 never creates a token on intermediate castle
+PASS: J04 never creates a token on intermediate castle
+PASS: J04 covers both rows and all three columns
+PASS: J04 preview restores every connected endpoint
+PASS: J04 actual equip reaches every parallel castle
+PASS: J04 actual equip creates every connection
+PASS: J04 initially has only the original two-castle connection
+PASS: J04 opponent turn does not extend friendly field
+PASS: J04 own turn connects a third rook that aligned after equipping
+PASS: J04 repeated turn refresh neither reapplies card nor duplicates zones
+PASS: J04 late connection respects intervening pieces
+PASS: J04 automatic turn refresh preserves other equipment

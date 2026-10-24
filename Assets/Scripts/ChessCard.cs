@@ -255,6 +255,9 @@ public class CardDefinition
     public GameObject skillEffectPrefab;
     public AudioClip skillSound;
     [TextArea(3, 5)] public string description;
+    [TextArea(3, 5)] public string shortDescription;
+    public string DisplayDescription => cardType == CardType.JobChange && !string.IsNullOrWhiteSpace(shortDescription)
+        ? shortDescription : description;
     public List<string> tags = new List<string>();
     public List<CardConditionData> conditions = new List<CardConditionData>();
     public List<CardEffectData> effects = new List<CardEffectData>();

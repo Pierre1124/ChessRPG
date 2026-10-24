@@ -1,6 +1,40 @@
 using System.Collections.Generic;
 using UnityEngine;
 
+/// <summary>沿四個直線方向收集相連城堡；棋子阻擋、相鄰無空格與敵方均不連線。</summary>
+public static class FieldRookConnections
+{
+    public static List<Vector2Int> Collect(Vector2Int origin,
+        System.Func<Vector2Int, bool> occupied, System.Func<Vector2Int, bool> friendlyRook)
+    {
+        var result = new List<Vector2Int>();
+        var visited = new HashSet<Vector2Int> { origin };
+        var pending = new Queue<Vector2Int>();
+        pending.Enqueue(origin);
+        var directions = new[] { Vector2Int.left, Vector2Int.right, Vector2Int.down, Vector2Int.up };
+        while (pending.Count > 0)
+        {
+            Vector2Int source = pending.Dequeue();
+            foreach (Vector2Int direction in directions)
+            {
+                for (int distance = 1; distance < 8; distance++)
+                {
+                    Vector2Int cell = source + direction * distance;
+                    if (cell.x < 0 || cell.x >= 8 || cell.y < 0 || cell.y >= 8) break;
+                    if (!occupied(cell)) continue;
+                    if (distance > 1 && friendlyRook(cell) && visited.Add(cell))
+                    {
+                        result.Add(cell);
+                        pending.Enqueue(cell);
+                    }
+                    break;
+                }
+            }
+        }
+        return result;
+    }
+}
+
 public enum BoardFieldEffectType
 {
     None,

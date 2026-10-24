@@ -1,0 +1,35 @@
+PASS: Keywords prefer complete terms and support aliases
+PASS: Keyword formatting is idempotent
+PASS: Keywords preserve rich text styling
+PASS: Keywords do not nest existing links
+PASS: Keywords respect noparse text
+PASS: English aliases do not match inside identifiers
+PASS: Empty and non-keyword descriptions remain intact
+PASS: Link resolves its detailed definition
+PASS: Unknown links cannot open glossary entries
+PASS: Job card uses summary without replacing full rules
+PASS: Empty summary falls back to full description
+PASS: Other card types retain their original descriptions
+PASS: Real TMP creates three glossary links
+PASS: TMP link covers exactly the term
+PASS: Keyword glyph accepts clicks
+PASS: Ordinary text leaves parent card interactions available
+PASS: Keyword owns click and drag gestures instead of parent card
+PASS: Clicking actual TMP link opens the correct definition
+PASS: Close button dismisses glossary and releases modal state
+PASS: Editable popup prefab is included in Resources
+PASS: Popup references are complete
+PASS: Long definitions expand inside a vertical scroll viewport
+PASS: Saved card 0 displays summary links
+PASS: Saved card 0 routes actual UI raycast to underlined text; hits=CardLordText:3,CardLord:2 screen=(561.84, 265.40) depth=3 rect=(x:-135.00, y:-140.00, width:270.00, height:140.00) canvas=ScreenSpaceCamera camera=Card raycast test camera (UnityEngine.Camera)
+PASS: Saved card 0 raycast click opens token definition
+PASS: Saved card 0 reproduces missing nested raycaster failure
+PASS: Saved card 0 binding repairs nested raycaster
+PASS: Saved card 1 displays summary links
+PASS: Saved card 1 routes actual UI raycast to underlined text; hits=CardLordText:3 screen=(561.84, 265.40) depth=3 rect=(x:-135.00, y:-140.00, width:270.00, height:140.00) canvas=ScreenSpaceCamera camera=Card raycast test camera (UnityEngine.Camera)
+PASS: Saved card 1 raycast click opens token definition
+PASS: Saved card 1 reproduces missing nested raycaster failure
+PASS: Saved card 1 binding repairs nested raycaster
+PASS: Moat token carries its derived rules
+PASS: Electric token carries its derived rules
+PASS: Inspecting token does not turn it into a gameplay target

@@ -568,7 +568,7 @@ public class StartMenuController : MonoBehaviour
 
         SetText(item, "CardName", FormatDeckCardName(card, 0, false));
         SetText(item, "CardType", GetCardTypeLabel(card.cardType));
-        SetText(item, "CardDescription", card.description);
+        SetText(item, "CardDescription", card.DisplayDescription);
     }
 
     /// <summary>
@@ -665,7 +665,11 @@ public class StartMenuController : MonoBehaviour
     private static void SetText(Transform root, string name, string value)
     {
         TMP_Text text = FindChildComponent<TMP_Text>(root, name);
-        if (text != null) text.text = value;
+        if (text != null)
+        {
+            if (name == "CardDescription") CardKeywordText.Bind(text, value);
+            else text.text = value;
+        }
     }
 
     /// <summary>
