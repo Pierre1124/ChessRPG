@@ -1,0 +1,7 @@
+PASS: Field feedback prefab is bundled in Resources
+PASS: Source glow follows board card in world space
+PASS: Field source uses the same non-interactive glow as playable cards
+PASS: Target effect references imported slash VFX
+PASS: Target VFX contains no hand-card glow
+PASS: Routing changes only field cards
+PASS: Glow fits the source card bounds above its surface

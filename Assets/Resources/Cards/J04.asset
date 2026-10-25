@@ -18,6 +18,12 @@ MonoBehaviour:
     useDataActions: 0
     playActions: []
     healthCost: 0
+    friendlyDamageBonus: 0
+    damageBonusUsesCaptureStacks: 0
+    blocksHealing: 0
+    requiresNoBoardCaptures: 0
+    lastWillDamage: 0
+    lastWillDamageTags: 0
     minimumTargetHealth: -1
     maximumTargetHealth: -1
     ruleNotes: 
@@ -33,7 +39,7 @@ MonoBehaviour:
     skillEffectPrefab: {fileID: 0}
     skillSound: {fileID: 0}
     description: "\u5169\u500B\u57CE\u5821\u4E4B\u9593\u7684\u683C\u5B50\u5F62\u6210\u96FB\u7DB2Token,\u901A\u904E\u7684\u68CB\u5B50\u53D7\u52301\u9EDE\u96FB\u5C6C\u6027\u50B7\u5BB3,\u53E6\u4E00\u500B\u57CE\u5821\u5F37\u5236\u88DD\u5099\u96FB\u7DB2\n\u4E3B\u52D5\u6280\u80FD:\u95DC\u9589\u72C0\u614B\u53EF\u79FB\u52D5,\u56DE\u5408\u958B\u59CB\u6642\u82E5\u5169\u500B\u57CE\u5821\u5E73\u884C\u81EA\u52D5\u91CD\u65B0\u958B\u555F\n\u907A\u8A00:\u53E6\u4E00\u500B\u57CE\u5821\u7684\u96FB\u7DB2\u7834\u58DE,\u4E26\u81EA\u8EAB\u53D7\u52305\u9EDE\u96FB\u5C6C\u6027\u50B7\u5BB3"
-    shortDescription: "\u958b\u555f\u6642\u7121\u6cd5\u79fb\u52d5\n\u767c\u52d5\u689d\u4ef6\uff1a\u5169\u500b\u4ee5\u4e0a\u57ce\u5821\u540c\u884c\u6216\u540c\u5217\n\u53ec\u559a\u96fb\u7db2Token\n\u4e3b\u52d5\u6280\u80fd\uff1a\u95dc\u9589\u96fb\u7db2\u4e26\u6062\u5fa9\u79fb\u52d5\uff1b\u4e0b\u56de\u5408\u7b26\u5408\u689d\u4ef6\u6642\u81ea\u52d5\u958b\u555f\n\u907a\u8a00\uff1a\u6211\u65b9\u53d7\u52305\u9ede\u4ee3\u50f9\u50b7\u5bb3"
+    shortDescription: "\u958B\u555F\u6642\u7121\u6CD5\u79FB\u52D5\n\u767C\u52D5\u689D\u4EF6\uFF1A\u5169\u500B\u4EE5\u4E0A\u57CE\u5821\u540C\u884C\u6216\u540C\u5217\n\u53EC\u559A\u96FB\u7DB2Token\n\u4E3B\u52D5\u6280\u80FD\uFF1A\u95DC\u9589\u96FB\u7DB2\u4E26\u6062\u5FA9\u79FB\u52D5\uFF1B\u4E0B\u56DE\u5408\u7B26\u5408\u689D\u4EF6\u6642\u81EA\u52D5\u958B\u555F\n\u907A\u8A00\uFF1A\u6211\u65B9\u53D7\u52305\u9EDE\u4EE3\u50F9\u50B7\u5BB3"
     tags:
     - "\u8F49\u8077"
     - "\u8B8A\u5E7B"
@@ -42,7 +48,13 @@ MonoBehaviour:
     conditions: []
     effects: []
     statusesToApply:
-    - statusName: "\u96FB\u7DB2"
+    - triggerEffectPrefab: {fileID: 0}
+      idleEffectPrefab: {fileID: 6785039707660126237, guid: a1d2f05659a883e408d332dc7a3f0b6a, type: 3}
+      triggerSound: {fileID: 0}
+      triggerEffectLifetime: 2
+      effectOffset: {x: 0, y: 0, z: 0}
+      triggerSoundVolume: 1
+      statusName: "\u96FB\u7DB2"
       sourceCardId: J04
       kind: 1
       icon: {fileID: 21300000, guid: 18fd32856477bc44b8b089eeb80c2667, type: 3}

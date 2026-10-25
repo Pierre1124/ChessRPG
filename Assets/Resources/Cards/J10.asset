@@ -39,7 +39,7 @@ MonoBehaviour:
     skillEffectPrefab: {fileID: 0}
     skillSound: {fileID: 0}
     description: "\u6211\u65B9\u589E\u50B71,\u8056\u5973\u8C9E\u5FB7\u5403\u5B50\u5F8C\u8A72\u6548\u679C\u984D\u5916+1,\u6211\u65B9\u88AB\u5403\u5B50\u5F8C\u984D\u5916\u6548\u679C-1\n\u907A\u8A00:\u8A72\u5403\u5B50\u68CB\u5B50\u53D7\u52301\u9EDE\u706B\u5C6C\u6027\u50B7\u5BB3"
-    shortDescription: "\u767c\u52d5\u689d\u4ef6\uff1a\u6c92\u6709\u68cb\u5b50\u88ab\u5403\u5b50\n\u6211\u65b9\u589e\u50b71\uff1b\u81ea\u8eab\u5403\u5b50\u5f8c\u984d\u5916+1\uff0c\u6211\u65b9\u88ab\u5403\u5b50\u5f8c\u984d\u5916-1\n\u907a\u8a00\uff1a\u5403\u5b50\u68cb\u5b50\u53d7\u52301\u9ede\u706b\u5c6c\u6027\u50b7\u5bb3"
+    shortDescription: "\u767C\u52D5\u689D\u4EF6\uFF1A\u6C92\u6709\u68CB\u5B50\u88AB\u5403\u5B50\n\u6211\u65B9\u589E\u50B71\uFF1B\u81EA\u8EAB\u5403\u5B50\u5F8C\u984D\u5916+1\uFF0C\u6211\u65B9\u88AB\u5403\u5B50\u5F8C\u984D\u5916-1\n\u907A\u8A00\uFF1A\u5403\u5B50\u68CB\u5B50\u53D7\u52301\u9EDE\u706B\u5C6C\u6027\u50B7\u5BB3"
     tags:
     - "\u8F49\u8077"
     - "\u5F37\u5316"
@@ -47,7 +47,13 @@ MonoBehaviour:
     conditions: []
     effects: []
     statusesToApply:
-    - statusName: "\u8056\u5973\u8C9E\u5FB7"
+    - triggerEffectPrefab: {fileID: 0}
+      idleEffectPrefab: {fileID: 8021965478910101141, guid: 11871081c22dc744898b85b8a6dcc394, type: 3}
+      triggerSound: {fileID: 0}
+      triggerEffectLifetime: 2
+      effectOffset: {x: 0, y: 0, z: 0}
+      triggerSoundVolume: 1
+      statusName: "\u8056\u5973\u8C9E\u5FB7"
       sourceCardId: J10
       kind: 2
       icon: {fileID: 21300000, guid: f42d5e7ab6df9664a91fd8a019660259, type: 3}

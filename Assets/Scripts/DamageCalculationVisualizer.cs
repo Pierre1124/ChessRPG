@@ -74,6 +74,7 @@ public class DamageCalculationVisualizer : MonoBehaviour
     public void DisableForClassicChess()
     {
         StopAllCoroutines();
+        FieldEffectFeedback.StopAll();
         RestoreHealthPositions();
         HideDamageCalcSteps();
         HideDamageResultFlies();
@@ -425,6 +426,7 @@ public class DamageCalculationVisualizer : MonoBehaviour
         do
         {
         hasNext = false;
+        bool playedThisRound = false;
         float duration = Mathf.Max(0.05f, stepDuration);
         foreach (var sequence in sequences)
         {
@@ -441,7 +443,13 @@ public class DamageCalculationVisualizer : MonoBehaviour
                 if (stack > round) hasNext = true;
                 if (stack != round) continue;
                 played.Add(step);
+                playedThisRound = true;
                 CardDefinition card = string.IsNullOrEmpty(step.sourceCardId) ? null : imageDatabase.GetCard(step.sourceCardId);
+                if (FieldEffectFeedback.Applies(card))
+                {
+                    FieldEffectFeedback.Play(card, sequence.target != null ? sequence.target.transform.position : sequence.resultStartWorldPosition, duration);
+                    continue;
+                }
                 Sprite sprite = step.icon;
                 if (sprite == null && card != null) sprite = card.skillImage != null ? card.skillImage : card.cardImage;
                 if (sprite == null) sprite = ResolveIcon(step, sequence) ?? GetCountingIcon(step.countingIcon);
@@ -462,7 +470,7 @@ public class DamageCalculationVisualizer : MonoBehaviour
                         duration = Mathf.Max(duration, animation.effectLifetime);
             }
         }
-        if (VisibleModifierCount > 0) yield return new WaitForSecondsRealtime(duration);
+        if (playedThisRound) yield return new WaitForSecondsRealtime(duration);
         if (phase != DamageModifierPhase.Activation)
             UpdateFinalDamageText(sequences, phase == DamageModifierPhase.Increase ? DamageModifierPhase.None : DamageModifierPhase.Increase, played);
         HideResolutionPanels(); VisibleModifierCount = 0;
@@ -521,7 +529,7 @@ public class DamageCalculationVisualizer : MonoBehaviour
     }
 
     /// <summary>停用時停止演出及隱藏外部 Canvas，避免延遲結算。</summary>
-    private void OnDisable() { StopAllCoroutines(); BattleFeedback.StopTypeEffects(); RestoreHealthPositions(); HideDamageCalcSteps(); HideDamageResultFlies(); HideResolutionPanels(); }
+    private void OnDisable() { StopAllCoroutines(); FieldEffectFeedback.StopAll(); BattleFeedback.StopTypeEffects(); RestoreHealthPositions(); HideDamageCalcSteps(); HideDamageResultFlies(); HideResolutionPanels(); }
 
     /// <summary>離開場景時回收浮動 UI 及動態中文字型。</summary>
     private void OnDestroy()

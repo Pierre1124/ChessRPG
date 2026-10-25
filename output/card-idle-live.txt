@@ -1,0 +1,5 @@
+PASS: J10 apply, no duplicates, follow, scale, removal, classic cleanup
+PASS: J09 apply, no duplicates, follow, scale, removal, classic cleanup
+PASS: J04 apply, no duplicates, follow, scale, removal, classic cleanup
+PASS: E09 apply, no duplicates, follow, scale, removal, classic cleanup
+PASS: deferred Destroy leaves exactly four live effects

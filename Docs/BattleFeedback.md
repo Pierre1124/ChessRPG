@@ -52,3 +52,13 @@
 - 類型音效跟隨圖示跳出；共同扣血／回血音效在血條實際改變時播放。初次同步與相同數值刷新不播放共同音效。
 - 連線序列會保存已決定的屬性，客戶端不重新隨機。雙方須更新至同版程式。
 - 吃子最終數字仍是一個合計，不把不受減傷的「價值」拆成第二次扣血；外觀設定不改計算規則。
+
+## 場地卡發動呈現（2026-10-25）
+
+場地卡的 Activation／增傷／減傷演出改用獨立路徑：來源場地欄位顯示與可使用手牌相同的 CardGlowGraphic，目標不掛場地來源圖示或通用 Trigger 特效，改播 slash。數字與傷害結算維持既有流程。
+
+樣板：`Assets/Resources/UI/FieldEffectFeedback.prefab`。測試素材使用 `Assets/slash5-HungNguyen/prefab/slash/white-blue bolder.prefab`；可在樣板調整 Target Effect Prefab、位置、旋轉、縮放及生命週期。光暈沿用玩家的手牌光暈樣式、顏色與亮度設定。
+
+同一來源的多目標效果共用光暈，各目標分別播放 slash；來源卡移除後不留下光暈。一次性特效使用真實時間清理，取消演出及切換普通西洋棋時一併清除。
+
+驗證選單：`Tools > Chess > Presentation > Verify Field Effect Feedback`。結果：`output/field-effect-feedback.txt`。

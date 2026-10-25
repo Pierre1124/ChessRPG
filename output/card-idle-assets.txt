@@ -1,0 +1,4 @@
+PASS: J10 -> SacredAegis; material, loop seam, local particles, no colliders
+PASS: J09 -> BloodVow; material, loop seam, local particles, no colliders
+PASS: J04 -> IonCage; material, loop seam, local particles, no colliders
+PASS: E09 -> VenomBloom; material, loop seam, local particles, no colliders

@@ -42,6 +42,7 @@ MonoBehaviour:
     skillEffectPrefab: {fileID: 0}
     skillSound: {fileID: 8300000, guid: e21521ecc764b1a498c92a42850e9006, type: 3}
     description: "\u6307\u5B9A\u4E00\u500B\u68CB\u5B50,\u9677\u5165\u4E2D\u6BD2,\u6301\u7E8C3\u56DE\u5408"
+    shortDescription: 
     tags:
     - "\u4E8B\u4EF6"
     - "\u50B7\u5BB3"
@@ -50,7 +51,7 @@ MonoBehaviour:
     effects: []
     statusesToApply:
     - triggerEffectPrefab: {fileID: 0}
-      idleEffectPrefab: {fileID: 0}
+      idleEffectPrefab: {fileID: 5824195691058685207, guid: e255a4e9032bc3c4296a6a4f8e3a2ec0, type: 3}
       triggerSound: {fileID: 0}
       triggerEffectLifetime: 2
       effectOffset: {x: 0, y: 0, z: 0}
