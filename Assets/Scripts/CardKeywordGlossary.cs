@@ -11,6 +11,8 @@ public sealed class CardKeywordEntry
     public string term;
     public string description;
     public string[] aliases;
+    public string damageType;
+    public string fallbackColor;
 }
 
 /// <summary>只處理顯示文字；不改寫卡牌資料或遊戲規則。</summary>
@@ -18,9 +20,11 @@ public sealed class CardKeywordFormatter
 {
     private readonly Dictionary<string, CardKeywordEntry> entries = new Dictionary<string, CardKeywordEntry>();
     private readonly List<KeyValuePair<string, string>> terms = new List<KeyValuePair<string, string>>();
+    private readonly Func<CardKeywordEntry, string> colorResolver;
 
-    public CardKeywordFormatter(IEnumerable<CardKeywordEntry> source)
+    public CardKeywordFormatter(IEnumerable<CardKeywordEntry> source, Func<CardKeywordEntry, string> colorResolver = null)
     {
+        this.colorResolver = colorResolver;
         var seen = new HashSet<string>(StringComparer.Ordinal);
         foreach (var entry in source ?? Array.Empty<CardKeywordEntry>())
         {
@@ -71,7 +75,12 @@ public sealed class CardKeywordFormatter
                     if (i + length > source.Length || string.CompareOrdinal(source, i, term.Key, 0, length) != 0) continue;
                     if (IsAsciiWord(term.Key[0]) && i > 0 && IsAsciiWord(source[i - 1])) continue;
                     if (IsAsciiWord(term.Key[length - 1]) && i + length < source.Length && IsAsciiWord(source[i + length])) continue;
-                    result.Append("<link=\"kw:").Append(term.Value).Append("\"><u>").Append(term.Key).Append("</u></link>");
+                    string color = colorResolver?.Invoke(entries[term.Value]);
+                    result.Append("<link=\"kw:").Append(term.Value).Append("\"><b>");
+                    if (!string.IsNullOrEmpty(color)) result.Append("<color=#").Append(color).Append('>');
+                    result.Append("<u>").Append(term.Key).Append("</u>");
+                    if (!string.IsNullOrEmpty(color)) result.Append("</color>");
+                    result.Append("</b></link>");
                     i += length; found = true; break;
                 }
             if (!found) result.Append(source[i++]);
@@ -94,10 +103,19 @@ public static class CardKeywordGlossary
             {
                 var asset = Resources.Load<TextAsset>("CardKeywords");
                 var data = asset != null ? JsonUtility.FromJson<Data>(asset.text) : null;
-                formatter = new CardKeywordFormatter(data?.entries);
+                formatter = new CardKeywordFormatter(data?.entries, ResolveColor);
             }
             return formatter;
         }
+    }
+    private static string ResolveColor(CardKeywordEntry entry)
+    {
+        if (string.IsNullOrEmpty(entry.damageType) || !Enum.TryParse(entry.damageType, out BattlePresentationType type)) return null;
+        var style = BattleFeedback.GetStyle(type);
+        if (style != null) return ColorUtility.ToHtmlStringRGB(style.numberColor);
+        // Menu scenes have no battle presenter; use the saved battle palette there.
+        return ColorUtility.TryParseHtmlString("#" + entry.fallbackColor, out Color fallback)
+            ? ColorUtility.ToHtmlStringRGB(fallback) : null;
     }
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
     private static void Reset() => formatter = null;

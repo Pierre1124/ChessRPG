@@ -18,6 +18,12 @@ MonoBehaviour:
     useDataActions: 0
     playActions: []
     healthCost: 0
+    friendlyDamageBonus: 0
+    damageBonusUsesCaptureStacks: 0
+    blocksHealing: 0
+    requiresNoBoardCaptures: 0
+    lastWillDamage: 0
+    lastWillDamageTags: 0
     minimumTargetHealth: -1
     maximumTargetHealth: -1
     ruleNotes: 
@@ -30,16 +36,23 @@ MonoBehaviour:
     pawnCanPromote: 0
     cardImage: {fileID: 21300000, guid: fa512bef8bd83da4dae992148c942da0, type: 3}
     skillImage: {fileID: 21300000, guid: 3b79a9140b9bf254b905e797e18a3ecc, type: 3}
-    skillEffectPrefab: {fileID: 6445826192643391251, guid: 46251c357a645f04c85bb9ee5cde4d37, type: 3}
-    skillSound: {fileID: 8300000, guid: 84f2685d2fb17e04fa3158ab50a9fc65, type: 3}
+    skillEffectPrefab: {fileID: 0}
+    skillSound: {fileID: 0}
     description: "\u56DE\u5408\u958B\u59CB\u6642,\u5C0D\u6575\u65B9\u96A8\u6A5F\u4E00\u500B\u68CB\u5B50\u9020\u62101\u9EDE\u706B\u5C6C\u6027\u6216\u96FB\u5C6C\u6027\u50B7\u5BB3,\u9B54\u6CD5\u5E2B\u79FB\u52D5\u5F8C\u53EF\u91CD\u88FD\u8A72\u6548\u679C"
+    shortDescription: 
     tags:
     - "\u8F49\u8077"
     - "\u50B7\u5BB3"
     conditions: []
     effects: []
     statusesToApply:
-    - statusName: "\u9B54\u6CD5\u5E2B"
+    - triggerEffectPrefab: {fileID: 0}
+      idleEffectPrefab: {fileID: 0}
+      triggerSound: {fileID: 0}
+      triggerEffectLifetime: 2
+      effectOffset: {x: 0, y: 0, z: 0}
+      triggerSoundVolume: 1
+      statusName: "\u9B54\u6CD5\u5E2B"
       sourceCardId: J07
       kind: 0
       icon: {fileID: 21300000, guid: 3b79a9140b9bf254b905e797e18a3ecc, type: 3}
@@ -65,13 +78,13 @@ MonoBehaviour:
       recipient: 1
       animatorTrigger: 
       animatorState: 
-      effectPrefab: {fileID: 6445826192643391251, guid: 46251c357a645f04c85bb9ee5cde4d37, type: 3}
+      effectPrefab: {fileID: 0}
       effectPositionOffset: {x: 0, y: 0.5, z: 0}
       effectRotationEuler: {x: -45, y: 0, z: 0}
       effectScale: {x: 0.15, y: 0.15, z: 0.15}
       effectLifetime: 2
       attachEffectToReceiver: 0
-      sound: {fileID: 8300000, guid: 84f2685d2fb17e04fa3158ab50a9fc65, type: 3}
+      sound: {fileID: 0}
       soundVolume: 1
     jobChangeDefinition:
       displayName: 

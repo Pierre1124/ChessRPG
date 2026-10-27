@@ -1,0 +1,6 @@
+{"schema":"openai.presentation.layout/v5","unit":"px","slide":{"id":"sl/6lsnupw7","index":13,"layout":{"id":"ly/25gn6xsz","name":"預設 12"},"backgroundColor":"rgba(255,255,255,1)","position":{"left":0,"top":0,"width":960,"height":540}},
+"elements":[
+{"id":"sh/tkb2tgfy","kind":"textbox","name":"PlaceHolder 1","position":{"left":32.73,"top":28.72,"width":894.39,"height":44.18},"text":"作品未來想加入的後續內容","style":{"fontSize":30.48,"typeface":"PT Sans Narrow","color":"#EF6C00","bold":true,"alignment":"left"},"geometry":"rect","lineWidth":0},
+{"id":"sh/sji10byd","kind":"textbox","name":"PlaceHolder 2","position":{"left":32.73,"top":84.32,"width":894.39,"height":423.16},"text":"·更多的卡片、特殊走法的棋子\n·卡片背後的故事、世界觀\n·UIUX的優化\n·個別卡片的特殊動畫、特殊勝利方式、特殊規則\n·實體的雙方玩家 可能是純色人 只有表情","style":{"fontSize":24,"typeface":"Open Sans","color":"#695D46","alignment":"left"},"geometry":"rect","lineWidth":0},
+{"id":"sh/7i9kr6xs","kind":"textbox","name":"PlaceHolder 3","position":{"left":889.51,"top":489.56,"width":57.45,"height":41.16},"text":"14","style":{"fontSize":13.33,"typeface":"Open Sans","color":"#695D46","alignment":"right"},"geometry":"rect","lineWidth":0}
+]}

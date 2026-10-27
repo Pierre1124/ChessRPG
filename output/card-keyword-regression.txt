@@ -20,16 +20,33 @@ PASS: Close button dismisses glossary and releases modal state
 PASS: Editable popup prefab is included in Resources
 PASS: Popup references are complete
 PASS: Long definitions expand inside a vertical scroll viewport
+PASS: 火屬性 is bold and matches saved damage color
+PASS: 電屬性 is bold and matches saved damage color
+PASS: 毒屬性 is bold and matches saved damage color
+PASS: 詛咒屬性 is bold and matches saved damage color
+PASS: 無屬性 is bold and matches saved damage color
+PASS: 真實傷害 is bold and matches saved damage color
+PASS: 代價傷害 is bold and matches saved damage color
 PASS: Saved card 0 displays summary links
 PASS: Saved card 0 routes actual UI raycast to underlined text; hits=CardLordText:3,CardLord:2 screen=(561.84, 265.40) depth=3 rect=(x:-135.00, y:-140.00, width:270.00, height:140.00) canvas=ScreenSpaceCamera camera=Card raycast test camera (UnityEngine.Camera)
 PASS: Saved card 0 raycast click opens token definition
 PASS: Saved card 0 reproduces missing nested raycaster failure
 PASS: Saved card 0 binding repairs nested raycaster
+PASS: Saved card 0 material preserves keyword colors instead of multiplying them by black
+PASS: E05 actual glyph mesh has its status damage color
+PASS: E05 status link contains derived mechanics
+PASS: E09 actual glyph mesh has its status damage color
+PASS: E09 status link contains derived mechanics
 PASS: Saved card 1 displays summary links
 PASS: Saved card 1 routes actual UI raycast to underlined text; hits=CardLordText:3 screen=(561.84, 265.40) depth=3 rect=(x:-135.00, y:-140.00, width:270.00, height:140.00) canvas=ScreenSpaceCamera camera=Card raycast test camera (UnityEngine.Camera)
 PASS: Saved card 1 raycast click opens token definition
 PASS: Saved card 1 reproduces missing nested raycaster failure
 PASS: Saved card 1 binding repairs nested raycaster
+PASS: Saved card 1 material preserves keyword colors instead of multiplying them by black
+PASS: E05 actual glyph mesh has its status damage color
+PASS: E05 status link contains derived mechanics
+PASS: E09 actual glyph mesh has its status damage color
+PASS: E09 status link contains derived mechanics
 PASS: Moat token carries its derived rules
 PASS: Electric token carries its derived rules
 PASS: Inspecting token does not turn it into a gameplay target

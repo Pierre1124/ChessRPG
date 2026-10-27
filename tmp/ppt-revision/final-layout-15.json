@@ -1,0 +1,6 @@
+{"schema":"openai.presentation.layout/v5","unit":"px","slide":{"id":"sl/vaxsvy10","index":14,"layout":{"id":"ly/25gn6xsz","name":"預設 12"},"backgroundColor":"rgba(255,255,255,1)","position":{"left":0,"top":0,"width":960,"height":540}},
+"elements":[
+{"id":"sh/m10rah0v","kind":"textbox","name":"PlaceHolder 1","position":{"left":32.73,"top":28.72,"width":894.39,"height":44.18},"text":"合作方向與職涯目標","style":{"fontSize":30.48,"typeface":"PT Sans Narrow","color":"#EF6C00","bold":true,"alignment":"left"},"geometry":"rect","lineWidth":0},
+{"id":"sh/p87qtsj2","kind":"textbox","name":"PlaceHolder 2","position":{"left":60,"top":120,"width":820,"height":300},"text":"目前暫不徵求合作夥伴。\n希望先投入遊戲相關工作，累積實務開發經驗。\n以 ChessRPG 持續完善玩法與技術作品集。","style":{"fontSize":26,"typeface":"Arial","color":"#695D46","alignment":"left"},"geometry":"rect","lineWidth":0},
+{"id":"sh/47y90nih","kind":"textbox","name":"PlaceHolder 3","position":{"left":889.51,"top":489.56,"width":57.45,"height":41.16},"text":"15","style":{"fontSize":13.33,"typeface":"Open Sans","color":"#695D46","alignment":"right"},"geometry":"rect","lineWidth":0}
+]}

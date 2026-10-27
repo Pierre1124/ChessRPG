@@ -27,3 +27,5 @@
 棋盤上的護城河／電網 Token 帶有 `BoardFieldTokenInfo`。將游標移到 Token 所在格，按「查看棋子資訊」快捷鍵（預設 I），即可閱讀其衍生說明；若啟用長按操作，也可長按查看。同格有兩種 Token 時並列顯示，若有一般棋子則優先查看該棋子。Token 沒有加入 Piece 或額外 Collider，仍不能作為操作或出牌目標。
 
 底線點擊修正：卡片敘述位於子 Canvas，必須在該 Canvas 提供 GraphicRaycaster。綁定關鍵字時會補齊缺少的元件。回歸測試讀取 ChessScene 的實際手牌／裝備預覽樣板，驗證完整射線與點擊流程，並確認移除子 Canvas 射線元件能重現舊問題。
+
+關鍵字使用粗體底線；屬性詞透過 damageType 對應 BattleFeedback 的傷害數字顏色。沒有戰鬥呈現元件的主選單使用字典 fallbackColor（目前場景配色快照）。

@@ -39,15 +39,28 @@ MonoBehaviour:
     cardImage: {fileID: 21300000, guid: e4bf0facba434dd429752a74b78f0634, type: 3}
     skillImage: {fileID: 0}
     skillEffectPrefab: {fileID: 0}
-    skillSound: {fileID: 8300000, guid: 3510e31692e86764096e45d24d48e5bb, type: 3}
+    skillSound: {fileID: 0}
     description: "\u6307\u5B9A\u4E00\u500B\u68CB\u5B50,\u9020\u62105\u9EDE\u706B\u5C6C\u6027\u50B7\u5BB3"
+    shortDescription: 
     tags:
     - "\u4E8B\u4EF6"
     - "\u50B7\u5BB3"
     conditions: []
     effects: []
     statusesToApply: []
-    animations: []
+    animations:
+    - timing: 4
+      recipient: 2
+      animatorTrigger: 
+      animatorState: 
+      effectPrefab: {fileID: 0}
+      effectPositionOffset: {x: 0, y: 0, z: 0}
+      effectRotationEuler: {x: 0, y: 0, z: 0}
+      effectScale: {x: 1, y: 1, z: 1}
+      effectLifetime: 1.6
+      attachEffectToReceiver: 1
+      sound: {fileID: 0}
+      soundVolume: 1
     jobChangeDefinition:
       displayName: 
       moveRules: []

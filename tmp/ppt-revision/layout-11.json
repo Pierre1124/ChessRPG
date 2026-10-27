@@ -1,0 +1,6 @@
+{"schema":"openai.presentation.layout/v5","unit":"px","slide":{"id":"sl/jetc3ut0","index":10,"layout":{"id":"ly/t0j2tcra","name":"預設 24"},"backgroundColor":"rgba(255,255,255,1)","position":{"left":0,"top":0,"width":960,"height":540}},
+"elements":[
+{"id":"sh/5kvu1k3a","kind":"textbox","name":"PlaceHolder 1","position":{"left":32.73,"top":28.72,"width":894.39,"height":44.18},"text":"作品相關技術分享或說明","style":{"fontSize":30.48,"typeface":"PT Sans Narrow","color":"#EF6C00","bold":true,"alignment":"left"},"geometry":"rect","lineWidth":0},
+{"id":"sh/atkb254n","kind":"textbox","name":"PlaceHolder 2","position":{"left":32.73,"top":84.32,"width":894.39,"height":423.16},"text":"·UGUI使用者介面\n·Photon多人連線\n·Array陣列\n·Prefabs預置物\n·ScriptableObject腳本化物件\n·Queue佇列\n","style":{"fontSize":25.33,"typeface":"Open Sans","color":"#695D46","alignment":"left"},"geometry":"rect","lineWidth":0},
+{"id":"sh/butsval8","kind":"textbox","name":"PlaceHolder 3","position":{"left":889.51,"top":489.56,"width":57.45,"height":41.16},"text":"11","style":{"fontSize":13.33,"typeface":"Open Sans","color":"#695D46","alignment":"right"},"geometry":"rect","lineWidth":0}
+]}

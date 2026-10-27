@@ -18,6 +18,12 @@ MonoBehaviour:
     useDataActions: 0
     playActions: []
     healthCost: 0
+    friendlyDamageBonus: 0
+    damageBonusUsesCaptureStacks: 0
+    blocksHealing: 0
+    requiresNoBoardCaptures: 0
+    lastWillDamage: 0
+    lastWillDamageTags: 0
     minimumTargetHealth: -1
     maximumTargetHealth: -1
     ruleNotes: 
@@ -33,7 +39,7 @@ MonoBehaviour:
     skillEffectPrefab: {fileID: 0}
     skillSound: {fileID: 0}
     description: "\u5169\u500B\u57CE\u5821\u4E4B\u9593\u7684\u683C\u5B50\u5F62\u6210\u8B77\u57CE\u6CB3Token,\u901A\u904E\u7684\u68CB\u5B50\u505C\u6B62\u79FB\u52D5,\u53E6\u4E00\u500B\u57CE\u5821\u5F37\u5236\u88DD\u5099\u8B77\u57CE\u6CB3\n\u907A\u8A00:\u53E6\u4E00\u500B\u57CE\u5821\u7684\u8B77\u57CE\u6CB3\u7834\u58DE,\u6211\u65B9\u6062\u5FA95\u9EDEHP"
-    shortDescription: "\u7121\u6cd5\u79fb\u52d5\n\u767c\u52d5\u689d\u4ef6\uff1a\u5169\u500b\u4ee5\u4e0a\u57ce\u5821\u540c\u884c\u6216\u540c\u5217\n\u53ec\u559a\u8b77\u57ce\u6cb3Token\n\u907a\u8a00\uff1a\u6211\u65b9\u56de\u5fa95\u9edeHP"
+    shortDescription: "\u7121\u6CD5\u79FB\u52D5\n\u767C\u52D5\u689D\u4EF6\uFF1A\u5169\u500B\u4EE5\u4E0A\u57CE\u5821\u540C\u884C\u6216\u540C\u5217\n\u53EC\u559A\u8B77\u57CE\u6CB3Token\n\u907A\u8A00\uFF1A\u6211\u65B9\u56DE\u5FA95\u9EDEHP"
     tags:
     - "\u8F49\u8077"
     - "\u8B8A\u5E7B"
@@ -42,7 +48,13 @@ MonoBehaviour:
     conditions: []
     effects: []
     statusesToApply:
-    - statusName: "\u8B77\u57CE\u6CB3"
+    - triggerEffectPrefab: {fileID: 0}
+      idleEffectPrefab: {fileID: 0}
+      triggerSound: {fileID: 0}
+      triggerEffectLifetime: 2
+      effectOffset: {x: 0, y: 0, z: 0}
+      triggerSoundVolume: 1
+      statusName: "\u8B77\u57CE\u6CB3"
       sourceCardId: J03
       kind: 1
       icon: {fileID: 21300000, guid: 23769de3adbc7bd4c9732e8696b84507, type: 3}

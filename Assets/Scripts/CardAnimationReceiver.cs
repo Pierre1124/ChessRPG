@@ -48,14 +48,14 @@ public class CardAnimationReceiver : MonoBehaviour, ICardAnimationReceiver
                 continue;
             }
 
-            Play(animation);
+            Play(animation, context.card.cardType == CardType.Field);
         }
     }
 
     /// <summary>
     /// 依動畫設定播放 Animator、特效 Prefab 與音效。
     /// </summary>
-    private void Play(CardAnimationData animation)
+    private void Play(CardAnimationData animation, bool allowIndividualEffects)
     {
         if (animator != null)
         {
@@ -70,6 +70,7 @@ public class CardAnimationReceiver : MonoBehaviour, ICardAnimationReceiver
             }
         }
 
+        if (!allowIndividualEffects) return;
         if (animation.effectPrefab != null)
         {
             Vector3 position =

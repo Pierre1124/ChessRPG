@@ -1,0 +1,9 @@
+{"schema":"openai.presentation.layout/v5","unit":"px","slide":{"id":"sl/fu1gfa1s","index":7,"layout":{"id":"ly/3qh8zu14","name":"預設 18_"},"backgroundColor":"rgba(255,255,255,1)","position":{"left":0,"top":0,"width":960,"height":540}},
+"elements":[
+{"id":"sh/u5cfytcf","kind":"textbox","name":"PlaceHolder 1","position":{"left":32.73,"top":28.72,"width":894.39,"height":44.18},"text":"場地卡與合成","style":{"fontSize":30.48,"typeface":"PT Sans Narrow","color":"#EF6C00","bold":true,"alignment":"left"},"geometry":"rect","lineWidth":0},
+{"id":"sh/h8ny98b6","kind":"textbox","name":"PlaceHolder 2","position":{"left":889.51,"top":489.56,"width":57.45,"height":41.16},"text":"8","style":{"fontSize":13.33,"typeface":"Open Sans","color":"#695D46","alignment":"right"},"geometry":"rect","lineWidth":0},
+{"id":"sh/i9wz2tcb","kind":"textbox","name":"PlaceHolder 9","position":{"left":42,"top":96,"width":376,"height":187},"text":"場上最多放置 2 張場地卡。\n場地效果可影響雙方，需配合牌組使用。\n符合配方的場地會合成進階卡。\n例如「火山＋火山」合成「熔岩高原」，\n讓持續傷害成為另一種取勝手段。\nF12 另支援切換普通西洋棋規則。","style":{"fontSize":18,"typeface":"Arial","color":"#695D46","alignment":"left"},"geometry":"rect","lineWidth":0},
+{"id":"im/9sji9gzu","kind":"image","name":"圖片 2","position":{"left":434.38,"top":39.1,"width":415.71,"height":233.33},"crop":{"left":0,"top":0.04023,"right":0,"bottom":0}},
+{"id":"im/z2h036hs","kind":"image","name":"圖片 4","position":{"left":49.05,"top":281.75,"width":347.56,"height":225.73},"crop":{"left":0.69634,"top":0.26556,"right":0,"bottom":0.3972}},
+{"id":"im/loji5gzi","kind":"image","name":"圖片 6","position":{"left":434.5,"top":272.42,"width":417.13,"height":233.33},"crop":{"left":0,"top":0.0435,"right":0,"bottom":0}}
+]}

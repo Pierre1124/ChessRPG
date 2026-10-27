@@ -16,6 +16,7 @@ public sealed class CardKeywordText : MonoBehaviour, ICanvasRaycastFilter,
         if (handler == null) handler = text.gameObject.AddComponent<CardKeywordText>();
         handler.label = text;
         text.richText = true;
+        text.overrideColorTags = false;
         text.raycastTarget = true;
         text.text = CardKeywordGlossary.Formatter.Format(content);
         // Graphics register with their nearest Canvas, not the root Canvas raycaster.

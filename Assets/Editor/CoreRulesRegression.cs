@@ -43,6 +43,7 @@ public static class CoreRulesRegression
     public static void RunManagedChecks(Action<bool, string> check)
     {
         CardKeywordRegression.RunManagedChecks(check);
+        DamageModifierFeedbackSetup.ManagedChecks(check);
         check(!new PieceDefinition().HasMoveRules, "Empty serialized move definition preserves standard movement");
         check(!new PieceDefinition { moveRules = null }.HasMoveRules, "Null move list preserves standard movement");
         check(!new PieceDefinition { moveRules = new List<PieceMoveRule> { null } }.HasMoveRules, "Null-only move list preserves standard movement");

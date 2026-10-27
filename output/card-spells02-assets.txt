@@ -1,0 +1,4 @@
+PASS E04: recipe geometry, references, lifetime, shader, no colliders
+PASS E02: recipe geometry, references, lifetime, shader, no colliders
+PASS E10: recipe geometry, references, lifetime, shader, no colliders
+PASS E05: recipe geometry, references, lifetime, shader, no colliders

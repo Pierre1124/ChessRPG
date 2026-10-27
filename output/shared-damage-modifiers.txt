@@ -1,0 +1,59 @@
+PASS: Positive damage modifier plays up in Increase
+PASS: Negative damage modifier plays down in Increase
+PASS: Zero modifier stays silent in Increase
+PASS: Healing does not play damage modifier sound
+PASS: Positive damage modifier plays up in Decrease
+PASS: Negative damage modifier plays down in Decrease
+PASS: Zero modifier stays silent in Decrease
+PASS: Healing does not play damage modifier sound
+PASS: Base damage activation is not a damage increase
+PASS: Both shared modifier icons are included
+PASS: Damage up and down use distinct audio clips
+PASS: E01 has no individual trigger effects or audio
+PASS: E02 has no individual trigger effects or audio
+PASS: E03 has no individual trigger effects or audio
+PASS: E04 has no individual trigger effects or audio
+PASS: E05 has no individual trigger effects or audio
+PASS: E06 has no individual trigger effects or audio
+PASS: E07 has no individual trigger effects or audio
+PASS: E08 has no individual trigger effects or audio
+PASS: E09 has no individual trigger effects or audio
+PASS: E10 has no individual trigger effects or audio
+PASS: E11 has no individual trigger effects or audio
+PASS: E12 has no individual trigger effects or audio
+PASS: F01 field presentation is preserved
+PASS: F02 field presentation is preserved
+PASS: F03 field presentation is preserved
+PASS: F04 field presentation is preserved
+PASS: F05 field presentation is preserved
+PASS: F06 field presentation is preserved
+PASS: F07 field presentation is preserved
+PASS: F08 field presentation is preserved
+PASS: F09 field presentation is preserved
+PASS: F10 field presentation is preserved
+PASS: F11 field presentation is preserved
+PASS: F12 field presentation is preserved
+PASS: J01 has no individual trigger effects or audio
+PASS: J01 preserves idle effects when loaded
+PASS: J02 has no individual trigger effects or audio
+PASS: J02 preserves idle effects when loaded
+PASS: J03 has no individual trigger effects or audio
+PASS: J03 preserves idle effects when loaded
+PASS: J04 has no individual trigger effects or audio
+PASS: J04 preserves idle effects when loaded
+PASS: J05 has no individual trigger effects or audio
+PASS: J05 preserves idle effects when loaded
+PASS: J06 has no individual trigger effects or audio
+PASS: J06 preserves idle effects when loaded
+PASS: J07 has no individual trigger effects or audio
+PASS: J07 preserves idle effects when loaded
+PASS: J08 has no individual trigger effects or audio
+PASS: J08 preserves idle effects when loaded
+PASS: J09 has no individual trigger effects or audio
+PASS: J09 preserves idle effects when loaded
+PASS: J10 has no individual trigger effects or audio
+PASS: J10 preserves idle effects when loaded
+PASS: J11 has no individual trigger effects or audio
+PASS: J11 preserves idle effects when loaded
+PASS: J12 has no individual trigger effects or audio
+PASS: J12 preserves idle effects when loaded

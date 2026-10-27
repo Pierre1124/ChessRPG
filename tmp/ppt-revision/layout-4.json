@@ -1,0 +1,8 @@
+{"schema":"openai.presentation.layout/v5","unit":"px","slide":{"id":"sl/jyx0ra1s","index":3,"layout":{"id":"ly/25gn6xsz","name":"預設 12"},"backgroundColor":"rgba(255,255,255,1)","position":{"left":0,"top":0,"width":960,"height":540}},
+"elements":[
+{"id":"sh/vu9gve5g","kind":"textbox","name":"PlaceHolder 1","position":{"left":32.73,"top":28.72,"width":894.39,"height":44.18},"text":"作品介紹（截圖 + 功能介紹）","style":{"fontSize":30.48,"typeface":"PT Sans Narrow","color":"#EF6C00","bold":true,"alignment":"left"},"geometry":"rect","lineWidth":0},
+{"id":"sh/wvixojm1","kind":"textbox","name":"PlaceHolder 2","position":{"left":32.73,"top":84.32,"width":400.88,"height":423.16},"text":"開始介面\n由上而下是開啟單機遊玩(測試用)﹑線帳對戰選項﹑以及編輯牌組,可以在編輯牌組的介面選擇對局時足以左右戰局的特殊卡牌,主要分為轉職卡﹑事件卡﹑場地卡\n轉職卡可以拖拉到棋子上,使其獲得特殊能力\n事件卡則是有助於守護自己的HP或者削弱對方的HP\n場地卡則是同時對雙方生效,通常會利於相對應的卡牌,搶先使用場地卡的一方可以較大的影響戰局走向\n","style":{"fontSize":24,"typeface":"Arial","color":"#000000","alignment":"left"},"geometry":"rect","lineWidth":0},
+{"id":"sh/hwryx4n6","kind":"textbox","name":"PlaceHolder 3","position":{"left":889.51,"top":489.56,"width":57.45,"height":41.16},"text":"4","style":{"fontSize":13.33,"typeface":"Open Sans","color":"#695D46","alignment":"right"},"geometry":"rect","lineWidth":0},
+{"id":"im/p0ju1gjm","kind":"image","name":"圖片 2","position":{"left":433.61,"top":37.8,"width":416.75,"height":234.63},"crop":{"left":0,"top":0.03726,"right":0,"bottom":0}},
+{"id":"im/b2lc3q1s","kind":"image","name":"圖片 4","position":{"left":433.58,"top":272.43,"width":416.78,"height":235.05},"crop":{"left":0,"top":0.03562,"right":0,"bottom":0}}
+]}

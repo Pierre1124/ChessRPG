@@ -1,0 +1,6 @@
+{"schema":"openai.presentation.layout/v5","unit":"px","slide":{"id":"sl/6lsnupw7","index":13,"layout":{"id":"ly/25gn6xsz","name":"預設 12"},"backgroundColor":"rgba(255,255,255,1)","position":{"left":0,"top":0,"width":960,"height":540}},
+"elements":[
+{"id":"sh/tkb2tgfy","kind":"textbox","name":"PlaceHolder 1","position":{"left":32.73,"top":28.72,"width":894.39,"height":44.18},"text":"已完成進展與後續規劃","style":{"fontSize":30.48,"typeface":"PT Sans Narrow","color":"#EF6C00","bold":true,"alignment":"left"},"geometry":"rect","lineWidth":0},
+{"id":"sh/sji10byd","kind":"textbox","name":"PlaceHolder 2","position":{"left":56,"top":96,"width":850,"height":410},"text":"近期進展\n完成牌組篩選、卡牌關鍵字提示與傷害分段演出。\n貞德、血腥瑪麗、電網及毒蛇已接入待機特效。\n優先補齊\n驗收雙端連線與效能；補上新版電網主動操作及同步。\n確認毒／詛咒疊層規則，持續調整平衡與操作回饋。\n後續擴充\n更多卡牌、世界觀、專屬動畫與玩家角色表現。","style":{"fontSize":23,"typeface":"Arial","color":"#695D46","alignment":"left"},"geometry":"rect","lineWidth":0},
+{"id":"sh/7i9kr6xs","kind":"textbox","name":"PlaceHolder 3","position":{"left":889.51,"top":489.56,"width":57.45,"height":41.16},"text":"14","style":{"fontSize":13.33,"typeface":"Open Sans","color":"#695D46","alignment":"right"},"geometry":"rect","lineWidth":0}
+]}

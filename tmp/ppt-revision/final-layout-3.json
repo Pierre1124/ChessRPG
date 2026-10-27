@@ -1,0 +1,6 @@
+{"schema":"openai.presentation.layout/v5","unit":"px","slide":{"id":"sl/ofy9wn61","index":2,"layout":{"id":"ly/25gn6xsz","name":"預設 12"},"backgroundColor":"rgba(255,255,255,1)","position":{"left":0,"top":0,"width":960,"height":540}},
+"elements":[
+{"id":"sh/k7upcvit","kind":"textbox","name":"PlaceHolder 1","position":{"left":32.73,"top":28.72,"width":894.39,"height":44.18},"text":"自我介紹","style":{"fontSize":30.48,"typeface":"PT Sans Narrow","color":"#EF6C00","bold":true,"alignment":"left"},"geometry":"rect","lineWidth":0},
+{"id":"sh/l8nq50ze","kind":"textbox","name":"PlaceHolder 2","position":{"left":60,"top":96,"width":830,"height":410},"text":"程式學習\n從小學 Scratch 開始，陸續接觸 App Inventor、\nHTML、CSS、Python 與 C#。\n學歷與工作\n嶺東資管系學士，目前擔任 MIS 網管工程師，\n曾在電商業擔任行政助理。\n課後練習\n每週約 20～30 小時，持續累積實作經驗。","style":{"fontSize":24,"typeface":"Arial","color":"#695D46","alignment":"left"},"geometry":"rect","lineWidth":0},
+{"id":"sh/v2psbu1g","kind":"textbox","name":"PlaceHolder 3","position":{"left":889.51,"top":489.56,"width":57.45,"height":41.16},"text":"3","style":{"fontSize":13.33,"typeface":"Open Sans","color":"#695D46","alignment":"right"},"geometry":"rect","lineWidth":0}
+]}

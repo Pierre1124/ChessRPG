@@ -18,6 +18,12 @@ MonoBehaviour:
     useDataActions: 0
     playActions: []
     healthCost: 0
+    friendlyDamageBonus: 0
+    damageBonusUsesCaptureStacks: 0
+    blocksHealing: 0
+    requiresNoBoardCaptures: 0
+    lastWillDamage: 0
+    lastWillDamageTags: 0
     minimumTargetHealth: -1
     maximumTargetHealth: -1
     ruleNotes: 
@@ -30,16 +36,23 @@ MonoBehaviour:
     pawnCanPromote: 0
     cardImage: {fileID: 21300000, guid: d55626ade1337a74e91495d35cce440c, type: 3}
     skillImage: {fileID: 21300000, guid: a4d22bdb1866d264fb1c0c172d51460f, type: 3}
-    skillEffectPrefab: {fileID: 6445826192643391251, guid: 60d310309985b9d4e9917e6e851e63c9, type: 3}
-    skillSound: {fileID: 8300000, guid: 19383939cedb3dd4f908e7995cd7b992, type: 3}
+    skillEffectPrefab: {fileID: 0}
+    skillSound: {fileID: 0}
     description: "\u653B\u64CA\u529B+2"
+    shortDescription: 
     tags:
     - "\u8F49\u8077"
     - "\u5F37\u5316"
     conditions: []
     effects: []
     statusesToApply:
-    - statusName: "\u7A81\u64CA\u968A\u9577"
+    - triggerEffectPrefab: {fileID: 0}
+      idleEffectPrefab: {fileID: 0}
+      triggerSound: {fileID: 0}
+      triggerEffectLifetime: 2
+      effectOffset: {x: 0, y: 0, z: 0}
+      triggerSoundVolume: 1
+      statusName: "\u7A81\u64CA\u968A\u9577"
       sourceCardId: J05
       kind: 0
       icon: {fileID: 21300000, guid: a4d22bdb1866d264fb1c0c172d51460f, type: 3}
@@ -65,13 +78,13 @@ MonoBehaviour:
       recipient: 1
       animatorTrigger: 
       animatorState: 
-      effectPrefab: {fileID: 6445826192643391251, guid: 60d310309985b9d4e9917e6e851e63c9, type: 3}
+      effectPrefab: {fileID: 0}
       effectPositionOffset: {x: 0, y: 0.5, z: 0}
       effectRotationEuler: {x: -45, y: 0, z: 0}
       effectScale: {x: 0.15, y: 0.15, z: 0.15}
       effectLifetime: 1
       attachEffectToReceiver: 0
-      sound: {fileID: 8300000, guid: 19383939cedb3dd4f908e7995cd7b992, type: 3}
+      sound: {fileID: 0}
       soundVolume: 1
     jobChangeDefinition:
       displayName: 

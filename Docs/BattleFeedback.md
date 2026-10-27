@@ -62,3 +62,16 @@
 同一來源的多目標效果共用光暈，各目標分別播放 slash；來源卡移除後不留下光暈。一次性特效使用真實時間清理，取消演出及切換普通西洋棋時一併清除。
 
 驗證選單：`Tools > Chess > Presentation > Verify Field Effect Feedback`。結果：`output/field-effect-feedback.txt`。
+
+## 共用傷害修正提示（2026-10-27）
+
+非場地卡的 skillEffectPrefab／skillSound、卡牌動畫特效音效、狀態待機與觸發特效音效引用已清除。素材檔保留，場地卡設定保留；棋子移動及吃子動畫不受影響。載入非場地卡時也套用相同規則，避免舊個別設定重新生效。
+
+共用配置在 `Assets/Resources/DamageModifierFeedback.asset`：傷害上升使用 ATK 圖示與「振奮士氣」音效，傷害下降使用 AntiATK 圖示與「能力下降」音效，可在 Inspector 替換及調整音量。
+
+依實際 contribution 正負判定，因此增傷、易傷為上升，弱化、減傷為下降。傷害沒有變化、基礎傷害或治療計算不播放這組提示。同輪多目標的同方向音效只播放一次；場地修正圖示放在來源場地卡，保留其既有光暈及 slash。
+
+驗證：`Tools > Chess > Presentation > Verify Shared Damage Modifiers`，輸出 `output/shared-damage-modifiers.txt`。
+
+
+2026-10-27 修正：轉職卡保留狀態待機特效（idleEffectPrefab），已還原電網、血腥瑪麗、聖女貞德先前的待機引用。非場地卡的個別觸發特效／音效仍停用，共用傷害上升／下降提示維持不變。

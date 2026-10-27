@@ -688,7 +688,7 @@ public class CardBattleSystem
 
         logic.PlayDamageCalculation(
             sequence,
-            null,
+            () => CardAnimationEvents.Play(target, target, card, CardAnimationTiming.OnHealed, null, resolvedHeal),
             () => HealPlayer(target.IsWhite, resolvedHeal, false)
         );
     }

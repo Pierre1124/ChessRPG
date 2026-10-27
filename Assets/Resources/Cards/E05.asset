@@ -40,8 +40,9 @@ MonoBehaviour:
     cardImage: {fileID: 21300000, guid: bd5449cb5b28f27438af436a901dce79, type: 3}
     skillImage: {fileID: 21300000, guid: 059b4e45a3298cf449642b280693add1, type: 3}
     skillEffectPrefab: {fileID: 0}
-    skillSound: {fileID: 8300000, guid: 2899bcbb417f7c64eb47bd36b7c14866, type: 3}
+    skillSound: {fileID: 0}
     description: "\u6307\u5B9A\u4E00\u500B\u68CB\u5B50,\u53D7\u52301\u5C64\u8A5B\u5492,\u6301\u7E8C3\u56DE\u5408"
+    shortDescription: 
     tags:
     - "\u4E8B\u4EF6"
     - "\u50B7\u5BB3"

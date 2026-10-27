@@ -1,0 +1,6 @@
+{"schema":"openai.presentation.layout/v5","unit":"px","slide":{"id":"sl/hwbqtkby","index":1,"layout":{"id":"ly/25gn6xsz","name":"預設 12"},"backgroundColor":"rgba(255,255,255,1)","position":{"left":0,"top":0,"width":960,"height":540}},
+"elements":[
+{"id":"sh/o3mlcbeh","kind":"textbox","name":"PlaceHolder 1","position":{"left":32.73,"top":28.72,"width":894.39,"height":44.18},"text":"簡報大綱","style":{"fontSize":30.48,"typeface":"PT Sans Narrow","color":"#EF6C00","bold":true,"alignment":"left"},"geometry":"rect","lineWidth":0},
+{"id":"sh/n2d4j6xc","kind":"textbox","name":"PlaceHolder 2","position":{"left":32.73,"top":84.32,"width":894.39,"height":423.16},"text":"自我介紹\n作品介紹（截圖 + 功能介紹）\n作品相關技術分享或說明\n核心技術列表\n各功能採用技術\n作品遇到的相關難題\nBug 列表\nBug 解決辦法\n作品未來想加入的後續內容\n是否有想找合作的人(美術、企劃...)\n上課心得\n學習的經歷與過程是否跟當初所想得一樣？為什麼？\n給予未來的自己期許 以及 設定目標","style":{"fontSize":25.33,"typeface":"Open Sans","color":"#695D46","alignment":"left"},"geometry":"rect","lineWidth":0},
+{"id":"sh/m143a1wr","kind":"textbox","name":"PlaceHolder 3","position":{"left":889.51,"top":489.56,"width":57.45,"height":41.16},"text":"2","style":{"fontSize":13.33,"typeface":"Open Sans","color":"#695D46","alignment":"right"},"geometry":"rect","lineWidth":0}
+]}

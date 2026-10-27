@@ -1,0 +1,9 @@
+{"schema":"openai.presentation.layout/v5","unit":"px","slide":{"id":"sl/hgzapcr6","index":12,"layout":{"id":"ly/25gn6xsz","name":"預設 12"},"backgroundColor":"rgba(255,255,255,1)","position":{"left":0,"top":0,"width":960,"height":540}},
+"elements":[
+{"id":"sh/kzi54ny9","kind":"textbox","name":"PlaceHolder 1","position":{"left":32.73,"top":28.72,"width":894.39,"height":44.18},"text":"問題解決與驗證方式","style":{"fontSize":30.48,"typeface":"PT Sans Narrow","color":"#EF6C00","bold":true,"alignment":"left"},"geometry":"rect","lineWidth":0},
+{"id":"sh/i5sjy5wr","kind":"textbox","name":"PlaceHolder 2","position":{"left":889.51,"top":489.56,"width":57.45,"height":41.16},"text":"13","style":{"fontSize":13.33,"typeface":"Open Sans","color":"#695D46","alignment":"right"},"geometry":"rect","lineWidth":0},
+{"id":"im/ut8nqdw7","kind":"image","name":"圖片 2","position":{"left":530,"top":405,"width":155,"height":77.45}},
+{"id":"im/hwz6lsvy","kind":"image","name":"圖片 3","position":{"left":520,"top":100,"width":380,"height":279.15}},
+{"id":"im/gvqpsned","kind":"image","name":"圖片 7","position":{"left":720,"top":400,"width":155,"height":89.57}},
+{"id":"sh/q9cj2pwn","kind":"textbox","position":{"left":42,"top":100,"width":455,"height":390},"text":"規則預覽\n先模擬卡牌效果、檢查合法性，再還原棋盤。\n連線驗證\n檢查來源、序號與牌組，阻擋重複或非法指令。\n可重現的回歸案例\n以火球、火山、聖騎士等組合核對傷害與演出。\n開發工具\n使用 AI 協助分析與修正，搭配 Git 保留變更，\n再以測試及實際操作確認結果。","style":{"fontSize":19,"typeface":"Arial","color":"#695D46","alignment":"left"},"geometry":"rect","lineWidth":0}
+]}

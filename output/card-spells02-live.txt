@@ -1,0 +1,1 @@
+PASS: two event receiver animations; timed destruction; two status idle effects; follow and removal.

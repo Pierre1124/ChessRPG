@@ -20,9 +20,9 @@ public static class CardKeywordRegression
             new CardKeywordEntry { id = "last", term = "遺言", description = "被吃子時發動" }
         });
         string marked = formatter.Format("電網Token；遺言：生成Token");
-        check(marked == "<link=\"kw:net\"><u>電網Token</u></link>；<link=\"kw:last\"><u>遺言</u></link>：生成<link=\"kw:token\"><u>Token</u></link>", "Keywords prefer complete terms and support aliases");
+        check(marked == "<link=\"kw:net\"><b><u>電網Token</u></b></link>；<link=\"kw:last\"><b><u>遺言</u></b></link>：生成<link=\"kw:token\"><b><u>Token</u></b></link>", "Keywords prefer complete terms and support aliases");
         check(formatter.Format(marked) == marked, "Keyword formatting is idempotent");
-        check(formatter.Format("<color=red>遺言</color>") == "<color=red><link=\"kw:last\"><u>遺言</u></link></color>", "Keywords preserve rich text styling");
+        check(formatter.Format("<color=red>遺言</color>") == "<color=red><link=\"kw:last\"><b><u>遺言</u></b></link></color>", "Keywords preserve rich text styling");
         check(formatter.Format("<link=\"other\">遺言</link>") == "<link=\"other\">遺言</link>", "Keywords do not nest existing links");
         check(formatter.Format("<noparse>遺言</noparse>") == "<noparse>遺言</noparse>", "Keywords respect noparse text");
         check(formatter.Format("Tokenizer MyToken Token2") == "Tokenizer MyToken Token2", "English aliases do not match inside identifiers");
@@ -114,6 +114,9 @@ public static class CardKeywordRegression
         var scene = EditorSceneManager.OpenPreviewScene("Assets/Scenes/ChessScene.unity");
         var cameraObject = new GameObject("Card raycast test camera", typeof(Camera));
         var camera = cameraObject.GetComponent<Camera>();
+        camera.clearFlags = CameraClearFlags.SolidColor;
+        camera.backgroundColor = new Color(.12f, .15f, .18f);
+        camera.cullingMask = 1 << 31;
         var target = new RenderTexture(1280, 720, 24);
         camera.targetTexture = target;
         root.GetComponent<Canvas>().renderMode = RenderMode.ScreenSpaceCamera;
@@ -122,6 +125,16 @@ public static class CardKeywordRegression
         try
         {
             var objects = scene.GetRootGameObjects();
+            var palette = objects.SelectMany(o => o.GetComponentsInChildren<BattleFeedback>(true)).First().presentationStyles;
+            foreach (var pair in new[] { ("fire", BattlePresentationType.Fire), ("electric", BattlePresentationType.Electric),
+                ("poison", BattlePresentationType.Poison), ("curse", BattlePresentationType.Curse),
+                ("normal", BattlePresentationType.Neutral), ("true", BattlePresentationType.TrueDamage), ("cost", BattlePresentationType.Cost) })
+            {
+                CardKeywordGlossary.Formatter.TryGet("kw:" + pair.Item1, out var entry);
+                string color = ColorUtility.ToHtmlStringRGB(palette.First(style => style.type == pair.Item2).numberColor);
+                string formatted = CardKeywordGlossary.Formatter.Format(entry.term);
+                check(formatted.Contains("<b><color=#" + color + "><u>"), entry.term + " is bold and matches saved damage color");
+            }
             var hand = objects.SelectMany(o => o.GetComponentsInChildren<CardHandManager>(true)).First();
             var info = objects.SelectMany(o => o.GetComponentsInChildren<CardInfoUI>(true)).First();
             var flags = BindingFlags.Instance | BindingFlags.NonPublic;
@@ -135,6 +148,7 @@ public static class CardKeywordRegression
                 try
                 {
                     clone.SetActive(true);
+                    foreach (var child in clone.GetComponentsInChildren<Transform>(true)) child.gameObject.layer = 31;
                     var rect = clone.GetComponent<RectTransform>();
                     rect.anchorMin = rect.anchorMax = rect.pivot = new Vector2(.5f, .5f);
                     rect.anchoredPosition = Vector2.zero; rect.localScale = Vector3.one;
@@ -172,6 +186,36 @@ public static class CardKeywordRegression
                     check(!Hits().Any(hit => hit.gameObject == label.gameObject), "Saved card " + i + " reproduces missing nested raycaster failure");
                     CardKeywordText.Bind(label, card.DisplayDescription);
                     check(Hits().Any(hit => hit.gameObject == label.gameObject), "Saved card " + i + " binding repairs nested raycaster");
+                    check(label.fontSharedMaterial.GetColor("_FaceColor") == Color.white,
+                        "Saved card " + i + " material preserves keyword colors instead of multiplying them by black");
+                    foreach (string id in new[] { "E05", "E09" })
+                    {
+                        var statusCard = Resources.Load<CardAsset>("Cards/" + id).CreateDefinition();
+                        CardKeywordText.Bind(label, statusCard.DisplayDescription);
+                        label.ForceMeshUpdate();
+                        string keywordId = id == "E05" ? "curse-status" : "poison-status";
+                        CardKeywordGlossary.Formatter.TryGet("kw:" + keywordId, out var definition);
+                        var statusLink = label.textInfo.linkInfo.Take(label.textInfo.linkCount).Single(linkInfo => linkInfo.GetLinkID() == "kw:" + keywordId);
+                        var glyph = label.textInfo.characterInfo[statusLink.linkTextfirstCharacterIndex];
+                        ColorUtility.TryParseHtmlString("#" + definition.fallbackColor, out Color expected);
+                        var vertices = label.textInfo.meshInfo[glyph.materialReferenceIndex].colors32;
+                        check(vertices[glyph.vertexIndex].Equals((Color32)expected), id + " actual glyph mesh has its status damage color");
+                        check(definition.description.Contains(id == "E05" ? "轉移" : "移動後"), id + " status link contains derived mechanics");
+                        if (i == 0)
+                        {
+                            camera.Render();
+                            var previous = RenderTexture.active;
+                            var screenshot = new Texture2D(target.width, target.height, TextureFormat.RGB24, false);
+                            try
+                            {
+                                RenderTexture.active = target;
+                                screenshot.ReadPixels(new Rect(0, 0, target.width, target.height), 0, 0);
+                                screenshot.Apply();
+                                File.WriteAllBytes("output/card-keyword-" + id + ".png", screenshot.EncodeToPNG());
+                            }
+                            finally { RenderTexture.active = previous; UnityEngine.Object.DestroyImmediate(screenshot); }
+                        }
+                    }
                 }
                 finally { UnityEngine.Object.DestroyImmediate(clone); }
             }

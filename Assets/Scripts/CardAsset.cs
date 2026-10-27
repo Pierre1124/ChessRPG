@@ -23,6 +23,7 @@ public sealed class CardAsset : ScriptableObject
     public CardDefinition CreateDefinition()
     {
         CardDefinition copy = JsonUtility.FromJson<CardDefinition>(JsonUtility.ToJson(definition));
+        CardPresentationPolicy.RemoveIndividualEffects(copy);
         // 複製卡片後只需改卡號，狀態仍歸屬於新的卡片。
         foreach (StatusDefinition status in copy.statusesToApply)
             if (status != null) status.sourceCardId = copy.id;

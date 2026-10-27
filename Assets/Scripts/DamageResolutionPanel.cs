@@ -61,10 +61,10 @@ public sealed class DamageResolutionPanel : MonoBehaviour
     }
 
     /// <summary>在修正來源頭上只顯示圖示，計算數字交由固定 FinalDMG 呈現。</summary>
-    public void ShowSource(DamageCalculationStep step, Sprite sprite, int stack, Piece target = null)
+    public void ShowSource(DamageCalculationStep step, Sprite sprite, int stack, Piece target = null, Transform sourceOverride = null)
     {
         anchor = step.worldPosition; sourceStack = stack; PresentedSteps = 1;
-        AttachToPiece(step.iconPiece != null ? step.iconPiece.transform : target != null ? target.transform : null);
+        AttachToPiece(sourceOverride != null ? sourceOverride : step.iconPiece != null ? step.iconPiece.transform : target != null ? target.transform : null);
         source.text = ""; source.gameObject.SetActive(false);
         total.text = ""; total.gameObject.SetActive(false);
         Image background = bubble.GetComponent<Image>();
