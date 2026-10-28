@@ -6,8 +6,24 @@ PASS: Positive damage modifier plays up in Decrease
 PASS: Negative damage modifier plays down in Decrease
 PASS: Zero modifier stays silent in Decrease
 PASS: Healing does not play damage modifier sound
+PASS: Arrow direction for defense=False contribution=-1
+PASS: Arrow direction for defense=False contribution=1
+PASS: Arrow direction for defense=True contribution=-1
+PASS: Arrow direction for defense=True contribution=1
 PASS: Base damage activation is not a damage increase
 PASS: Both shared modifier icons are included
+PASS: Arrows and defense shield are assigned
+PASS: Modifier anchors to combatant, not aura owner: defense=False sign=-1
+PASS: Arrow sprite and rotation: defense=False sign=-1
+PASS: Modifier anchors to combatant, not aura owner: defense=False sign=1
+PASS: Arrow sprite and rotation: defense=False sign=1
+PASS: Modifier anchors to combatant, not aura owner: defense=True sign=-1
+PASS: Arrow sprite and rotation: defense=True sign=-1
+PASS: Defense modifiers use shield
+PASS: Modifier anchors to combatant, not aura owner: defense=True sign=1
+PASS: Arrow sprite and rotation: defense=True sign=1
+PASS: Defense modifiers use shield
+PASS: Pooled arrow is hidden for ordinary steps
 PASS: Damage up and down use distinct audio clips
 PASS: E01 has no individual trigger effects or audio
 PASS: E02 has no individual trigger effects or audio

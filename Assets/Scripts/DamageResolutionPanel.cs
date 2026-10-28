@@ -8,6 +8,7 @@ public sealed class DamageResolutionPanel : MonoBehaviour
     [SerializeField] private RectTransform bubble;
     [SerializeField] private TMP_Text source, total;
     [SerializeField] private Image icon;
+    [SerializeField] private Image modifierArrow;
     [Header("Piece anchored icon")]
     [SerializeField] private Vector3 pieceOffset = new Vector3(0f, 1.5f, 0f);
     [SerializeField, Min(0.001f)] private float worldUnitsPerPixel = 0.0125f;
@@ -63,6 +64,8 @@ public sealed class DamageResolutionPanel : MonoBehaviour
     /// <summary>在修正來源頭上只顯示圖示，計算數字交由固定 FinalDMG 呈現。</summary>
     public void ShowSource(DamageCalculationStep step, Sprite sprite, int stack, Piece target = null, Transform sourceOverride = null)
     {
+        if (modifierArrow != null) modifierArrow.gameObject.SetActive(false);
+        icon.rectTransform.anchoredPosition = Vector2.zero;
         anchor = step.worldPosition; sourceStack = stack; PresentedSteps = 1;
         AttachToPiece(sourceOverride != null ? sourceOverride : step.iconPiece != null ? step.iconPiece.transform : target != null ? target.transform : null);
         source.text = ""; source.gameObject.SetActive(false);
@@ -71,6 +74,32 @@ public sealed class DamageResolutionPanel : MonoBehaviour
         if (background != null) background.enabled = false;
         icon.sprite = sprite; icon.enabled = sprite != null;
         gameObject.SetActive(true); changedAt = Time.unscaledTime;
+        LateUpdate();
+    }
+
+    public void ConfigureModifierArrow()
+    {
+        if (modifierArrow != null) return;
+        modifierArrow = Rect("Modifier arrow", bubble, new Vector2(39, 0), new Vector2(25, 58)).gameObject.AddComponent<Image>();
+        modifierArrow.preserveAspect = true;
+        modifierArrow.raycastTarget = false;
+        modifierArrow.gameObject.SetActive(false);
+    }
+
+    public void ShowModifier(DamageCalculationStep step, DamageCalculationSequence value, DamageModifierFeedback settings, int stack, Transform sourceOverride = null)
+    {
+        Piece recipient = DamageModifierFeedback.Recipient(step, value);
+        // Never fall back to the aura/status owner for a modifier on another combatant.
+        ShowSource(step, settings.Symbol(step, value), stack);
+        Transform owner = sourceOverride != null ? sourceOverride : recipient != null ? recipient.transform : null;
+        anchor = owner != null ? owner.position : value.resultStartWorldPosition;
+        AttachToPiece(owner);
+        icon.rectTransform.anchoredPosition = new Vector2(-14, 0);
+        ConfigureModifierArrow();
+        bool up = DamageModifierFeedback.PointsUp(step);
+        modifierArrow.sprite = up ? settings.arrowUp : settings.arrowDown;
+        modifierArrow.rectTransform.localRotation = Quaternion.Euler(0, 0, up ? 0 : 180);
+        modifierArrow.gameObject.SetActive(modifierArrow.sprite != null);
         LateUpdate();
     }
 

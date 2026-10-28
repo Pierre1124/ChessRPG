@@ -18,6 +18,10 @@ PASS: Positive damage modifier plays up in Decrease
 PASS: Negative damage modifier plays down in Decrease
 PASS: Zero modifier stays silent in Decrease
 PASS: Healing does not play damage modifier sound
+PASS: Arrow direction for defense=False contribution=-1
+PASS: Arrow direction for defense=False contribution=1
+PASS: Arrow direction for defense=True contribution=-1
+PASS: Arrow direction for defense=True contribution=1
 PASS: Base damage activation is not a damage increase
 PASS: Empty serialized move definition preserves standard movement
 PASS: Null move list preserves standard movement

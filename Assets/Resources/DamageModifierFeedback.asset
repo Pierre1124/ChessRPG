@@ -14,6 +14,9 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   increaseIcon: {fileID: -798103099, guid: 665429b751e857e45b495c0b93b1dc94, type: 3}
   decreaseIcon: {fileID: -930971434, guid: 665429b751e857e45b495c0b93b1dc94, type: 3}
+  defenseIcon: {fileID: 1441416584, guid: 665429b751e857e45b495c0b93b1dc94, type: 3}
+  arrowUp: {fileID: 295584861, guid: cf91dee85318a8c4b90ba8165328b9cb, type: 3}
+  arrowDown: {fileID: -196926474, guid: cf91dee85318a8c4b90ba8165328b9cb, type: 3}
   increaseSound: {fileID: 8300000, guid: cfd5b47d51ebcf1408b4b2389916fa59, type: 3}
   decreaseSound: {fileID: 8300000, guid: db12bca84f7866b4898fa93bd1ed192e, type: 3}
   volume: 1

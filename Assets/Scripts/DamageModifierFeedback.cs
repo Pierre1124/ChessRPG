@@ -6,6 +6,9 @@ public sealed class DamageModifierFeedback : ScriptableObject
 {
     public Sprite increaseIcon;
     public Sprite decreaseIcon;
+    public Sprite defenseIcon;
+    public Sprite arrowUp;
+    public Sprite arrowDown;
     public AudioClip increaseSound;
     public AudioClip decreaseSound;
     [Range(0, 1)] public float volume = 1f;
@@ -20,7 +23,18 @@ public sealed class DamageModifierFeedback : ScriptableObject
         return System.Math.Sign(step.contribution);
     }
     public Sprite Icon(int direction) => direction > 0 ? increaseIcon : decreaseIcon;
-    public void PlaySound(int direction) => BattleFeedback.PlayClip(direction > 0 ? increaseSound : decreaseSound, volume);
+    public static bool IsDefense(DamageCalculationStep step) => step.side == DamageStepSide.Defense || step.countingIcon == DamageCountingIcon.Defense;
+    public static bool PointsUp(DamageCalculationStep step) => IsDefense(step) ? step.contribution < 0 : step.contribution > 0;
+    public static Piece Recipient(DamageCalculationStep step, DamageCalculationSequence sequence) =>
+        IsDefense(step) ? sequence.target : sequence.attacker != null ? sequence.attacker : sequence.damageContext?.source;
+    public Sprite Symbol(DamageCalculationStep step, DamageCalculationSequence sequence)
+    {
+        if (IsDefense(step)) return defenseIcon;
+        var type = BattlePresentationStyle.Resolve(sequence);
+        return type != BattlePresentationType.Neutral ? BattleFeedback.GetStyle(type)?.icon ?? increaseIcon : increaseIcon;
+    }
+    public AudioClip Sound(DamageCalculationStep step) => PointsUp(step) ? increaseSound : decreaseSound;
+    public void PlaySound(DamageCalculationStep step) => BattleFeedback.PlayClip(Sound(step), volume);
 }
 
 public static class CardPresentationPolicy

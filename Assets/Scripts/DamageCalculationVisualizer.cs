@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections;
 using System.Collections.Generic;
 using TMPro;
@@ -429,7 +429,9 @@ public class DamageCalculationVisualizer : MonoBehaviour
         bool playedThisRound = false;
         float duration = Mathf.Max(0.05f, stepDuration);
         var playedModifierSounds = new HashSet<int>();
-        var shownFieldModifiers = new HashSet<string>();
+        var shownModifiers = new HashSet<string>();
+        var modifierStacks = new Dictionary<Vector3, int>();
+        var shownFieldEffects = new HashSet<string>();
         foreach (var sequence in sequences)
         {
             if (sequence == null) continue;
@@ -438,7 +440,9 @@ public class DamageCalculationVisualizer : MonoBehaviour
             foreach (var step in sequence.steps)
             {
                 if (step == null || step.modifierPhase != phase) continue;
-                Piece anchorPiece = step.iconPiece != null ? step.iconPiece : sequence.target;
+                int direction = DamageModifierFeedback.Direction(step, sequence.isHealing);
+                var modifierFeedback = direction != 0 ? DamageModifierFeedback.Settings : null;
+                Piece anchorPiece = modifierFeedback != null ? DamageModifierFeedback.Recipient(step, sequence) : step.iconPiece != null ? step.iconPiece : sequence.target;
                 Vector3 anchorPosition = anchorPiece != null ? anchorPiece.transform.position : step.worldPosition;
                 positions.TryGetValue(anchorPosition, out int stack);
                 positions[anchorPosition] = stack + 1;
@@ -447,16 +451,37 @@ public class DamageCalculationVisualizer : MonoBehaviour
                 played.Add(step);
                 playedThisRound = true;
                 CardDefinition card = string.IsNullOrEmpty(step.sourceCardId) ? null : imageDatabase.GetCard(step.sourceCardId);
-                int direction = DamageModifierFeedback.Direction(step, sequence.isHealing);
-                var modifierFeedback = direction != 0 ? DamageModifierFeedback.Settings : null;
-                if (modifierFeedback != null && playedModifierSounds.Add(direction)) modifierFeedback.PlaySound(direction);
+                int arrowDirection = modifierFeedback != null && DamageModifierFeedback.PointsUp(step) ? 1 : -1;
+                if (modifierFeedback != null && playedModifierSounds.Add(arrowDirection)) modifierFeedback.PlaySound(step);
                 if (FieldEffectFeedback.Applies(card))
                 {
-                    FieldEffectFeedback.Play(card, sequence.target != null ? sequence.target.transform.position : sequence.resultStartWorldPosition, duration);
-                    if (modifierFeedback != null && shownFieldModifiers.Add(card.id + ":" + direction))
+                    // One source cue per field effect, even when it damages many pieces.
+                    string fieldKey = card.id + ":" + step.title + ":" + direction + ":" + BattlePresentationStyle.Resolve(sequence);
+                    if (shownFieldEffects.Add(fieldKey))
                         foreach (var place in FindObjectsByType<FieldCardPlace>(FindObjectsSortMode.None))
-                            if (place.ActiveCard?.id == card.id)
-                                GetResolutionPanel(VisibleModifierCount++).ShowSource(step, modifierFeedback.Icon(direction), 0, null, place.transform);
+                        {
+                            if (place.ActiveCard?.id != card.id) continue;
+                            Vector3 fieldPosition = place.transform.position;
+                            FieldEffectFeedback.Play(card, fieldPosition, duration);
+                            modifierStacks.TryGetValue(fieldPosition, out int fieldStack);
+                            modifierStacks[fieldPosition] = fieldStack + 1;
+                            var panel = GetResolutionPanel(VisibleModifierCount++);
+                            if (modifierFeedback != null)
+                                panel.ShowModifier(step, sequence, modifierFeedback, fieldStack, place.transform);
+                            else
+                                panel.ShowSource(step, ResolveIcon(step, sequence) ?? GetCountingIcon(step.countingIcon), fieldStack, null, place.transform);
+                        }
+                    continue;
+                }
+                if (modifierFeedback != null)
+                {
+                    string key = (anchorPiece != null ? anchorPiece.GetInstanceID().ToString() : anchorPosition.ToString()) + ":" + step.sourceCardId + ":" + step.title + ":" + direction + ":" + DamageModifierFeedback.IsDefense(step) + ":" + BattlePresentationStyle.Resolve(sequence);
+                    if (shownModifiers.Add(key))
+                    {
+                        modifierStacks.TryGetValue(anchorPosition, out int visibleStack);
+                        modifierStacks[anchorPosition] = visibleStack + 1;
+                        GetResolutionPanel(VisibleModifierCount++).ShowModifier(step, sequence, modifierFeedback, visibleStack);
+                    }
                     continue;
                 }
                 Sprite sprite = modifierFeedback != null ? modifierFeedback.Icon(direction) : step.icon;
