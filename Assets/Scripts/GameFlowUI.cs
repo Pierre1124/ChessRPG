@@ -13,7 +13,10 @@ public class GameFlowUI : MonoBehaviour
 
     [Header("Alarm")]
     [SerializeField, Min(0.1f)] private float alarmLifetimeSeconds = 3f;
-    [SerializeField] private Vector2 alarmStackOffset = new Vector2(0f, -36f);
+    [SerializeField, Min(0.01f)] private float alarmFadeSeconds = .18f;
+    [SerializeField, Min(0.01f)] private float alarmMoveSeconds = .2f;
+    private readonly Queue<string> pendingAlarms = new Queue<string>();
+    private bool processingAlarms;
 
     [Header("Phase Change")]
     [SerializeField, Min(0f)] private float fallbackPhaseSeconds = 1f;
@@ -279,6 +282,30 @@ public class GameFlowUI : MonoBehaviour
     /// </summary>
     private void ShowAlarm(string message)
     {
+        if (alarmTemplate == null || string.IsNullOrWhiteSpace(message)) return;
+        if (!Application.isPlaying) { SpawnAlarm(message); return; }
+        pendingAlarms.Enqueue(message);
+        if (!processingAlarms) StartCoroutine(ProcessAlarms());
+    }
+
+    private IEnumerator ProcessAlarms()
+    {
+        processingAlarms = true;
+        while (pendingAlarms.Count > 0)
+        {
+            activeOneShotAlarms.RemoveAll(alarm => alarm == null);
+            if (activeOneShotAlarms.Count >= 3)
+            {
+                var oldest = activeOneShotAlarms[0];
+                yield return FadeAndRemoveAlarm(oldest.gameObject, oldest);
+            }
+            SpawnAlarm(pendingAlarms.Dequeue());
+        }
+        processingAlarms = false;
+    }
+
+    private void SpawnAlarm(string message)
+    {
         if (alarmTemplate == null || string.IsNullOrWhiteSpace(message))
         {
             return;
@@ -296,13 +323,21 @@ public class GameFlowUI : MonoBehaviour
             instanceObject.transform as RectTransform;
         if (rectTransform != null)
         {
-            rectTransform.anchoredPosition +=
-                alarmStackOffset * activeOneShotAlarms.Count;
+            while (activeOneShotAlarms.Count >= 3)
+            {
+                var oldest = activeOneShotAlarms[0];
+                activeOneShotAlarms.RemoveAt(0);
+                if (oldest != null) RemoveAlarmObject(oldest.gameObject);
+            }
             activeOneShotAlarms.Add(rectTransform);
         }
 
         instanceObject.SetActive(true);
-        StartCoroutine(DestroyAlarmAfterDelay(instanceObject, rectTransform));
+        foreach (var graphic in instanceObject.GetComponentsInChildren<Graphic>(true)) graphic.raycastTarget = false;
+        if (Application.isPlaying)
+            instanceObject.AddComponent<AlarmPresentation>().Initialize(alarmFadeSeconds, alarmMoveSeconds);
+        ReflowOneShotAlarms();
+        if (Application.isPlaying) StartCoroutine(DestroyAlarmAfterDelay(instanceObject, rectTransform));
     }
 
     /// <summary>
@@ -315,6 +350,17 @@ public class GameFlowUI : MonoBehaviour
     {
         yield return new WaitForSecondsRealtime(alarmLifetimeSeconds);
 
+        yield return FadeAndRemoveAlarm(alarm, rectTransform);
+    }
+
+    private IEnumerator FadeAndRemoveAlarm(GameObject alarm, RectTransform rectTransform)
+    {
+        if (alarm != null && alarm.TryGetComponent<AlarmPresentation>(out var presentation))
+        {
+            presentation.FadeOut();
+            while (presentation != null && !presentation.IsHidden) yield return null;
+        }
+
         if (rectTransform != null)
         {
             activeOneShotAlarms.Remove(rectTransform);
@@ -323,8 +369,14 @@ public class GameFlowUI : MonoBehaviour
 
         if (alarm != null)
         {
-            Destroy(alarm);
+            RemoveAlarmObject(alarm);
         }
+    }
+
+    private static void RemoveAlarmObject(GameObject alarm)
+    {
+        alarm.SetActive(false);
+        if (Application.isPlaying) Destroy(alarm); else DestroyImmediate(alarm);
     }
 
     /// <summary>
@@ -332,17 +384,16 @@ public class GameFlowUI : MonoBehaviour
     /// </summary>
     private void ReflowOneShotAlarms()
     {
-        for (int i = 0; i < activeOneShotAlarms.Count; i++)
+        if (!(alarmTemplate?.transform is RectTransform template)) return;
+        activeOneShotAlarms.RemoveAll(alarm => alarm == null);
+        for (int i = activeOneShotAlarms.Count - 1; i >= 0; i--)
         {
             RectTransform alarm = activeOneShotAlarms[i];
-            if (alarm == null)
-            {
-                continue;
-            }
-
-            alarm.anchoredPosition =
-                (alarmTemplate.transform as RectTransform).anchoredPosition +
-                alarmStackOffset * i;
+            // 完全沿用 Alarm 樣板格式；最新一則留在原位，舊訊息每則往上 50。
+            Vector2 destination = template.anchoredPosition +
+                Vector2.up * (50f * (activeOneShotAlarms.Count - 1 - i));
+            if (alarm.TryGetComponent<AlarmPresentation>(out var presentation)) presentation.MoveTo(destination);
+            else alarm.anchoredPosition = destination;
         }
     }
 

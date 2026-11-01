@@ -87,3 +87,56 @@
 - 上箭頭一律播放 increaseSound，下箭頭一律播放 decreaseSound；例如減傷是盾牌上升，因此與增傷共用上升音效。
 - 場地增減傷及發動提示（含圖示與場地觸發特效）固定顯示於對應場地，群體傷害不在每顆棋子重複播放來源提示。
 - 最終傷害數字、屬性圖示及受傷特效仍依每個目標各自顯示在棋子上。
+
+### 來源分階段演出（2026-10-29）
+- 演出順序：發動 → 增傷 → 減傷 → 弱化 → 易傷 → 實際傷害。每階段收起圖示後才進下一階段，沒有參與結算的效果不補播。
+- 同階段的不同來源同步播放；血腥瑪麗的增傷顯示在血腥瑪麗上，場地加成顯示在場地上。
+- 修正圖示採來源的屬性限制：無限制使用物理 ATK；火山使用火圖示。modifierTags 隨聯機演出資料傳送。
+- 箭頭音效已移至各場景 AudioSystem / BattleFeedback 的「共同音效」Modifier Up Sound、Modifier Down Sound，不再由 DamageModifierFeedback 資產持有。
+- 魔法師原本無特效、無音效的動畫項目仍留下 effectLifetime=2；現在僅實際有素材的項目才延長等待，也移除非吃子技能的額外 captureDelay。
+- E06 虛弱的弱化只影響持有者造成的傷害；持有者受擊時僅其易傷參與承傷結算。
+
+### 上下箭頭統一 Presentation Styles（2026-10-29）
+- AudioSystem / BattleFeedback / Presentation Styles 新增 ModifierUp、ModifierDown，保存箭頭 Icon、Sound、Sound Volume、Effect Prefab、Effect Offset、Effect Lifetime。
+- 原共同音效的 Modifier Up/Down Sound 已移除，原音檔已搬到對應樣式；Effect Prefab 留空供指定共用特效。
+- 每個可見來源播放該方向的特效，同輪同方向音效只播一次；場地效果定位在場地上。
+- 有特效時等待 Effect Lifetime 再進下一階段。箭頭以樣式 Icon 優先，ModifierDown 仍旋轉 180 度。
+
+### 修正場地增減傷重複斬擊（2026-10-29）
+- 場地修正階段僅使用 FieldEffectFeedback 的光暈，不再播放其測試用 targetEffectPrefab。
+- ModifierUp／ModifierDown 的特效由 Presentation Styles 單獨負責；場地發動階段仍保留原先發動特效。
+
+### 黑市與狀態待機（2026-11-01）
+- 黑市回收觸發在修改能力後，排入「場地發動 → 場地能力上升」演出，使用 ModifierUp 共用音效／特效。
+- 能力演出以 presentationOnly 標記傳送給聯機對手，不顯示虛假的傷害數字或飛向血條。
+- 所有卡片的狀態皆保留 idleEffectPrefab。待機依持有狀態、剩餘回合與充能判斷，不再限制為轉職卡。
+- 狀態充能用盡時隱藏待機，恢復充能時重新顯示；移除、到期與普通棋模式會清除。
+- 待機素材設定於各 Status Definition 的 Idle Effect Prefab 與 Effect Offset。
+
+### 箭頭圖示與特效同時顯示（2026-11-01）
+- 移除「設定 3D 特效後隱藏 UI 箭頭」判斷，箭頭 icon 與 ModifierUp／ModifierDown 特效並存。
+- BattleFeedback 生成特效時保留 Prefab 原始旋轉，不再強制 Quaternion.identity。Animator 使用 UnscaledTime 與 AlwaysAnimate，與演出計時及清除一致。
+- Unity 驗證走實際 CreateTypeEffect 生成路徑，確認箭頭可見且上升／下降方向正確。
+
+### 黑市受益棋子與世界特效根節點（2026-11-01）
+- 黑市場地保留發動提示；presentationOnly 的能力變化圖示、ModifierUp 特效與音效改在受益棋子上播放，網路 iconPiece 同步對應目標。
+- ChessScene 的 TypeEffects 位於縮放為 0 的 UI Canvas 下。世界特效現在遇到 Canvas 或零縮放父節點會保留在世界根節點，避免生成後被縮沒；仍由 BattleFeedback 追蹤與清除。
+- 驗證改用實際 typeEffectRoot，不再以 AudioSystem transform 代替。
+
+### 全部計算演出統一樣式與來源／目標定位（2026-11-01）
+- 計算流程的圖示、音效、特效只取 AudioSystem / Presentation Styles；移除場地斬擊、狀態觸發素材、卡片圖片與 DamageModifierFeedback 素材回退。
+- 發動使用 Trigger 音效與特效，圖示取傷害屬性；修正使用 ModifierUp／ModifierDown，盾牌圖示新增 Defense 樣式。
+- 有明確來源棋子的技能／增傷顯示於來源棋子；場地來源使用對應 FieldCardPlace。無棋子來源（如火球）使用 Card Effect Source Anchor，未指定則使用同場景第一個場地欄位。
+- 減傷、易傷、實際傷害與黑市能力變化顯示在目標；來源提示不再借用受擊者位置。
+- 事件卡傷害也建立 Activation 階段。卡片 OnDamageDealt / OnDamageModifier / OnHealed 的個別動畫不再另播計算特效。
+- 待機狀態特效不屬於計算演出，繼續由持有狀態管理。
+
+### 火球重複提示與箭頭動畫定位（2026-11-01）
+- 事件卡直接傷害不額外建立 Activation 階段；火球顯示出牌後直接進入實際適用的修正與傷害演出。
+- 所有 Presentation Styles 世界特效使用獨立定位外層，動畫 Prefab 放在內層。動畫即使寫入根節點座標，也不能覆蓋發動者／目標的世界位置。
+- 驗證使用 (7,2,5) 的非原點位置與實際 TypeEffects 設定，檢查上升、下降動畫更新後外層與箭頭仍維持在指定位置。
+
+### 中毒與詛咒狀態（2026-11-01）
+- E09 中毒狀態接回 VenomBloom 循環待機；E05 詛咒狀態接回 CurseChains 循環待機。
+- 狀態觸發的 Activation iconPiece 使用 sourceStatus.owner，與傷害歸屬 source 分開。來源為事件卡、原施加者不存在、詛咒轉移時，都定位在目前持有者；透過既有 iconPiece 網路欄位同步。
+- 觸發圖示與傷害仍使用 Presentation Styles；持續待機使用 Status Definition 的 idleEffectPrefab，隨狀態移除／到期清除。

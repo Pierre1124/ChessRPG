@@ -1,4 +1,4 @@
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using UnityEngine;
 
 /// <summary>
@@ -1326,7 +1326,7 @@ public class CardBattleSystem
         sequence.steps.Add(new DamageCalculationStep
         {
             icon = visualIcon,
-            iconPiece = source,
+            iconPiece = DamageModifierFeedback.ActivationSource(damageContext),
             usePieceIcon = visualIcon == null,
             countingIcon = GetCountingIcon(damageContext.tags),
             side = DamageStepSide.Attack,
@@ -1411,7 +1411,7 @@ public class CardBattleSystem
 
         sequence.steps.Add(new DamageCalculationStep
         {
-            iconPiece = source,
+            iconPiece = DamageModifierFeedback.ActivationSource(damageContext),
             usePieceIcon = source != null,
             countingIcon = GetCountingIcon(damageContext.tags),
             side = DamageStepSide.Attack,
@@ -2266,6 +2266,7 @@ public class CardBattleSystem
         {
             modifierPhase = result > previousValue ? DamageModifierPhase.Increase : DamageModifierPhase.Decrease,
             sourceCardId = sourceCardId,
+            modifierTags = effect.damageTags,
             icon = icon,
             iconPiece = iconPiece,
             usePieceIcon = icon == null && iconPiece != null,

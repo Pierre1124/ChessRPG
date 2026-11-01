@@ -1,4 +1,4 @@
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using TMPro;
 using UnityEngine;
 using UnityEngine.EventSystems;
@@ -7,6 +7,7 @@ using UnityEngine.UI;
 /// <summary>拖曳期间顯示合法目標及游標提示，獨立管理視覺資源的生命週期。</summary>
 public sealed class CardTargetFeedback : MonoBehaviour
 {
+    public bool ClickMode { get; set; }
     private CardHandManager hand;
     private CardDefinition card;
     private readonly List<Component> targets = new List<Component>();
@@ -65,11 +66,11 @@ public sealed class CardTargetFeedback : MonoBehaviour
             refreshAt = Time.unscaledTime + 0.15f;
         }
 
-        bool overRecycle = hand.RecycleCardRoot != null && hand.RecycleCardRoot.gameObject.activeInHierarchy &&
+        bool overRecycle = !ClickMode && hand.RecycleCardRoot != null && hand.RecycleCardRoot.gameObject.activeInHierarchy &&
             RectTransformUtility.RectangleContainsScreenPoint(hand.RecycleCardRoot, pointer.position, pointer.pressEventCamera);
         if (recycleGlow != null)
         {
-            recycleGlow.enabled = true;
+            recycleGlow.enabled = !ClickMode;
             recycleGlow.color = overRecycle ? FocusColor : ValidColor;
         }
         Component hovered = null;
@@ -96,6 +97,7 @@ public sealed class CardTargetFeedback : MonoBehaviour
         hint.text = overRecycle ? "放開以回收" : validHover ? "放開以使用" :
             hovered != null ? "此目標不符合卡牌條件" : targets.Count == 0 ? "目前沒有可使用目標，可拖至回收區" :
             card.cardType == CardType.Field ? "拖至亮起的場地欄位" : "拖至有光圈的棋子";
+        if (ClickMode) hint.text = validHover ? "點擊以使用 · 右鍵 / Esc 取消" : hovered != null ? "此目標不符合卡牌條件" : "點擊亮起的目標 · 右鍵 / Esc 取消";
         hint.color = overRecycle || validHover ? FocusColor : Color.white;
         hintPanel.gameObject.SetActive(true);
         RectTransform parent = (RectTransform)hintPanel.parent;

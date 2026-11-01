@@ -1,0 +1,17 @@
+{"schema":"openai.presentation.layout/v5","unit":"px","slide":{"id":"sl/hgzapcr6","index":12,"layout":{"id":"ly/25gn6xsz","name":"預設 12"},"backgroundColor":"rgba(255,255,255,1)","position":{"left":0,"top":0,"width":960,"height":540}},
+"elements":[
+{"id":"sh/q9cj2pwn","kind":"textbox","name":"PlaceHolder 1","position":{"left":32.73,"top":28.72,"width":894.39,"height":44.18},"text":"火山與沼澤的災變","style":{"fontSize":30.48,"typeface":"PT Sans Narrow","color":"#EF6C00","bold":true,"alignment":"left"},"geometry":"rect","lineWidth":0},
+{"id":"sh/sbu14zet","kind":"textbox","name":"PlaceHolder 3","position":{"left":889.51,"top":489.56,"width":57.45,"height":41.16},"text":"13","style":{"fontSize":13.33,"typeface":"Open Sans","color":"#695D46","alignment":"right"},"geometry":"rect","lineWidth":0},
+{"id":"im/4zapwnep","kind":"image","position":{"left":42,"top":144.31,"width":139,"height":185.39}},
+{"id":"sh/excj6pwz","kind":"textbox","name":"F01 火山","position":{"left":42,"top":344,"width":139,"height":50},"text":"F01 火山","style":{"fontSize":17,"typeface":"Arial","color":"#695D46","alignment":"left"},"geometry":"rect","lineWidth":0},
+{"id":"im/q1s7yxwf","kind":"image","position":{"left":192,"top":144.31,"width":139,"height":185.39}},
+{"id":"sh/nu10jupo","kind":"textbox","name":"F03 沼澤","position":{"left":192,"top":344,"width":139,"height":50},"text":"F03 沼澤","style":{"fontSize":17,"typeface":"Arial","color":"#695D46","alignment":"left"},"geometry":"rect","lineWidth":0},
+{"id":"im/bit0japo","kind":"image","position":{"left":342,"top":144.31,"width":139,"height":185.39}},
+{"id":"sh/9wjil47e","kind":"textbox","name":"F11 煉獄沼原","position":{"left":342,"top":344,"width":139,"height":50},"text":"F11 煉獄沼原","style":{"fontSize":17,"typeface":"Arial","color":"#695D46","alignment":"left"},"geometry":"rect","lineWidth":0},
+{"id":"sh/ova1sz69","kind":"textbox","name":"火山＋沼澤＝煉獄沼原","position":{"left":44,"top":390,"width":438,"height":62},"text":"火山＋沼澤＝煉獄沼原","style":{"fontSize":22,"typeface":"Arial","color":"#695D46","alignment":"left"},"geometry":"rect","lineWidth":0},
+{"id":"sh/bi10ne5k","kind":"textbox","name":"屬性與環境","position":{"left":514,"top":100,"width":410,"height":34},"text":"屬性與環境","style":{"fontSize":22,"typeface":"Arial","color":"#695D46","bold":true,"alignment":"left"},"geometry":"rect","lineWidth":0},
+{"id":"sh/ahsju9oz","kind":"textbox","name":"火山提高火屬性傷害，沼澤提高毒傷。\n合成","position":{"left":514,"top":143,"width":410,"height":146},"text":"火山提高火屬性傷害，沼澤提高毒傷。\n合成後同時強化兩種屬性，\n回合結束時對隨機棋子及周圍造成\n火屬性或毒屬性傷害。","style":{"fontSize":19,"typeface":"Arial","color":"#695D46","alignment":"left"},"geometry":"rect","lineWidth":0},
+{"id":"sh/xk32p4nq","kind":"textbox","name":"戰場本身成為威脅（構想）","position":{"left":514,"top":299,"width":410,"height":34},"text":"戰場本身成為威脅（構想）","style":{"fontSize":22,"typeface":"Arial","color":"#695D46","bold":true,"alignment":"left"},"geometry":"rect","lineWidth":0},
+{"id":"sh/wja1wz65","kind":"textbox","name":"熔岩流進沼澤，灼熱與毒霧交織。\n軍隊即使","position":{"left":514,"top":342,"width":410,"height":136},"text":"熔岩流進沼澤，灼熱與毒霧交織。\n軍隊即使不交戰，也無法避開災變。\n火球與毒蛇可延伸成這片土地上的\n戰術手段，讓地形參與故事。","style":{"fontSize":19,"typeface":"Arial","color":"#695D46","alignment":"left"},"geometry":"rect","lineWidth":0},
+{"id":"sh/rmh0bapg","kind":"textbox","name":"合成與屬性效果已有規則；災變起因和事件情","position":{"left":42,"top":480,"width":835,"height":36},"text":"合成與屬性效果已有規則；災變起因和事件情節屬構想。","style":{"fontSize":16,"typeface":"Arial","color":"#695D46","alignment":"left"},"geometry":"rect","lineWidth":0}
+]}

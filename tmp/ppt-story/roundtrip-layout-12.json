@@ -1,0 +1,17 @@
+{"schema":"openai.presentation.layout/v5","unit":"px","slide":{"id":"sl/8f2psfyx","index":11,"layout":{"id":"ly/25gn6xsz","name":"預設 12"},"backgroundColor":"rgba(255,255,255,1)","position":{"left":0,"top":0,"width":960,"height":540}},
+"elements":[
+{"id":"sh/h03q1sj2","kind":"textbox","name":"PlaceHolder 1","position":{"left":32.73,"top":28.72,"width":894.39,"height":44.18},"text":"黑市與罪金之域","style":{"fontSize":30.48,"typeface":"PT Sans Narrow","color":"#EF6C00","bold":true,"alignment":"left"},"geometry":"rect","lineWidth":0},
+{"id":"sh/fyl8z21c","kind":"textbox","name":"PlaceHolder 3","position":{"left":889.51,"top":489.56,"width":57.45,"height":41.16},"text":"12","style":{"fontSize":13.33,"typeface":"Open Sans","color":"#695D46","alignment":"right"},"geometry":"rect","lineWidth":0},
+{"id":"im/bqxwbydc","kind":"image","position":{"left":42,"top":144.31,"width":139,"height":185.39}},
+{"id":"sh/1w7adwjm","kind":"textbox","name":"F09 黑市","position":{"left":42,"top":344,"width":139,"height":50},"text":"F09 黑市","style":{"fontSize":17,"typeface":"Arial","color":"#695D46","alignment":"left"},"geometry":"rect","lineWidth":0},
+{"id":"im/hojypsvm","kind":"image","position":{"left":192,"top":144.33,"width":139,"height":185.33}},
+{"id":"sh/8329o7yl","kind":"textbox","name":"F10 罪金之域","position":{"left":192,"top":344,"width":139,"height":50},"text":"F10 罪金之域","style":{"fontSize":17,"typeface":"Arial","color":"#695D46","alignment":"left"},"geometry":"rect","lineWidth":0},
+{"id":"im/s72dofut","kind":"image","position":{"left":342,"top":144.31,"width":139,"height":185.39}},
+{"id":"sh/m10rmxgf","kind":"textbox","name":"E03 強奪","position":{"left":342,"top":344,"width":139,"height":50},"text":"E03 強奪","style":{"fontSize":17,"typeface":"Arial","color":"#695D46","alignment":"left"},"geometry":"rect","lineWidth":0},
+{"id":"sh/n2t8f2x0","kind":"textbox","name":"黑市＋黑市＝罪金之域","position":{"left":44,"top":390,"width":438,"height":62},"text":"黑市＋黑市＝罪金之域","style":{"fontSize":22,"typeface":"Arial","color":"#695D46","alignment":"left"},"geometry":"rect","lineWidth":0},
+{"id":"sh/wr29c7eh","kind":"textbox","name":"交易與掠奪","position":{"left":514,"top":100,"width":410,"height":34},"text":"交易與掠奪","style":{"fontSize":22,"typeface":"Arial","color":"#695D46","bold":true,"alignment":"left"},"geometry":"rect","lineWidth":0},
+{"id":"sh/hsbqlcf2","kind":"textbox","name":"黑市把回收牌轉成隨機己方棋子的\n攻擊力 ","position":{"left":514,"top":143,"width":410,"height":146},"text":"黑市把回收牌轉成隨機己方棋子的\n攻擊力 +1、價值 −1。\n罪金之域在抽牌時隨機選擇目標與傷害。\n強奪則支付 5 HP，奪走他人的轉職卡。","style":{"fontSize":19,"typeface":"Arial","color":"#695D46","alignment":"left"},"geometry":"rect","lineWidth":0},
+{"id":"sh/a5kraxwb","kind":"textbox","name":"戰爭中的地下市場（構想）","position":{"left":514,"top":299,"width":410,"height":34},"text":"戰爭中的地下市場（構想）","style":{"fontSize":22,"typeface":"Arial","color":"#695D46","bold":true,"alignment":"left"},"geometry":"rect","lineWidth":0},
+{"id":"sh/v6t8j2xw","kind":"textbox","name":"最初只是交換裝備、買賣力量。\n當利益擴張","position":{"left":514,"top":342,"width":410,"height":136},"text":"最初只是交換裝備、買賣力量。\n當利益擴張成賭局，暴力便失去控制，\n甚至回頭傷害交易者自己。\n強奪可作為其中一段掠奪事件。","style":{"fontSize":19,"typeface":"Arial","color":"#695D46","alignment":"left"},"geometry":"rect","lineWidth":0},
+{"id":"sh/4vm9gred","kind":"textbox","name":"黑市合成已有規則；強奪與地下市場的劇情連","position":{"left":42,"top":480,"width":835,"height":36},"text":"黑市合成已有規則；強奪與地下市場的劇情連結屬構想。","style":{"fontSize":16,"typeface":"Arial","color":"#695D46","alignment":"left"},"geometry":"rect","lineWidth":0}
+]}

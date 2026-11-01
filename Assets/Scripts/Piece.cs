@@ -1,4 +1,4 @@
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using UnityEngine;
 
 /// <summary>
@@ -6,6 +6,15 @@ using UnityEngine;
 /// </summary>
 public abstract class Piece : MonoBehaviour
 {
+    private void LateUpdate()
+    {
+        foreach (var status in statuses)
+        {
+            if (logicManager != null && logicManager.IsClassicChess) BattleFeedback.StopStatusIdle(status);
+            else BattleFeedback.StartStatusIdle(status);
+        }
+    }
+
     [Header("Combat")]
     [SerializeField] private int attack;
     [SerializeField] private int value;

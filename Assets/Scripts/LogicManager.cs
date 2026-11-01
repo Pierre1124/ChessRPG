@@ -1,4 +1,4 @@
-using System.Collections;
+﻿using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.SceneManagement;
@@ -282,7 +282,7 @@ public class LogicManager : MonoBehaviour
         }
 
         Debug.Log("[CardDebug][Initialize] White starts | HP=100/100");
-        GameFlowUI.SetPersistent("Check", string.Empty, false);
+        SetCheckAlarm(false);
         OperateLogUI.ResetLog(isWhiteTurn);
         BroadcastNetworkStateIfAuthority();
     }
@@ -1716,6 +1716,7 @@ public class LogicManager : MonoBehaviour
                     damagedWhitePlayer = sequence.damagedWhitePlayer,
                     presentationTags = (int)(sequence.damageContext != null ? sequence.damageContext.tags : sequence.presentationTags),
                     isHealing = sequence.isHealing,
+                    presentationOnly = sequence.presentationOnly,
                     isCapture = sequence.isCapture,
                     finalDamage = sequence.finalDamage,
                     resultStartWorldPosition = sequence.resultStartWorldPosition,
@@ -1740,6 +1741,7 @@ public class LogicManager : MonoBehaviour
                         contribution = step.contribution,
                         modifierPhase = (int)step.modifierPhase,
                         sourceCardId = step.sourceCardId,
+                        modifierTags = (int)step.modifierTags,
                         worldPosition = step.worldPosition,
                         color = step.color,
                         usePieceIcon = step.usePieceIcon,
@@ -1799,6 +1801,7 @@ public class LogicManager : MonoBehaviour
             damagedWhitePlayer = networkSequence.damagedWhitePlayer,
             presentationTags = (DamageTag)networkSequence.presentationTags,
             isHealing = networkSequence.isHealing,
+            presentationOnly = networkSequence.presentationOnly,
             isCapture = networkSequence.isCapture,
             finalDamage = networkSequence.finalDamage,
             resultStartWorldPosition = networkSequence.resultStartWorldPosition,
@@ -1830,6 +1833,7 @@ public class LogicManager : MonoBehaviour
                     modifierPhase = System.Enum.IsDefined(typeof(DamageModifierPhase), networkStep.modifierPhase)
                         ? (DamageModifierPhase)networkStep.modifierPhase : DamageModifierPhase.None,
                     sourceCardId = networkStep.sourceCardId,
+                    modifierTags = (DamageTag)networkStep.modifierTags,
                     worldPosition = networkStep.worldPosition,
                     color = networkStep.color,
                     usePieceIcon = networkStep.usePieceIcon,
@@ -2840,12 +2844,10 @@ public class LogicManager : MonoBehaviour
     /// </summary>
     private void SetCheckAlarm(bool currentKingInCheck)
     {
-        string side = isWhiteTurn ? "白方" : "黑方";
-        GameFlowUI.SetPersistent(
-            "Check",
-            $"{side}被將軍",
-            currentKingInCheck
-        );
+        UpdatePiecesOnBoard();
+        foreach (var piece in piecesOnBoard)
+            if (piece is King king)
+                KingCheckIndicator.SetVisible(king, currentKingInCheck && king.IsWhite == isWhiteTurn);
     }
 
     /// <summary>
@@ -3262,6 +3264,25 @@ public class LogicManager : MonoBehaviour
         }
 
         target.AddPermanentStats(1, -1);
+        var marketPresentation = new DamageCalculationSequence
+        {
+            presentationOnly = true, target = target,
+            resultStartWorldPosition = target.transform.position
+        };
+        marketPresentation.steps.Add(new DamageCalculationStep
+        {
+            modifierPhase = DamageModifierPhase.Activation, sourceCardId = "F09",
+            title = "黑市發動", countingIcon = DamageCountingIcon.Attack,
+            worldPosition = target.transform.position
+        });
+        marketPresentation.steps.Add(new DamageCalculationStep
+        {
+            modifierPhase = DamageModifierPhase.Increase, sourceCardId = "F09",
+            title = "黑市・攻擊力上升", countingIcon = DamageCountingIcon.Attack, iconPiece = target,
+            side = DamageStepSide.Attack, hasContribution = true, contribution = 1,
+            worldPosition = target.transform.position
+        });
+        PlayDamageCalculation(marketPresentation, null, null);
         Debug.Log(
             $"[CardDebug][FieldRecycle] Field=F09 暺? | " +
             $"Player={(recycleEvent.isWhitePlayer ? "White" : "Black")} | " +
@@ -3811,6 +3832,7 @@ public class LogicManager : MonoBehaviour
             side = side,
             modifierPhase = amount > 0 ? DamageModifierPhase.Increase : DamageModifierPhase.Decrease,
             sourceCardId = field.id,
+            modifierTags = field.id == "F01" || field.id == "F02" ? DamageTag.Fire : field.id == "F03" || field.id == "F04" ? DamageTag.Poison : field.id == "F11" ? (sequence.damageContext.tags & (DamageTag.Fire | DamageTag.Poison)) : DamageTag.None,
             title = field.cardName + "・場地效果",
             hasContribution = true, contribution = amount,
             displayText = Mathf.Abs(amount).ToString(),

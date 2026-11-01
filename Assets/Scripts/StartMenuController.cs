@@ -45,6 +45,7 @@ public class StartMenuController : MonoBehaviour
     private string openingCardId;
     [SerializeField, Tooltip("選單操作提示，可不指定並由程式建立。")] private TMP_Text statusText;
     private Coroutine statusRoutine;
+    private bool startingLocalGame;
 
     /// <summary>顯示選單操作結果；未綁定文字時在 Canvas 下建立不攔截點擊的提示。</summary>
     public void ShowStatusMessage(string message)
@@ -88,11 +89,11 @@ public class StartMenuController : MonoBehaviour
     }
 
     /// <summary>
-    /// 顯示開始遊戲選單，供玩家選擇對局模式。
+    /// 測試入口：直接進入本機雙方共用選定牌組的對局。
     /// </summary>
     public void StartGame()
     {
-        ShowStartMenu();
+        StartLocalGame();
     }
 
     /// <summary>
@@ -100,13 +101,22 @@ public class StartMenuController : MonoBehaviour
     /// </summary>
     public void StartLocalGame()
     {
-        if (cardLibrary == null)
-        {
-            Debug.LogError("StartMenuController requires ChessCard.");
-            return;
-        }
+        if (startingLocalGame || !PrepareDeckBeforeGame()) return;
+        startingLocalGame = true;
+        StartCoroutine(EnterLocalTestGame());
+    }
 
-        DeckStorage.EnsureDefault(cardLibrary.Cards);
+    private IEnumerator EnterLocalTestGame()
+    {
+        // Do not carry an old Photon room into a local test match.
+        Photon.Pun.PhotonNetwork.AutomaticallySyncScene = false;
+        if (networkSessionLauncher != null) networkSessionLauncher.Shutdown();
+        else if (Photon.Pun.PhotonNetwork.IsConnected) Photon.Pun.PhotonNetwork.Disconnect();
+        while (Photon.Pun.PhotonNetwork.IsConnected || Photon.Pun.PhotonNetwork.InRoom) yield return null;
+        LogicManager.SetNextGameMode(false);
+        Time.timeScale = 1f;
+        // CardHandManager loads DeckStorage into startingDeck and copies it independently
+        // to whiteDeck and blackDeck, preserving the selected opening card for both.
         SceneManager.LoadScene(gameSceneName);
     }
 

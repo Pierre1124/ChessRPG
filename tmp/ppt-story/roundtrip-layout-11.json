@@ -1,0 +1,14 @@
+{"schema":"openai.presentation.layout/v5","unit":"px","slide":{"id":"sl/jetc3ut0","index":10,"layout":{"id":"ly/25gn6xsz","name":"預設 12"},"backgroundColor":"rgba(255,255,255,1)","position":{"left":0,"top":0,"width":960,"height":540}},
+"elements":[
+{"id":"sh/hgze9oni","kind":"textbox","name":"PlaceHolder 1","position":{"left":32.73,"top":28.72,"width":894.39,"height":44.18},"text":"回春與血契：生命的時間差","style":{"fontSize":30.48,"typeface":"PT Sans Narrow","color":"#EF6C00","bold":true,"alignment":"left"},"geometry":"rect","lineWidth":0},
+{"id":"sh/fexw7e5s","kind":"textbox","name":"PlaceHolder 3","position":{"left":889.51,"top":489.56,"width":57.45,"height":41.16},"text":"11","style":{"fontSize":13.33,"typeface":"Open Sans","color":"#695D46","alignment":"right"},"geometry":"rect","lineWidth":0},
+{"id":"im/zuhkzu9s","kind":"image","position":{"left":44,"top":117.29,"width":211,"height":281.41}},
+{"id":"sh/1cjelsn2","kind":"textbox","name":"E10 回春","position":{"left":44,"top":413,"width":211,"height":50},"text":"E10 回春","style":{"fontSize":20,"typeface":"Arial","color":"#695D46","alignment":"left"},"geometry":"rect","lineWidth":0},
+{"id":"im/h0f2p0be","kind":"image","position":{"left":274,"top":117.29,"width":211,"height":281.41}},
+{"id":"sh/8fy5cnmx","kind":"textbox","name":"E11 血契","position":{"left":274,"top":413,"width":211,"height":50},"text":"E11 血契","style":{"fontSize":20,"typeface":"Arial","color":"#695D46","alignment":"left"},"geometry":"rect","lineWidth":0},
+{"id":"sh/tg7m5sni","kind":"textbox","name":"先付或後付","position":{"left":514,"top":100,"width":410,"height":34},"text":"先付或後付","style":{"fontSize":22,"typeface":"Arial","color":"#695D46","bold":true,"alignment":"left"},"geometry":"rect","lineWidth":0},
+{"id":"sh/6tgnado7","kind":"textbox","name":"回春：HP ≥ 50 時可用，先支付 1","position":{"left":514,"top":143,"width":410,"height":146},"text":"回春：HP ≥ 50 時可用，先支付 10 HP，\n之後每次回合結束回復 3，持續 5 回合。\n血契：HP ≤ 50 時可用，先回復 40 HP，\n之後每次回合結束支付 5，持續 10 回合。","style":{"fontSize":19,"typeface":"Arial","color":"#695D46","alignment":"left"},"geometry":"rect","lineWidth":0},
+{"id":"sh/7ep43i5c","kind":"textbox","name":"國王的求生抉擇（構想）","position":{"left":514,"top":299,"width":410,"height":34},"text":"國王的求生抉擇（構想）","style":{"fontSize":22,"typeface":"Arial","color":"#695D46","bold":true,"alignment":"left"},"geometry":"rect","lineWidth":0},
+{"id":"sh/gji5gnm9","kind":"textbox","name":"卡圖都描繪年老國王與生命危機。\n一條路接","position":{"left":514,"top":342,"width":410,"height":136},"text":"卡圖都描繪年老國王與生命危機。\n一條路接受眼前的痛苦，等待療癒；\n另一條路以未來生命交換眼前生機。\n可寫成同一位國王的兩條命運分支。","style":{"fontSize":19,"typeface":"Arial","color":"#695D46","alignment":"left"},"geometry":"rect","lineWidth":0},
+{"id":"sh/hkrm9snu","kind":"textbox","name":"同一位國王的設定屬故事構想；實際回復仍受","position":{"left":42,"top":480,"width":835,"height":36},"text":"同一位國王的設定屬故事構想；實際回復仍受禁療等效果影響。","style":{"fontSize":16,"typeface":"Arial","color":"#695D46","alignment":"left"},"geometry":"rect","lineWidth":0}
+]}

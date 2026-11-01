@@ -1,4 +1,4 @@
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.EventSystems;
 using UnityEngine.InputSystem;
@@ -70,6 +70,7 @@ public class InputManager : MonoBehaviour
     /// </summary>
     private void Update()
     {
+        if (CardDragHandler.BlocksBoardInput) { isHoldingMouse = false; heldPiece = null; ClearSelection(); return; }
         if (CardKeywordPopup.IsOpen) { isHoldingMouse = false; heldPiece = null; heldTokenInfo = null; return; }
         if (ControlBindings.SuppressGameplay) { isHoldingMouse = false; heldPiece = null; return; }
         if (Keyboard.current != null && Keyboard.current.escapeKey.wasPressedThisFrame)

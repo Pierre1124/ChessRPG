@@ -1,4 +1,4 @@
-using UnityEngine;
+﻿using UnityEngine;
 
 public class CardAnimationReceiver : MonoBehaviour, ICardAnimationReceiver
 {
@@ -37,6 +37,7 @@ public class CardAnimationReceiver : MonoBehaviour, ICardAnimationReceiver
             return;
         }
 
+        if (context.timing == CardAnimationTiming.OnDamageDealt || context.timing == CardAnimationTiming.OnDamageModifier || context.timing == CardAnimationTiming.OnHealed) return;
         foreach (CardAnimationData animation in context.card.animations)
         {
             if (

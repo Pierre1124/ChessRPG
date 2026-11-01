@@ -1,3 +1,13 @@
+PASS: Outgoing modifier belongs to source
+PASS: Defense belongs to target
+PASS: Black Market stat gain belongs to target
+PASS: Event status can display idle while active
+PASS: Exhausted status hides idle
+PASS: Recharged status restores idle
+PASS: Expired status hides idle
+PASS: Unrestricted source uses physical icon regardless of hit element
+PASS: Fire-restricted source uses fire icon
+PASS: Skill activation precedes modifiers
 PASS: Positive damage modifier plays up in Increase
 PASS: Negative damage modifier plays down in Increase
 PASS: Zero modifier stays silent in Increase
@@ -6,37 +16,94 @@ PASS: Positive damage modifier plays up in Decrease
 PASS: Negative damage modifier plays down in Decrease
 PASS: Zero modifier stays silent in Decrease
 PASS: Healing does not play damage modifier sound
+PASS: Presentation order: buff, defense, weakness, vulnerability
+PASS: Shared audio follows arrow direction
 PASS: Arrow direction for defense=False contribution=-1
+PASS: Presentation order: buff, defense, weakness, vulnerability
+PASS: Shared audio follows arrow direction
 PASS: Arrow direction for defense=False contribution=1
+PASS: Presentation order: buff, defense, weakness, vulnerability
+PASS: Shared audio follows arrow direction
 PASS: Arrow direction for defense=True contribution=-1
+PASS: Presentation order: buff, defense, weakness, vulnerability
+PASS: Shared audio follows arrow direction
 PASS: Arrow direction for defense=True contribution=1
 PASS: Base damage activation is not a damage increase
+PASS: Mage activation uses explicit source piece
+PASS: E05 loads looping status idle prefab
+PASS: E05 activation uses status bearer, not caster or field
+PASS: E05 event status without caster keeps bearer anchor
+PASS: E05 idle attaches to bearer
+PASS: E05 transfer follows new bearer
+PASS: E09 loads looping status idle prefab
+PASS: E09 activation uses status bearer, not caster or field
+PASS: E09 event status without caster keeps bearer anchor
+PASS: E09 idle attaches to bearer
+PASS: E09 transfer follows new bearer
+PASS: Fireball without source uses field area, never victim
+PASS: Lava source uses field location
+PASS: Black Market gain uses recipient even though source is field
+PASS: Assets/Scenes/ChessScene.unity Presentation Styles contains both shared arrow styles
+DIAGNOSTIC: ModifierUp bare animated root requested=(7.00, 2.00, 5.00) actual=(0.00, 0.00, 0.00)
+PASS: ModifierUp stays visible through configured TypeEffects parent
+PASS: ModifierUp preserves prefab world rotation
+PASS: ModifierUp spawned arrows become visible
+INFO: ModifierUp bounds=Center: (7.01, 2.71, 5.00), Extents: (0.91, 0.45, 1.16) scale=(1.00, 1.00, 1.00) rotation=(0.00, 0.00, 0.00)
+PASS: ModifierUp animation cannot reset world anchor
+PASS: ModifierUp animated arrows remain at requested source instead of board origin
+PASS: ModifierUp spawned arrows move vertically in correct direction
+DIAGNOSTIC: ModifierDown bare animated root requested=(7.00, 2.00, 5.00) actual=(0.00, 0.00, 0.00)
+PASS: ModifierDown stays visible through configured TypeEffects parent
+PASS: ModifierDown preserves prefab world rotation
+PASS: ModifierDown spawned arrows become visible
+INFO: ModifierDown bounds=Center: (7.00, 3.88, 5.00), Extents: (0.90, 0.45, 1.16) scale=(1.00, 1.00, 1.00) rotation=(0.00, 0.00, 0.00)
+PASS: ModifierDown animation cannot reset world anchor
+PASS: ModifierDown animated arrows remain at requested source instead of board origin
+PASS: ModifierDown spawned arrows move vertically in correct direction
+PASS: Assets/Scenes/CardScene.unity Presentation Styles contains both shared arrow styles
+PASS: Assets/Scenes/StartScene.unity Presentation Styles contains both shared arrow styles
 PASS: Both shared modifier icons are included
 PASS: Arrows and defense shield are assigned
-PASS: Modifier anchors to combatant, not aura owner: defense=False sign=-1
+PASS: Modifier anchors to effect source: defense=False sign=-1
+PASS: Sound follows arrow rather than damage sign: defense=False sign=-1
 PASS: Arrow sprite and rotation: defense=False sign=-1
-PASS: Modifier anchors to combatant, not aura owner: defense=False sign=1
+PASS: Field override keeps modifier on field source
+PASS: Modifier anchors to effect source: defense=False sign=1
+PASS: Sound follows arrow rather than damage sign: defense=False sign=1
 PASS: Arrow sprite and rotation: defense=False sign=1
-PASS: Modifier anchors to combatant, not aura owner: defense=True sign=-1
+PASS: Field override keeps modifier on field source
+PASS: Modifier anchors to effect source: defense=True sign=-1
+PASS: Sound follows arrow rather than damage sign: defense=True sign=-1
 PASS: Arrow sprite and rotation: defense=True sign=-1
 PASS: Defense modifiers use shield
-PASS: Modifier anchors to combatant, not aura owner: defense=True sign=1
+PASS: Field override keeps modifier on field source
+PASS: Modifier anchors to effect source: defense=True sign=1
+PASS: Sound follows arrow rather than damage sign: defense=True sign=1
 PASS: Arrow sprite and rotation: defense=True sign=1
 PASS: Defense modifiers use shield
+PASS: Field override keeps modifier on field source
+PASS: Field activation stays on field instead of damage target
 PASS: Pooled arrow is hidden for ordinary steps
-PASS: Damage up and down use distinct audio clips
 PASS: E01 has no individual trigger effects or audio
 PASS: E02 has no individual trigger effects or audio
 PASS: E03 has no individual trigger effects or audio
 PASS: E04 has no individual trigger effects or audio
 PASS: E05 has no individual trigger effects or audio
+PASS: E05 preserves idle effects when loaded
 PASS: E06 has no individual trigger effects or audio
+PASS: E06 preserves idle effects when loaded
 PASS: E07 has no individual trigger effects or audio
+PASS: E07 preserves idle effects when loaded
 PASS: E08 has no individual trigger effects or audio
+PASS: E08 preserves idle effects when loaded
 PASS: E09 has no individual trigger effects or audio
+PASS: E09 preserves idle effects when loaded
 PASS: E10 has no individual trigger effects or audio
+PASS: E10 preserves idle effects when loaded
 PASS: E11 has no individual trigger effects or audio
+PASS: E11 preserves idle effects when loaded
 PASS: E12 has no individual trigger effects or audio
+PASS: E12 preserves idle effects when loaded
 PASS: F01 field presentation is preserved
 PASS: F02 field presentation is preserved
 PASS: F03 field presentation is preserved

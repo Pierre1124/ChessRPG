@@ -19,7 +19,7 @@ public sealed class FieldEffectFeedback : MonoBehaviour
 
     public static bool Applies(CardDefinition card) => card != null && card.cardType == CardType.Field;
 
-    public static void Play(CardDefinition card, Vector3 targetPosition, float duration)
+    public static void Play(CardDefinition card, Vector3 targetPosition, float duration, bool playImpact = true)
     {
         if (!Applies(card)) return;
         var prefab = Resources.Load<FieldEffectFeedback>("UI/FieldEffectFeedback");
@@ -40,14 +40,14 @@ public sealed class FieldEffectFeedback : MonoBehaviour
             if (impactOwner == null) impactOwner = feedback;
         }
         // The source may already have left the board by the time a queued effect is presented.
-        if (impactOwner == null)
+        if (impactOwner == null && playImpact)
         {
             impactOwner = Instantiate(prefab);
             impactOwner.glowRoot.gameObject.SetActive(false);
             impactOwner.deadline = Time.unscaledTime + Mathf.Max(duration, prefab.effectLifetime);
             active.Add(impactOwner);
         }
-        impactOwner.PlayImpact(targetPosition);
+        if (playImpact && impactOwner != null) impactOwner.PlayImpact(targetPosition);
     }
 
     private void PlaceGlow()

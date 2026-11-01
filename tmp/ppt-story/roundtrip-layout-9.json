@@ -1,0 +1,14 @@
+{"schema":"openai.presentation.layout/v5","unit":"px","slide":{"id":"sl/udsvah03","index":8,"layout":{"id":"ly/25gn6xsz","name":"預設 12"},"backgroundColor":"rgba(255,255,255,1)","position":{"left":0,"top":0,"width":960,"height":540}},
+"elements":[
+{"id":"sh/lw7218ra","kind":"textbox","name":"PlaceHolder 1","position":{"left":32.73,"top":28.72,"width":894.39,"height":44.18},"text":"聖女貞德與血腥瑪麗","style":{"fontSize":30.48,"typeface":"PT Sans Narrow","color":"#EF6C00","bold":true,"alignment":"left"},"geometry":"rect","lineWidth":0},
+{"id":"sh/zupkzy94","kind":"textbox","name":"PlaceHolder 3","position":{"left":889.51,"top":489.56,"width":57.45,"height":41.16},"text":"9","style":{"fontSize":13.33,"typeface":"Open Sans","color":"#695D46","alignment":"right"},"geometry":"rect","lineWidth":0},
+{"id":"im/jud4rads","kind":"image","position":{"left":44,"top":117.29,"width":211,"height":281.41}},
+{"id":"sh/90r25sr6","kind":"textbox","name":"J10 聖女貞德","position":{"left":44,"top":413,"width":211,"height":50},"text":"J10 聖女貞德","style":{"fontSize":20,"typeface":"Arial","color":"#695D46","alignment":"left"},"geometry":"rect","lineWidth":0},
+{"id":"im/tkfmxkvu","kind":"image","position":{"left":274,"top":117.29,"width":211,"height":281.41}},
+{"id":"sh/4f25orat","kind":"textbox","name":"J09 血腥瑪麗","position":{"left":274,"top":413,"width":211,"height":50},"text":"J09 血腥瑪麗","style":{"fontSize":20,"typeface":"Arial","color":"#695D46","alignment":"left"},"geometry":"rect","lineWidth":0},
+{"id":"sh/5gbmxwbe","kind":"textbox","name":"兩種領導方式","position":{"left":514,"top":100,"width":410,"height":34},"text":"兩種領導方式","style":{"fontSize":22,"typeface":"Arial","color":"#695D46","bold":true,"alignment":"left"},"geometry":"rect","lineWidth":0},
+{"id":"sh/itknmhc3","kind":"textbox","name":"貞德的增傷隨吃子成長，友軍損失\n會削弱額","position":{"left":514,"top":143,"width":410,"height":146},"text":"貞德的增傷隨吃子成長，友軍損失\n會削弱額外加成。\n瑪麗移除國王，換取增傷 5 與禁療，\n自身被吃時觸發對局結束。","style":{"fontSize":19,"typeface":"Arial","color":"#695D46","alignment":"left"},"geometry":"rect","lineWidth":0},
+{"id":"sh/jut4vmto","kind":"textbox","name":"旗幟與王座（構想）","position":{"left":514,"top":299,"width":410,"height":34},"text":"旗幟與王座（構想）","style":{"fontSize":22,"typeface":"Arial","color":"#695D46","bold":true,"alignment":"left"},"geometry":"rect","lineWidth":0},
+{"id":"sh/wr25k7ux","kind":"textbox","name":"貞德站在前線，勝敗牽動全軍士氣。\n瑪麗以","position":{"left":514,"top":342,"width":410,"height":136},"text":"貞德站在前線，勝敗牽動全軍士氣。\n瑪麗以自己的存亡取代王權，\n用不能回頭的代價換取力量。\n兩張卡可成為同一場戰爭的對照。","style":{"fontSize":19,"typeface":"Arial","color":"#695D46","alignment":"left"},"geometry":"rect","lineWidth":0},
+{"id":"sh/xsbmtcbi","kind":"textbox","name":"這是依卡圖與效果延伸的角色對照，未設定兩","position":{"left":42,"top":480,"width":835,"height":36},"text":"這是依卡圖與效果延伸的角色對照，未設定兩人為既定敵手。","style":{"fontSize":16,"typeface":"Arial","color":"#695D46","alignment":"left"},"geometry":"rect","lineWidth":0}
+]}

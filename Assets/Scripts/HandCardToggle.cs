@@ -1,4 +1,4 @@
-using System.Collections;
+﻿using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.EventSystems;
@@ -39,6 +39,7 @@ public class HandCardToggle : MonoBehaviour, IPointerClickHandler
     /// </summary>
     private void Update()
     {
+        if (CardDragHandler.BlocksBoardInput || HandCardPreview.ContainsPointer()) return;
         if (
             !isExpanded ||
             Mouse.current == null ||
@@ -76,7 +77,7 @@ public class HandCardToggle : MonoBehaviour, IPointerClickHandler
     /// </summary>
     public void OnPointerClick(PointerEventData eventData)
     {
-        if (eventData.button != PointerEventData.InputButton.Left)
+        if (eventData.button != PointerEventData.InputButton.Left || CardDragHandler.BlocksBoardInput)
         {
             return;
         }
@@ -87,6 +88,9 @@ public class HandCardToggle : MonoBehaviour, IPointerClickHandler
     /// <summary>
     /// 將手牌區收合。
     /// </summary>
+    public void Expand() => SetExpanded(true);
+    public bool ContainsPointer(Vector2 position) => IsPointerInsideHandCard(position);
+
     public void Collapse()
     {
         SetExpanded(false);

@@ -1,0 +1,8 @@
+{"schema":"openai.presentation.layout/v5","unit":"px","slide":{"id":"sl/jyx0ra1s","index":3,"layout":{"id":"ly/25gn6xsz","name":"預設 12"},"backgroundColor":"rgba(255,255,255,1)","position":{"left":0,"top":0,"width":960,"height":540}},
+"elements":[
+{"id":"sh/vu9gve5g","kind":"textbox","name":"PlaceHolder 1","position":{"left":32.73,"top":28.72,"width":894.39,"height":44.18},"text":"主選單與牌組編輯","style":{"fontSize":30.48,"typeface":"PT Sans Narrow","color":"#EF6C00","bold":true,"alignment":"left"},"geometry":"rect","lineWidth":0},
+{"id":"sh/wvixojm1","kind":"textbox","name":"PlaceHolder 2","position":{"left":42,"top":96,"width":376,"height":396},"text":"雙人回合制的西洋棋卡牌遊戲，\n結合標準走法與 RPG 戰鬥。\n主選單提供本機測試、線上對戰\n與牌組編輯。\n卡庫共 36 張：轉職、事件、場地\n各 12 張，可分類、搜尋及篩選。\n各卡可選 0～2 張，另外指定起手卡。\n儲存後更新摘要，取消保留原牌組。","style":{"fontSize":20,"typeface":"Arial","color":"#695D46","alignment":"left"},"geometry":"rect","lineWidth":0},
+{"id":"sh/hwryx4n6","kind":"textbox","name":"PlaceHolder 3","position":{"left":889.51,"top":489.56,"width":57.45,"height":41.16},"text":"4","style":{"fontSize":13.33,"typeface":"Open Sans","color":"#695D46","alignment":"right"},"geometry":"rect","lineWidth":0},
+{"id":"im/p0ju1gjm","kind":"image","name":"圖片 2","position":{"left":433.61,"top":37.8,"width":416.75,"height":234.63},"crop":{"left":0,"top":0.03726,"right":0,"bottom":0}},
+{"id":"im/b2lc3q1s","kind":"image","name":"圖片 4","position":{"left":433.58,"top":272.43,"width":416.78,"height":235.05},"crop":{"left":0,"top":0.03562,"right":0,"bottom":0}}
+]}

@@ -1374,6 +1374,36 @@ MonoBehaviour:
     effectLifetime: 2
     sound: {fileID: 0}
     soundVolume: 1
+  - type: 10
+    icon: {fileID: 295584861, guid: cf91dee85318a8c4b90ba8165328b9cb, type: 3}
+    numberColor: {r: 1, g: 1, b: 1, a: 1}
+    fontStyle: 1
+    numberScale: 1
+    effectPrefab: {fileID: 0}
+    effectOffset: {x: 0, y: 1, z: 0}
+    effectLifetime: 0.65
+    sound: {fileID: 8300000, guid: cfd5b47d51ebcf1408b4b2389916fa59, type: 3}
+    soundVolume: 1
+  - type: 11
+    icon: {fileID: -196926474, guid: cf91dee85318a8c4b90ba8165328b9cb, type: 3}
+    numberColor: {r: 1, g: 1, b: 1, a: 1}
+    fontStyle: 1
+    numberScale: 1
+    effectPrefab: {fileID: 0}
+    effectOffset: {x: 0, y: 1, z: 0}
+    effectLifetime: 0.65
+    sound: {fileID: 8300000, guid: db12bca84f7866b4898fa93bd1ed192e, type: 3}
+    soundVolume: 1
+  - type: 12
+    icon: {fileID: 1441416584, guid: 665429b751e857e45b495c0b93b1dc94, type: 3}
+    numberColor: {r: 1, g: 1, b: 1, a: 1}
+    fontStyle: 1
+    numberScale: 1
+    effectPrefab: {fileID: 0}
+    effectOffset: {x: 0, y: 1, z: 0}
+    effectLifetime: 0.65
+    sound: {fileID: 0}
+    soundVolume: 1
   typeEffectRoot: {fileID: 0}
 --- !u!82 &1176810781
 AudioSource:

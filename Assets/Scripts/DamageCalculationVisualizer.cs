@@ -15,6 +15,7 @@ public class DamageCalculationSequence
     public Piece attacker;
     public Piece target;
     public bool damagedWhitePlayer;
+    public bool presentationOnly;
     public bool isHealing;
     public bool isCapture;
     public int finalDamage;
@@ -50,6 +51,7 @@ public class DamageCalculationStep
 {
     public DamageModifierPhase modifierPhase;
     public string sourceCardId;
+    public DamageTag modifierTags;
     public bool hasContribution;
     public int contribution;
     public Sprite icon;
@@ -100,16 +102,8 @@ public class DamageCalculationVisualizer : MonoBehaviour
     [SerializeField] private TMP_Text finalDamageText;
     public string DisplayedFinalDamage => finalDamageText != null ? finalDamageText.text : "";
 
-    [Header("Counting Icons")]
-    [SerializeField] private Sprite attackIcon;
-    [SerializeField] private Sprite defenseIcon;
-    [SerializeField] private Sprite healIcon;
-    [SerializeField] private Sprite antiAttackIcon;
-    [SerializeField] private Sprite antiHealIcon;
-    [SerializeField] private Sprite fireIcon;
-    [SerializeField] private Sprite poisonIcon;
-    [SerializeField] private Sprite curseIcon;
-    [SerializeField] private Sprite costIcon;
+    [Header("Source presentation") ]
+    [SerializeField] private Transform cardEffectSourceAnchor;
 
     [Header("Timing")]
     [SerializeField, Min(0.05f)] private float stepDuration = 0.65f;
@@ -152,7 +146,6 @@ public class DamageCalculationVisualizer : MonoBehaviour
     private void Awake()
     {
         AutoBindReferences();
-        AutoBindCountingIcons();
     }
 
     /// <summary>
@@ -161,7 +154,6 @@ public class DamageCalculationVisualizer : MonoBehaviour
     private void Reset()
     {
         AutoBindReferences();
-        AutoBindCountingIcons();
         HidePrebuiltObjects();
     }
 
@@ -171,7 +163,6 @@ public class DamageCalculationVisualizer : MonoBehaviour
     private void OnValidate()
     {
         AutoBindReferences();
-        AutoBindCountingIcons();
     }
 
     /// <summary>
@@ -240,7 +231,6 @@ public class DamageCalculationVisualizer : MonoBehaviour
         Action onDamageApplied
     )
     {
-        AutoBindCountingIcons();
 
         if (!HasRequiredReferences())
         {
@@ -273,7 +263,6 @@ public class DamageCalculationVisualizer : MonoBehaviour
         Action onComplete
     )
     {
-        AutoBindCountingIcons();
 
         if (!HasRequiredReferences())
         {
@@ -341,31 +330,19 @@ public class DamageCalculationVisualizer : MonoBehaviour
         while (hand != null && hand.isActiveAndEnabled && hand.IsUsingCardAnimationPlaying) yield return null;
         UpdateFinalDamageText(sequences, DamageModifierPhase.None);
         InvokeAll(onCaptureVisuals);
-        float initialDuration = captureDelay;
-        foreach (var sequence in sequences)
-        {
-            CardDefinition sourceCard = sequence?.damageContext?.sourceCard;
-            if (sourceCard == null && sequence != null)
-                foreach (var step in sequence.steps)
-                    if (step != null && step.modifierPhase == DamageModifierPhase.None && !string.IsNullOrEmpty(step.sourceCardId))
-                    { sourceCard = imageDatabase.GetCard(step.sourceCardId); break; }
-            if (sourceCard == null) continue;
-            foreach (var animation in sourceCard.animations)
-                if (animation != null && animation.timing == CardAnimationTiming.OnDamageDealt)
-                    initialDuration = Mathf.Max(initialDuration, animation.effectLifetime);
-        }
-        yield return PlayModifierPhase(sequences, DamageModifierPhase.Activation);
-        yield return new WaitForSecondsRealtime(initialDuration);
-        yield return PlayModifierPhase(sequences, DamageModifierPhase.Increase);
-        UpdateFinalDamageText(sequences, DamageModifierPhase.Increase);
-        yield return PlayModifierPhase(sequences, DamageModifierPhase.Decrease);
+        float initialDuration = 0f;
+        foreach (var sequence in sequences) if (sequence != null && sequence.isCapture) initialDuration = captureDelay;
+        if (initialDuration > 0) yield return new WaitForSecondsRealtime(initialDuration);
+        var presented = new HashSet<DamageCalculationStep>();
+        for (int stage = 0; stage <= 4; stage++)
+            yield return PlayModifierPhase(sequences, stage, presented);
         UpdateFinalDamageText(sequences, DamageModifierPhase.Decrease);
         var flyingSequences = new List<DamageCalculationSequence>();
         var flyingViews = new List<DamageResultFlyView>();
         for (int i = 0; i < sequences.Count; i++)
         {
             DamageCalculationSequence sequence = sequences[i];
-            if (sequence == null) continue;
+            if (sequence == null || sequence.presentationOnly) continue;
             DamageResultFlyView view = GetOrCreateResultFlyView(flyingViews.Count);
             ShowDamageResultFly(sequence, view);
             flyingSequences.Add(sequence); flyingViews.Add(view);
@@ -398,7 +375,7 @@ public class DamageCalculationVisualizer : MonoBehaviour
         var lines = new List<string>();
         foreach (var sequence in sequences)
         {
-            if (sequence == null) continue;
+            if (sequence == null || sequence.presentationOnly) continue;
             long value = sequence.finalDamage;
             foreach (var step in sequence.steps)
             {
@@ -417,11 +394,11 @@ public class DamageCalculationVisualizer : MonoBehaviour
     }
 
     /// <summary>同一棋子的效果逐輪播放，不同棋子同輪並行，保留每次效果的圖示。</summary>
-    private IEnumerator PlayModifierPhase(IReadOnlyList<DamageCalculationSequence> sequences, DamageModifierPhase phase)
+    private IEnumerator PlayModifierPhase(IReadOnlyList<DamageCalculationSequence> sequences, int stage, HashSet<DamageCalculationStep> played)
     {
+        var phase = stage == 0 ? DamageModifierPhase.Activation : stage == 1 || stage == 4 ? DamageModifierPhase.Increase : DamageModifierPhase.Decrease;
         CurrentModifierPhase = phase;
         int round = 0;
-        var played = new HashSet<DamageCalculationStep>();
         bool hasNext;
         do
         {
@@ -431,7 +408,6 @@ public class DamageCalculationVisualizer : MonoBehaviour
         var playedModifierSounds = new HashSet<int>();
         var shownModifiers = new HashSet<string>();
         var modifierStacks = new Dictionary<Vector3, int>();
-        var shownFieldEffects = new HashSet<string>();
         foreach (var sequence in sequences)
         {
             if (sequence == null) continue;
@@ -439,79 +415,60 @@ public class DamageCalculationVisualizer : MonoBehaviour
             var positions = new Dictionary<Vector3, int>();
             foreach (var step in sequence.steps)
             {
-                if (step == null || step.modifierPhase != phase) continue;
-                int direction = DamageModifierFeedback.Direction(step, sequence.isHealing);
-                var modifierFeedback = direction != 0 ? DamageModifierFeedback.Settings : null;
-                Piece anchorPiece = modifierFeedback != null ? DamageModifierFeedback.Recipient(step, sequence) : step.iconPiece != null ? step.iconPiece : sequence.target;
-                Vector3 anchorPosition = anchorPiece != null ? anchorPiece.transform.position : step.worldPosition;
-                positions.TryGetValue(anchorPosition, out int stack);
-                positions[anchorPosition] = stack + 1;
+                if (step == null || DamageModifierFeedback.Stage(step) != stage) continue;
+                bool modifier = DamageModifierFeedback.Direction(step, sequence.isHealing) != 0;
+                CardDefinition card = string.IsNullOrEmpty(step.sourceCardId) ? null : imageDatabase.GetCard(step.sourceCardId);
+                Transform owner = ResolvePresentationAnchor(step, sequence, card);
+                Vector3 position = owner != null ? owner.position : Vector3.zero;
+                positions.TryGetValue(position, out int stack);
+                positions[position] = stack + 1;
                 if (stack > round) hasNext = true;
                 if (stack != round) continue;
                 played.Add(step);
                 playedThisRound = true;
-                CardDefinition card = string.IsNullOrEmpty(step.sourceCardId) ? null : imageDatabase.GetCard(step.sourceCardId);
-                int arrowDirection = modifierFeedback != null && DamageModifierFeedback.PointsUp(step) ? 1 : -1;
-                if (modifierFeedback != null && playedModifierSounds.Add(arrowDirection)) modifierFeedback.PlaySound(step);
-                if (FieldEffectFeedback.Applies(card))
-                {
-                    // One source cue per field effect, even when it damages many pieces.
-                    string fieldKey = card.id + ":" + step.title + ":" + direction + ":" + BattlePresentationStyle.Resolve(sequence);
-                    if (shownFieldEffects.Add(fieldKey))
-                        foreach (var place in FindObjectsByType<FieldCardPlace>(FindObjectsSortMode.None))
-                        {
-                            if (place.ActiveCard?.id != card.id) continue;
-                            Vector3 fieldPosition = place.transform.position;
-                            FieldEffectFeedback.Play(card, fieldPosition, duration);
-                            modifierStacks.TryGetValue(fieldPosition, out int fieldStack);
-                            modifierStacks[fieldPosition] = fieldStack + 1;
-                            var panel = GetResolutionPanel(VisibleModifierCount++);
-                            if (modifierFeedback != null)
-                                panel.ShowModifier(step, sequence, modifierFeedback, fieldStack, place.transform);
-                            else
-                                panel.ShowSource(step, ResolveIcon(step, sequence) ?? GetCountingIcon(step.countingIcon), fieldStack, null, place.transform);
-                        }
-                    continue;
-                }
-                if (modifierFeedback != null)
-                {
-                    string key = (anchorPiece != null ? anchorPiece.GetInstanceID().ToString() : anchorPosition.ToString()) + ":" + step.sourceCardId + ":" + step.title + ":" + direction + ":" + DamageModifierFeedback.IsDefense(step) + ":" + BattlePresentationStyle.Resolve(sequence);
-                    if (shownModifiers.Add(key))
-                    {
-                        modifierStacks.TryGetValue(anchorPosition, out int visibleStack);
-                        modifierStacks[anchorPosition] = visibleStack + 1;
-                        GetResolutionPanel(VisibleModifierCount++).ShowModifier(step, sequence, modifierFeedback, visibleStack);
-                    }
-                    continue;
-                }
-                Sprite sprite = modifierFeedback != null ? modifierFeedback.Icon(direction) : step.icon;
-                if (sprite == null && card != null) sprite = card.skillImage != null ? card.skillImage : card.cardImage;
-                if (sprite == null) sprite = ResolveIcon(step, sequence) ?? GetCountingIcon(step.countingIcon);
-                GetResolutionPanel(VisibleModifierCount++).ShowSource(step, sprite, 0, sequence.target);
-                if (modifierFeedback == null) BattleFeedback.PlayType(step.countingIcon == DamageCountingIcon.AntiHeal
-                    ? BattlePresentationType.AntiHeal : BattlePresentationType.Trigger, anchorPosition);
-                if (phase == DamageModifierPhase.Activation && sequence.damageContext?.sourceStatus != null)
-                    BattleFeedback.PlayStatusTrigger(sequence.damageContext.sourceStatus);
-                else if (step.iconPiece != null)
-                    foreach (var status in step.iconPiece.Statuses)
-                        if (status.definition != null && (status.definition.statusName == step.title ||
-                            (phase == DamageModifierPhase.Activation && !string.IsNullOrEmpty(step.sourceCardId) && status.definition.sourceCardId == step.sourceCardId)))
-                        { BattleFeedback.PlayStatusTrigger(status); break; }
-                if (card == null || phase == DamageModifierPhase.Activation) continue;
-                CardAnimationEvents.Play(step.iconPiece, sequence.target, card, CardAnimationTiming.OnDamageModifier);
-                foreach (var animation in card.animations)
-                    if (animation != null && animation.timing == CardAnimationTiming.OnDamageModifier &&
-                        (animation.effectPrefab != null || animation.sound != null))
-                        duration = Mathf.Max(duration, animation.effectLifetime);
+                var type = modifier ? DamageModifierFeedback.PresentationType(step) :
+                    step.countingIcon == DamageCountingIcon.AntiHeal ? BattlePresentationType.AntiHeal : BattlePresentationType.Trigger;
+                string key = position + ":" + step.sourceCardId + ":" + step.title + ":" + type + ":" + step.modifierTags;
+                if (!shownModifiers.Add(key)) continue;
+                modifierStacks.TryGetValue(position, out int visibleStack);
+                modifierStacks[position] = visibleStack + 1;
+                var panel = GetResolutionPanel(VisibleModifierCount++);
+                if (modifier) panel.ShowModifier(step, sequence, null, visibleStack, owner, true);
+                else panel.ShowSourceAt(step, BattleFeedback.GetStyle(sequence.presentationOnly ? BattlePresentationType.Neutral : BattlePresentationStyle.Resolve(sequence))?.icon, visibleStack, owner, position);
+                var style = BattleFeedback.GetStyle(type);
+                BattleFeedback.PlayType(type, position, playedModifierSounds.Add((int)type));
+                if (style?.effectPrefab != null) duration = Mathf.Max(duration, style.effectLifetime);
+
             }
         }
         if (playedThisRound) yield return new WaitForSecondsRealtime(duration);
         if (phase != DamageModifierPhase.Activation)
-            UpdateFinalDamageText(sequences, phase == DamageModifierPhase.Increase ? DamageModifierPhase.None : DamageModifierPhase.Increase, played);
+            UpdateFinalDamageText(sequences, DamageModifierPhase.None, played);
         HideResolutionPanels(); VisibleModifierCount = 0;
         round++;
         } while (hasNext);
         CurrentModifierPhase = DamageModifierPhase.None;
+    }
+
+    // Source cues never borrow the victim position. Target modifiers (including Black Market)
+    // are explicitly anchored to their recipient; card-only sources use the field area.
+    internal Transform ResolvePresentationAnchor(DamageCalculationStep step, DamageCalculationSequence sequence, CardDefinition card)
+    {
+        if (DamageModifierFeedback.IsTargetPresentation(step, sequence)) return sequence.target != null ? sequence.target.transform : null;
+        if (card == null || card.cardType != CardType.Field)
+        {
+            Piece source = step.iconPiece != null ? step.iconPiece : sequence.attacker;
+            if (source != null) return source.transform;
+        }
+        FieldCardPlace first = null;
+        foreach (var sceneRoot in gameObject.scene.GetRootGameObjects())
+        foreach (var place in sceneRoot.GetComponentsInChildren<FieldCardPlace>())
+        {
+            if (place.ActiveCard?.id == card?.id && card != null) return place.transform;
+            if (first == null || place.transform.position.x < first.transform.position.x ||
+                (place.transform.position.x == first.transform.position.x && place.transform.position.z < first.transform.position.z)) first = place;
+        }
+        return cardEffectSourceAnchor != null ? cardEffectSourceAnchor : first != null ? first.transform : null;
     }
 
     /// <summary>同一血條重複受擊時重啟震動，先還原原始位置避免漂移。</summary>
@@ -610,7 +567,6 @@ public class DamageCalculationVisualizer : MonoBehaviour
         {
             Sprite sprite = ResolveIcon(step, sequence);
             CardDefinition card = string.IsNullOrEmpty(step.sourceCardId) ? null : imageDatabase.GetCard(step.sourceCardId);
-            if (sprite == null && card != null) sprite = card.skillImage != null ? card.skillImage : card.cardImage;
             icon.sprite = sprite; icon.preserveAspect = true;
             icon.gameObject.SetActive(sprite != null);
         }
@@ -1033,123 +989,20 @@ public class DamageCalculationVisualizer : MonoBehaviour
     /// <summary>
     /// 依計算步驟資料選取棋子或數值圖示。
     /// </summary>
-    private Sprite ResolveIcon(
-        DamageCalculationStep step,
-        DamageCalculationSequence sequence
-    )
-    {
-        if (
-            step.usePieceIcon &&
-            imageDatabase != null &&
-            step.iconPiece != null
-        )
-        {
-            Sprite pieceSprite = imageDatabase.GetPieceSprite(step.iconPiece);
-            if (pieceSprite != null)
-            {
-                return pieceSprite;
-            }
-        }
+    private Sprite ResolveIcon(DamageCalculationStep step, DamageCalculationSequence sequence) =>
+        BattleFeedback.GetStyle(BattlePresentationStyle.Resolve(sequence))?.icon;
 
-        if (
-            step.useTargetPieceIcon &&
-            imageDatabase != null &&
-            sequence != null
-        )
-        {
-            Sprite pieceSprite = imageDatabase.GetPieceSprite(sequence.target);
-            if (pieceSprite != null)
-            {
-                return pieceSprite;
-            }
-        }
-
-        return step.icon;
-    }
-
-    /// <summary>
-    /// 依計算項目取得對應的數值圖示。
-    /// </summary>
     private Sprite GetCountingIcon(DamageCountingIcon icon)
     {
-        switch (icon)
-        {
-            case DamageCountingIcon.Attack: return attackIcon;
-            case DamageCountingIcon.Defense: return defenseIcon;
-            case DamageCountingIcon.Heal: return healIcon;
-            case DamageCountingIcon.AntiAttack: return antiAttackIcon;
-            case DamageCountingIcon.AntiHeal: return antiHealIcon;
-            case DamageCountingIcon.Fire: return fireIcon;
-            case DamageCountingIcon.Poison: return poisonIcon;
-            case DamageCountingIcon.Curse: return curseIcon;
-            case DamageCountingIcon.Cost: return costIcon;
-            default: return null;
-        }
-    }
-
-    /// <summary>
-    /// 補齊傷害計算使用的數值分類圖示。
-    /// </summary>
-    private void AutoBindCountingIcons()
-    {
-#if UNITY_EDITOR
-        if (
-            attackIcon != null &&
-            defenseIcon != null &&
-            healIcon != null &&
-            antiAttackIcon != null &&
-            antiHealIcon != null &&
-            fireIcon != null &&
-            poisonIcon != null &&
-            curseIcon != null &&
-            costIcon != null
-        )
-        {
-            return;
-        }
-
-        const string path = "Assets/ChessCardImages/CountingIcon.png";
-        UnityEngine.Object[] assets = AssetDatabase.LoadAllAssetsAtPath(path);
-
-        foreach (UnityEngine.Object asset in assets)
-        {
-            if (asset is not Sprite sprite)
-            {
-                continue;
-            }
-
-            switch (sprite.name)
-            {
-                case "ATK":
-                    if (attackIcon == null) attackIcon = sprite;
-                    break;
-                case "DEF":
-                    if (defenseIcon == null) defenseIcon = sprite;
-                    break;
-                case "Heal":
-                    if (healIcon == null) healIcon = sprite;
-                    break;
-                case "AntiATK":
-                    if (antiAttackIcon == null) antiAttackIcon = sprite;
-                    break;
-                case "AntiHeal":
-                    if (antiHealIcon == null) antiHealIcon = sprite;
-                    break;
-                case "Fire":
-                    if (fireIcon == null) fireIcon = sprite;
-                    break;
-                case "Poison":
-                    if (poisonIcon == null) poisonIcon = sprite;
-                    break;
-                case "Curse":
-                    if (curseIcon == null) curseIcon = sprite;
-                    break;
-                case "Cost":
-                    if (costIcon == null) costIcon = sprite;
-                    break;
-            }
-        }
-#endif
+        var type = icon == DamageCountingIcon.Defense ? BattlePresentationType.Defense :
+            icon == DamageCountingIcon.Heal ? BattlePresentationType.Heal :
+            icon == DamageCountingIcon.AntiHeal ? BattlePresentationType.AntiHeal :
+            icon == DamageCountingIcon.AntiAttack ? BattlePresentationType.ModifierDown :
+            icon == DamageCountingIcon.Fire ? BattlePresentationType.Fire :
+            icon == DamageCountingIcon.Poison ? BattlePresentationType.Poison :
+            icon == DamageCountingIcon.Curse ? BattlePresentationType.Curse :
+            icon == DamageCountingIcon.Cost ? BattlePresentationType.Cost : BattlePresentationType.Neutral;
+        return BattleFeedback.GetStyle(type)?.icon;
     }
 
     /// <summary>

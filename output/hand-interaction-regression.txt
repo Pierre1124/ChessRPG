@@ -1,0 +1,9 @@
+PASS: Saved hand prefab opens large reading preview
+PASS: Preview cannot drag or play a copied card
+PASS: Preview does not duplicate hover hints
+PASS: Preview keeps keyword interactions enabled
+PASS: Clicking reading preview pins it
+PASS: Enlarged card retains formatted glossary links
+PASS: Large card fits within 1280x720 viewport
+PASS: Choosing card target blocks piece movement
+PASS: Cancel clears selection and consumes its input frame

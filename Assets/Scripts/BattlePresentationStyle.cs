@@ -1,8 +1,8 @@
-using System;
+﻿using System;
 using TMPro;
 using UnityEngine;
 
-public enum BattlePresentationType { Neutral, Fire, Poison, Curse, Electric, TrueDamage, Cost, Heal, AntiHeal, Trigger }
+public enum BattlePresentationType { Neutral, Fire, Poison, Curse, Electric, TrueDamage, Cost, Heal, AntiHeal, Trigger, ModifierUp, ModifierDown, Defense }
 
 /// <summary>每種戰鬥事件共用的數字外觀、圖示及觸發素材。</summary>
 [Serializable]

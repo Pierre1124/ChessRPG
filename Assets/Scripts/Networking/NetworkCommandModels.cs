@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using UnityEngine;
 
@@ -190,6 +190,7 @@ public class NetworkDamageCalculationBatch
 [Serializable]
 public class NetworkDamageCalculationSequence
 {
+    public bool presentationOnly;
     public int presentationTags;
     public bool damagedWhitePlayer;
     public bool isHealing;
@@ -206,6 +207,7 @@ public class NetworkDamageCalculationSequence
 public class NetworkDamageCalculationStep
 {
     public int modifierPhase;
+    public int modifierTags;
     public string sourceCardId;
     public string title;
     public string detail;

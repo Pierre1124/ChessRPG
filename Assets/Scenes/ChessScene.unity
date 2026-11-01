@@ -7228,7 +7228,7 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0.5, y: 0.5}
   m_AnchorMax: {x: 0.5, y: 0.5}
-  m_AnchoredPosition: {x: 35.999878, y: -350}
+  m_AnchoredPosition: {x: 35.999817, y: -350}
   m_SizeDelta: {x: 160, y: 30}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &509980006
@@ -18002,15 +18002,7 @@ MonoBehaviour:
   damageResultFlyText: {fileID: 1139415484}
   resolutionFont: {fileID: 11400000, guid: 67393bfc3a860b042baa08f7fbeadd93, type: 2}
   finalDamageText: {fileID: 1062330272}
-  attackIcon: {fileID: -798103099, guid: 665429b751e857e45b495c0b93b1dc94, type: 3}
-  defenseIcon: {fileID: 1441416584, guid: 665429b751e857e45b495c0b93b1dc94, type: 3}
-  healIcon: {fileID: 100031973, guid: 665429b751e857e45b495c0b93b1dc94, type: 3}
-  antiAttackIcon: {fileID: -930971434, guid: 665429b751e857e45b495c0b93b1dc94, type: 3}
-  antiHealIcon: {fileID: -229054627, guid: 665429b751e857e45b495c0b93b1dc94, type: 3}
-  fireIcon: {fileID: 1868207697, guid: 665429b751e857e45b495c0b93b1dc94, type: 3}
-  poisonIcon: {fileID: 300281893, guid: 665429b751e857e45b495c0b93b1dc94, type: 3}
-  curseIcon: {fileID: -1405520293, guid: 665429b751e857e45b495c0b93b1dc94, type: 3}
-  costIcon: {fileID: -205092788, guid: 665429b751e857e45b495c0b93b1dc94, type: 3}
+  cardEffectSourceAnchor: {fileID: 0}
   stepDuration: 1.2
   captureDelay: 0
   flyDuration: 0.7
@@ -19101,7 +19093,7 @@ MonoBehaviour:
   alarmTemplate: {fileID: 730481099}
   phaseChangeRoot: {fileID: 1229838096}
   alarmLifetimeSeconds: 3
-  alarmStackOffset: {x: 0, y: -36}
+  alarmSpacing: 12
   fallbackPhaseSeconds: 1
   animatorTriggerName: Play
 --- !u!4 &1413204848 stripped
@@ -23273,6 +23265,36 @@ MonoBehaviour:
     effectLifetime: 2
     sound: {fileID: 0}
     soundVolume: 1
+  - type: 10
+    icon: {fileID: 295584861, guid: cf91dee85318a8c4b90ba8165328b9cb, type: 3}
+    numberColor: {r: 1, g: 1, b: 1, a: 1}
+    fontStyle: 1
+    numberScale: 1
+    effectPrefab: {fileID: 7769150339427620366, guid: 1e3f7232c2945cd48842e4be6f2e2331, type: 3}
+    effectOffset: {x: 0, y: 0, z: 0}
+    effectLifetime: 1
+    sound: {fileID: 8300000, guid: 9ee7005e8fe198047b960d1ace767ef7, type: 3}
+    soundVolume: 1
+  - type: 11
+    icon: {fileID: -196926474, guid: cf91dee85318a8c4b90ba8165328b9cb, type: 3}
+    numberColor: {r: 1, g: 1, b: 1, a: 1}
+    fontStyle: 1
+    numberScale: 1
+    effectPrefab: {fileID: 2535657315554195815, guid: 3c93e32e039d54140b98b14cfe4d9f3d, type: 3}
+    effectOffset: {x: 0, y: 0, z: 0}
+    effectLifetime: 1
+    sound: {fileID: 8300000, guid: db12bca84f7866b4898fa93bd1ed192e, type: 3}
+    soundVolume: 1
+  - type: 12
+    icon: {fileID: 1441416584, guid: 665429b751e857e45b495c0b93b1dc94, type: 3}
+    numberColor: {r: 1, g: 1, b: 1, a: 1}
+    fontStyle: 1
+    numberScale: 1
+    effectPrefab: {fileID: 0}
+    effectOffset: {x: 0, y: 1, z: 0}
+    effectLifetime: 0.65
+    sound: {fileID: 0}
+    soundVolume: 1
   typeEffectRoot: {fileID: 1905723275}
 --- !u!82 &1713140601
 AudioSource:
@@ -24614,7 +24636,7 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0.5, y: 0.5}
   m_AnchorMax: {x: 0.5, y: 0.5}
-  m_AnchoredPosition: {x: -545, y: 21.99997}
+  m_AnchoredPosition: {x: -545, y: 21.999939}
   m_SizeDelta: {x: 160, y: 20}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &1850210633
@@ -29240,7 +29262,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 4074350788043758162, guid: 1698a165b3671d943ab1f118a9db0a5d, type: 3}
       propertyPath: m_Pivot.y
-      value: 1
+      value: 0.5
       objectReference: {fileID: 0}
     - target: {fileID: 4074350788043758162, guid: 1698a165b3671d943ab1f118a9db0a5d, type: 3}
       propertyPath: m_AnchorMax.x
@@ -29248,7 +29270,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 4074350788043758162, guid: 1698a165b3671d943ab1f118a9db0a5d, type: 3}
       propertyPath: m_AnchorMax.y
-      value: 1
+      value: 0.5
       objectReference: {fileID: 0}
     - target: {fileID: 4074350788043758162, guid: 1698a165b3671d943ab1f118a9db0a5d, type: 3}
       propertyPath: m_AnchorMin.x
@@ -29256,7 +29278,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 4074350788043758162, guid: 1698a165b3671d943ab1f118a9db0a5d, type: 3}
       propertyPath: m_AnchorMin.y
-      value: 1
+      value: 0.5
       objectReference: {fileID: 0}
     - target: {fileID: 4074350788043758162, guid: 1698a165b3671d943ab1f118a9db0a5d, type: 3}
       propertyPath: m_SizeDelta.x
@@ -29300,7 +29322,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 4074350788043758162, guid: 1698a165b3671d943ab1f118a9db0a5d, type: 3}
       propertyPath: m_AnchoredPosition.y
-      value: -200
+      value: 200
       objectReference: {fileID: 0}
     - target: {fileID: 4074350788043758162, guid: 1698a165b3671d943ab1f118a9db0a5d, type: 3}
       propertyPath: m_LocalEulerAnglesHint.x

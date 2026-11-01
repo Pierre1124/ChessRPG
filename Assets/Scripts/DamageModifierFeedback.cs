@@ -1,6 +1,6 @@
-using UnityEngine;
+﻿using UnityEngine;
 
-/// <summary>以實際傷害增減判斷呈現；易傷雖屬承傷階段，仍播放傷害上升。</summary>
+/// <summary>依來源、攻守角色與箭頭方向呈現修正，不改變傷害計算。</summary>
 [CreateAssetMenu(menuName = "Chess RPG/Damage Modifier Feedback")]
 public sealed class DamageModifierFeedback : ScriptableObject
 {
@@ -9,9 +9,6 @@ public sealed class DamageModifierFeedback : ScriptableObject
     public Sprite defenseIcon;
     public Sprite arrowUp;
     public Sprite arrowDown;
-    public AudioClip increaseSound;
-    public AudioClip decreaseSound;
-    [Range(0, 1)] public float volume = 1f;
     private static DamageModifierFeedback cached;
     public static DamageModifierFeedback Settings => cached != null ? cached :
         (cached = Resources.Load<DamageModifierFeedback>("DamageModifierFeedback"));
@@ -26,15 +23,29 @@ public sealed class DamageModifierFeedback : ScriptableObject
     public static bool IsDefense(DamageCalculationStep step) => step.side == DamageStepSide.Defense || step.countingIcon == DamageCountingIcon.Defense;
     public static bool PointsUp(DamageCalculationStep step) => IsDefense(step) ? step.contribution < 0 : step.contribution > 0;
     public static Piece Recipient(DamageCalculationStep step, DamageCalculationSequence sequence) =>
-        IsDefense(step) ? sequence.target : sequence.attacker != null ? sequence.attacker : sequence.damageContext?.source;
-    public Sprite Symbol(DamageCalculationStep step, DamageCalculationSequence sequence)
+        step.iconPiece != null ? step.iconPiece : IsDefense(step) ? sequence.target : sequence.attacker != null ? sequence.attacker : sequence.damageContext?.source;
+    public static Piece ActivationSource(DamageContext context) => context.sourceStatus?.owner != null ? context.sourceStatus.owner : context.source;
+    public static bool IsTargetPresentation(DamageCalculationStep step, DamageCalculationSequence sequence) =>
+        IsDefense(step) || (sequence.presentationOnly && step.modifierPhase != DamageModifierPhase.Activation);
+    public Sprite Symbol(DamageCalculationStep step, DamageCalculationSequence sequence) => StyleSymbol(step);
+    public static Sprite StyleSymbol(DamageCalculationStep step) => BattleFeedback.GetStyle(IsDefense(step) ? BattlePresentationType.Defense : SymbolType(step))?.icon;
+    public static BattlePresentationType SymbolType(DamageCalculationStep step) =>
+        BattlePresentationStyle.Resolve(new DamageCalculationSequence { presentationTags = step.modifierTags });
+    public static BattlePresentationType PresentationType(DamageCalculationStep step) => PointsUp(step) ? BattlePresentationType.ModifierUp : BattlePresentationType.ModifierDown;
+    public static float Play(DamageCalculationStep step, Vector3 position, bool playSound)
     {
-        if (IsDefense(step)) return defenseIcon;
-        var type = BattlePresentationStyle.Resolve(sequence);
-        return type != BattlePresentationType.Neutral ? BattleFeedback.GetStyle(type)?.icon ?? increaseIcon : increaseIcon;
+        var type = PresentationType(step);
+        BattleFeedback.PlayType(type, position, playSound);
+        var style = BattleFeedback.GetStyle(type);
+        return style != null && style.effectPrefab != null ? style.effectLifetime : 0f;
     }
-    public AudioClip Sound(DamageCalculationStep step) => PointsUp(step) ? increaseSound : decreaseSound;
-    public void PlaySound(DamageCalculationStep step) => BattleFeedback.PlayClip(Sound(step), volume);
+    public static int Stage(DamageCalculationStep step)
+    {
+        if (step.modifierPhase == DamageModifierPhase.Activation) return 0;
+        if (step.modifierPhase == DamageModifierPhase.None) return -1;
+        if (IsDefense(step)) return step.contribution > 0 ? 4 : 2;
+        return step.contribution < 0 ? 3 : 1;
+    }
 }
 
 public static class CardPresentationPolicy
@@ -53,7 +64,6 @@ public static class CardPresentationPolicy
         {
             if (status == null) continue;
             status.triggerEffectPrefab = null;
-            if (card.cardType != CardType.JobChange) status.idleEffectPrefab = null;
             status.triggerSound = null;
         }
     }

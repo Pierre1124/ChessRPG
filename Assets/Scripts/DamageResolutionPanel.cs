@@ -1,4 +1,4 @@
-using TMPro;
+﻿using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
 
@@ -77,6 +77,14 @@ public sealed class DamageResolutionPanel : MonoBehaviour
         LateUpdate();
     }
 
+    public void ShowSourceAt(DamageCalculationStep step, Sprite sprite, int stack, Transform owner, Vector3 position)
+    {
+        ShowSource(step, sprite, stack);
+        anchor = position;
+        AttachToPiece(owner);
+        LateUpdate();
+    }
+
     public void ConfigureModifierArrow()
     {
         if (modifierArrow != null) return;
@@ -86,18 +94,18 @@ public sealed class DamageResolutionPanel : MonoBehaviour
         modifierArrow.gameObject.SetActive(false);
     }
 
-    public void ShowModifier(DamageCalculationStep step, DamageCalculationSequence value, DamageModifierFeedback settings, int stack, Transform sourceOverride = null)
+    public void ShowModifier(DamageCalculationStep step, DamageCalculationSequence value, DamageModifierFeedback settings, int stack, Transform sourceOverride = null, bool resolvedAnchor = false)
     {
         Piece recipient = DamageModifierFeedback.Recipient(step, value);
         // Never fall back to the aura/status owner for a modifier on another combatant.
-        ShowSource(step, settings.Symbol(step, value), stack);
-        Transform owner = sourceOverride != null ? sourceOverride : recipient != null ? recipient.transform : null;
-        anchor = owner != null ? owner.position : value.resultStartWorldPosition;
+        ShowSource(step, DamageModifierFeedback.StyleSymbol(step), stack);
+        Transform owner = resolvedAnchor ? sourceOverride : sourceOverride != null ? sourceOverride : recipient != null ? recipient.transform : null;
+        anchor = owner != null ? owner.position : resolvedAnchor ? Vector3.zero : value.resultStartWorldPosition;
         AttachToPiece(owner);
         icon.rectTransform.anchoredPosition = new Vector2(-14, 0);
         ConfigureModifierArrow();
         bool up = DamageModifierFeedback.PointsUp(step);
-        modifierArrow.sprite = up ? settings.arrowUp : settings.arrowDown;
+        modifierArrow.sprite = BattleFeedback.GetStyle(DamageModifierFeedback.PresentationType(step))?.icon;
         modifierArrow.rectTransform.localRotation = Quaternion.Euler(0, 0, up ? 0 : 180);
         modifierArrow.gameObject.SetActive(modifierArrow.sprite != null);
         LateUpdate();

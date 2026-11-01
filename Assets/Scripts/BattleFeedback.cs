@@ -1,4 +1,4 @@
-using UnityEngine;
+﻿using UnityEngine;
 
 public enum CommonBattleSound { CardUse, Damage, Heal, Draw, Recycle }
 
@@ -32,17 +32,40 @@ public sealed class BattleFeedback : MonoBehaviour
     }
 
     /// <summary>於演出時播放類型回饋；不在數值試算或網路同步時重複觸發。</summary>
-    public static void PlayType(BattlePresentationType type, Vector3 position)
+    public static void PlayType(BattlePresentationType type, Vector3 position, bool playSound = true)
     {
         var style = GetStyle(type);
         if (style == null) return;
-        PlayClip(style.sound, style.soundVolume);
+        if (playSound) PlayClip(style.sound, style.soundVolume);
         if (style.effectPrefab == null) return;
-        var effect = Instantiate(style.effectPrefab, position + style.effectOffset, Quaternion.identity);
-        effect.transform.SetParent(instance.typeEffectRoot != null ? instance.typeEffectRoot : instance.transform, true);
-        effect.SetActive(true);
+        var effect = CreateTypeEffect(style, position, instance.typeEffectRoot != null ? instance.typeEffectRoot : instance.transform);
         instance.typeEffects.Add(effect);
         instance.StartCoroutine(instance.RemoveTypeEffect(effect, style.effectLifetime));
+    }
+
+    internal static GameObject CreateTypeEffect(BattlePresentationStyle style, Vector3 position, Transform parent)
+    {
+        // Keep the world anchor outside the animated hierarchy. Imported animation clips
+        // may key the prefab root position back to zero on their first update.
+        var effect = new GameObject(style.effectPrefab.name + " Playback");
+        effect.transform.position = position + style.effectOffset;
+        // These are world-space meshes, not Canvas content. A Canvas can start at zero
+        // scale or resize after parenting, making otherwise valid effects invisible.
+        if (parent != null && (parent.GetComponentInParent<Canvas>() != null ||
+            Mathf.Abs(parent.lossyScale.x * parent.lossyScale.y * parent.lossyScale.z) < .000001f))
+            parent = null;
+        effect.transform.SetParent(parent, true);
+        var visual = Instantiate(style.effectPrefab, effect.transform, false);
+        visual.transform.localPosition = Vector3.zero;
+        visual.transform.localRotation = style.effectPrefab.transform.rotation;
+        effect.SetActive(true);
+        visual.SetActive(true);
+        foreach (var animator in effect.GetComponentsInChildren<Animator>(true))
+        {
+            animator.updateMode = AnimatorUpdateMode.UnscaledTime;
+            animator.cullingMode = AnimatorCullingMode.AlwaysAnimate;
+        }
+        return effect;
     }
 
     /// <summary>使用真實時間清除一次性特效，暫停不延長其壽命。</summary>
@@ -117,9 +140,13 @@ public sealed class BattleFeedback : MonoBehaviour
     }
 
     /// <summary>狀態套用後建立一份待機 Prefab，生命週期由狀態及棋子共同管理。</summary>
+    public static bool ShouldShowStatusIdle(StatusRuntime status) => status?.definition != null &&
+        status.HasCharges && (status.definition.durationTurns <= 0 || status.remainingTurns > 0);
+
     public static void StartStatusIdle(StatusRuntime status)
     {
-        if (status?.owner == null || status.definition?.idleEffectPrefab == null || status.idleEffectInstance != null) return;
+        if (!ShouldShowStatusIdle(status)) { StopStatusIdle(status); return; }
+        if (status.owner == null || status.definition.idleEffectPrefab == null || status.idleEffectInstance != null) return;
         status.idleEffectInstance = Instantiate(status.definition.idleEffectPrefab, status.owner.transform, false);
         status.idleEffectInstance.transform.localPosition = status.definition.effectOffset;
         status.idleEffectInstance.SetActive(true);

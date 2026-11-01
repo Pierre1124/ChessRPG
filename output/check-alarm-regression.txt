@@ -1,0 +1,17 @@
+PASS: Fourth alarm removes oldest immediately; only three remain
+PASS: Newest message is at bottom of stack
+PASS: Newest alarm preserves template position
+PASS: Alarms preserve template dimensions, pivot and anchors
+PASS: Older alarm moves upward by exactly 50 0
+PASS: Older alarm moves upward by exactly 50 1
+PASS: Alarms do not block board clicks
+PASS: Expired alarm is removed and remaining rows reflow
+PASS: New alarm starts transparent
+PASS: Fade-in and upward motion interpolate smoothly
+PASS: Animation ends at exact Y plus 50
+PASS: Fade-out interpolates transparency
+PASS: Fade-out completes without changing template format
+PASS: Checked king has red base marker
+PASS: Marker follows king instead of staying on old square
+PASS: Resolving check hides marker
+PASS: Check status no longer creates operation alarm
