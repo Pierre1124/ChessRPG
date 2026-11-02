@@ -53,6 +53,11 @@ public sealed class HandCardPreview : MonoBehaviour, IPointerClickHandler
         cardRect.anchoredPosition = new Vector2(20, 0);
     }
 
+    public static void CloseCurrent()
+    {
+        if (current != null) Hide(current.owner);
+    }
+
     public static void ReleaseHover(CardDragHandler source)
     { if (current != null && current.owner == source && !current.pinned) current.hideAt = Time.unscaledTime + .25f; }
     public static void Hide(CardDragHandler source)

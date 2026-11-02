@@ -2994,6 +2994,8 @@ MonoBehaviour:
     numberScale: 1
     effectPrefab: {fileID: 0}
     effectOffset: {x: 0, y: 1, z: 0}
+    effectScale: 0.25
+    effectPlaybackSpeed: 0.5
     effectLifetime: 0.65
     sound: {fileID: 8300000, guid: cfd5b47d51ebcf1408b4b2389916fa59, type: 3}
     soundVolume: 1
@@ -3004,6 +3006,8 @@ MonoBehaviour:
     numberScale: 1
     effectPrefab: {fileID: 0}
     effectOffset: {x: 0, y: 1, z: 0}
+    effectScale: 0.25
+    effectPlaybackSpeed: 0.5
     effectLifetime: 0.65
     sound: {fileID: 8300000, guid: db12bca84f7866b4898fa93bd1ed192e, type: 3}
     soundVolume: 1

@@ -1,3 +1,8 @@
+PASS: Collapsed hand starts with its card row active and the tab outside the layout
+PASS: Visible tab is anchored to the collapsed panel's top right
+PASS: Pressing the tab expands the panel with cards active
+PASS: Tab moves with the top edge of the expanded panel
+PASS: Collapsing keeps both the card row and the tab active
 PASS: Saved hand prefab opens large reading preview
 PASS: Preview cannot drag or play a copied card
 PASS: Preview does not duplicate hover hints

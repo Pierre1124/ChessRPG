@@ -3,13 +3,17 @@ using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.EventSystems;
 using UnityEngine.InputSystem;
+using UnityEngine.UI;
+using TMPro;
 
-public class HandCardToggle : MonoBehaviour, IPointerClickHandler
+public class HandCardToggle : MonoBehaviour
 {
     private const string StateName = "HandCardUp";
     private const float AnimationDuration = 0.5f;
 
     [SerializeField] private Animator animator;
+    [SerializeField] private Button toggleButton;
+    [SerializeField] private TMP_Text toggleLabel;
 
     private bool isExpanded;
     private bool isInitialized;
@@ -32,6 +36,8 @@ public class HandCardToggle : MonoBehaviour, IPointerClickHandler
         }
 
         Initialize(animator);
+        toggleButton.onClick.AddListener(Toggle);
+        UpdateToggleLabel();
     }
 
     /// <summary>
@@ -73,22 +79,16 @@ public class HandCardToggle : MonoBehaviour, IPointerClickHandler
     }
 
     /// <summary>
-    /// 回應手牌區點擊並切換展開狀態。
+    /// 顯示下次點擊時的動作。
     /// </summary>
-    public void OnPointerClick(PointerEventData eventData)
+    private void UpdateToggleLabel()
     {
-        if (eventData.button != PointerEventData.InputButton.Left || CardDragHandler.BlocksBoardInput)
-        {
-            return;
-        }
-
-        Toggle();
+        toggleLabel.text = isExpanded ? "收合手牌" : "展開手牌";
     }
 
     /// <summary>
-    /// 將手牌區收合。
+    /// 判斷游標是否仍在手牌區。
     /// </summary>
-    public void Expand() => SetExpanded(true);
     public bool ContainsPointer(Vector2 position) => IsPointerInsideHandCard(position);
 
     public void Collapse()
@@ -99,9 +99,9 @@ public class HandCardToggle : MonoBehaviour, IPointerClickHandler
     /// <summary>
     /// 切換手牌區的展開與收合狀態。
     /// </summary>
-    public void Toggle()
+    private void Toggle()
     {
-        SetExpanded(!isExpanded);
+        if (!CardDragHandler.BlocksBoardInput) SetExpanded(!isExpanded);
     }
 
     /// <summary>
@@ -120,6 +120,7 @@ public class HandCardToggle : MonoBehaviour, IPointerClickHandler
         }
 
         isExpanded = expanded;
+        UpdateToggleLabel();
 
         if (animationRoutine != null)
         {

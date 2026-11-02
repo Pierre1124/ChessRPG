@@ -37,7 +37,7 @@ public sealed class DamageModifierFeedback : ScriptableObject
         var type = PresentationType(step);
         BattleFeedback.PlayType(type, position, playSound);
         var style = BattleFeedback.GetStyle(type);
-        return style != null && style.effectPrefab != null ? style.effectLifetime : 0f;
+        return style != null && style.effectPrefab != null ? style.PlaybackLifetime : 0f;
     }
     public static int Stage(DamageCalculationStep step)
     {

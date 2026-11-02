@@ -40,7 +40,7 @@ public sealed class BattleFeedback : MonoBehaviour
         if (style.effectPrefab == null) return;
         var effect = CreateTypeEffect(style, position, instance.typeEffectRoot != null ? instance.typeEffectRoot : instance.transform);
         instance.typeEffects.Add(effect);
-        instance.StartCoroutine(instance.RemoveTypeEffect(effect, style.effectLifetime));
+        instance.StartCoroutine(instance.RemoveTypeEffect(effect, style.PlaybackLifetime));
     }
 
     internal static GameObject CreateTypeEffect(BattlePresentationStyle style, Vector3 position, Transform parent)
@@ -55,6 +55,7 @@ public sealed class BattleFeedback : MonoBehaviour
             Mathf.Abs(parent.lossyScale.x * parent.lossyScale.y * parent.lossyScale.z) < .000001f))
             parent = null;
         effect.transform.SetParent(parent, true);
+        effect.transform.localScale *= style.effectScale;
         var visual = Instantiate(style.effectPrefab, effect.transform, false);
         visual.transform.localPosition = Vector3.zero;
         visual.transform.localRotation = style.effectPrefab.transform.rotation;
@@ -64,6 +65,7 @@ public sealed class BattleFeedback : MonoBehaviour
         {
             animator.updateMode = AnimatorUpdateMode.UnscaledTime;
             animator.cullingMode = AnimatorCullingMode.AlwaysAnimate;
+            animator.speed *= style.effectPlaybackSpeed;
         }
         return effect;
     }

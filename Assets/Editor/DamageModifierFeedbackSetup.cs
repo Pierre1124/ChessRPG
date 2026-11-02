@@ -106,6 +106,7 @@ public static class DamageModifierFeedbackSetup
                     {
                         var mageObject = new GameObject("Source fixture");
                         var victimObject = new GameObject("Target fixture");
+                        var maryObject = new GameObject("Bloody Mary fixture");
                         try
                         {
                             var mage = mageObject.AddComponent<Pawn>(); var victim = victimObject.AddComponent<Pawn>();
@@ -113,6 +114,17 @@ public static class DamageModifierFeedbackSetup
                             var sequence = new DamageCalculationSequence { attacker = mage, target = victim };
                             var step = new DamageCalculationStep { modifierPhase = DamageModifierPhase.Activation, iconPiece = mage };
                             Check((Transform)resolve.Invoke(visualizer, new object[] { step, sequence, new CardDefinition { id = "J07", cardType = CardType.JobChange } }) == mage.transform, "Mage activation uses explicit source piece");
+                            var mary = maryObject.AddComponent<Queen>();
+                            var maryCard = Resources.Load<CardAsset>("Cards/J09").CreateDefinition();
+                            var bonus = new DamageCalculationStep { modifierPhase = DamageModifierPhase.Increase,
+                                iconPiece = mary, sourceCardId = maryCard.id, icon = maryCard.skillImage,
+                                hasContribution = true, contribution = maryCard.friendlyDamageBonus, countingIcon = DamageCountingIcon.Attack };
+                            var statusOwner = (Transform)resolve.Invoke(visualizer, new object[] { bonus, sequence, maryCard });
+                            var resolveRecipient = typeof(DamageCalculationVisualizer).GetMethod("ResolveModifierRecipient",
+                                System.Reflection.BindingFlags.Static | System.Reflection.BindingFlags.NonPublic);
+                            Check(statusOwner == mary.transform && bonus.icon != null && bonus.contribution > 0 &&
+                                (Transform)resolveRecipient.Invoke(null, new object[] { bonus, sequence, maryCard, statusOwner }) == mage.transform,
+                                "J09 status belongs to Bloody Mary; the capturing pawn receives the increase effect");
                             foreach (string statusCardId in new[] { "E05", "E09" })
                             {
                                 var statusCard = Resources.LoadAll<CardAsset>("Cards").Single(a => a.definition.id == statusCardId).CreateDefinition();
@@ -138,7 +150,7 @@ public static class DamageModifierFeedbackSetup
                             sequence.presentationOnly = true; step.modifierPhase = DamageModifierPhase.Increase;
                             Check((Transform)resolve.Invoke(visualizer, new object[] { step, sequence, new CardDefinition { id = "F09", cardType = CardType.Field } }) == victim.transform, "Black Market gain uses recipient even though source is field");
                         }
-                        finally { UnityEngine.Object.DestroyImmediate(mageObject); UnityEngine.Object.DestroyImmediate(victimObject); }
+                        finally { UnityEngine.Object.DestroyImmediate(mageObject); UnityEngine.Object.DestroyImmediate(victimObject); UnityEngine.Object.DestroyImmediate(maryObject); }
                     }
                     Check(up.sound != null && down.sound != null && up.sound != down.sound && up.icon != null && down.icon != null,
                         scenePath + " Presentation Styles contains both shared arrow styles");
@@ -168,17 +180,23 @@ public static class DamageModifierFeedbackSetup
                             var arrows = effect.GetComponentsInChildren<Transform>(true).Where(t => t.name.Contains("_Arrow_")).ToArray();
                             if (animator != null && arrows.Length > 0)
                             {
-                                animator.Rebind(); animator.Update(0); animator.Update(.25f);
+                                Check(Vector3.Distance(effect.transform.lossyScale, Vector3.one * style.effectScale) < .001f &&
+                                    Mathf.Approximately(animator.speed, style.effectPlaybackSpeed) &&
+                                    Mathf.Approximately(style.PlaybackLifetime * animator.speed, style.effectLifetime),
+                                    style.type + " honors the configured size, speed and playback lifetime");
+                                animator.Rebind(); animator.Update(0); animator.Update(.25f / animator.speed);
                                 var positions = arrows.Select(t => t.position.y).ToArray();
                                 Check(arrows.All(t => t.localScale.sqrMagnitude > .001f), style.type + " spawned arrows become visible");
                                 var renderers = effect.GetComponentsInChildren<Renderer>();
                                 var bounds = renderers[0].bounds;
                                 foreach (var renderer in renderers) bounds.Encapsulate(renderer.bounds);
+                                Check(Mathf.Max(bounds.size.x, bounds.size.z) < .84f,
+                                    style.type + " arrow cluster fits inside the .84-unit idle aura diameter");
                                 results.Add("INFO: " + style.type + " bounds=" + bounds + " scale=" + effect.transform.lossyScale + " rotation=" + effect.transform.eulerAngles);
-                                animator.Update(.45f);
+                                animator.Update(.45f / animator.speed);
                                 Check(Vector3.Distance(effect.transform.position, anchorPosition + style.effectOffset) < .01f, style.type + " animation cannot reset world anchor");
                                 Check(arrows.All(t => Mathf.Abs(t.position.x - anchorPosition.x - style.effectOffset.x) < 3f && Mathf.Abs(t.position.z - anchorPosition.z - style.effectOffset.z) < 3f), style.type + " animated arrows remain at requested source instead of board origin");
-                                Check(arrows.Select((t, i) => style.type == BattlePresentationType.ModifierUp ? t.position.y > positions[i] + .1f : t.position.y < positions[i] - .1f).All(v => v), style.type + " spawned arrows move vertically in correct direction");
+                                Check(arrows.Select((t, i) => style.type == BattlePresentationType.ModifierUp ? t.position.y > positions[i] + .1f * style.effectScale : t.position.y < positions[i] - .1f * style.effectScale).All(v => v), style.type + " spawned arrows move vertically in correct direction");
                             }
                         }
                         finally { UnityEngine.Object.DestroyImmediate(effect); }

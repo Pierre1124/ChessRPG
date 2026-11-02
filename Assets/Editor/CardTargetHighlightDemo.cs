@@ -85,8 +85,6 @@ public static class CardTargetHighlightDemo
         field.SetValue(hand, 3);
         try { hand.SetDeckForPlayerAsAuthority(true, "J01,E01,F01", true); }
         finally { field.SetValue(hand, previous); }
-        HandCardToggle toggle = Object.FindFirstObjectByType<HandCardToggle>();
-        if (toggle != null && !toggle.IsExpanded) toggle.Toggle();
     }
 
     /// <summary>使用現有卡面與預製物呈現兩張可用手牌及一張普通手牌的視覺對照。</summary>

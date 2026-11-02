@@ -15,7 +15,10 @@ public sealed class BattlePresentationStyle
     [Range(.5f, 2f)] public float numberScale = 1f;
     public GameObject effectPrefab;
     public Vector3 effectOffset = new Vector3(0, 1, 0);
+    [Min(.01f)] public float effectScale = 1f;
+    [Min(.01f)] public float effectPlaybackSpeed = 1f;
     [Min(.05f)] public float effectLifetime = 2f;
+    public float PlaybackLifetime => effectLifetime / Mathf.Max(.01f, effectPlaybackSpeed);
     public AudioClip sound;
     [Range(0, 1)] public float soundVolume = 1f;
 

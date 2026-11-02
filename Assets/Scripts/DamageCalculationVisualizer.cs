@@ -407,6 +407,7 @@ public class DamageCalculationVisualizer : MonoBehaviour
         float duration = Mathf.Max(0.05f, stepDuration);
         var playedModifierSounds = new HashSet<int>();
         var shownModifiers = new HashSet<string>();
+        var shownSourceStatuses = new HashSet<string>();
         var modifierStacks = new Dictionary<Vector3, int>();
         foreach (var sequence in sequences)
         {
@@ -429,15 +430,27 @@ public class DamageCalculationVisualizer : MonoBehaviour
                 var type = modifier ? DamageModifierFeedback.PresentationType(step) :
                     step.countingIcon == DamageCountingIcon.AntiHeal ? BattlePresentationType.AntiHeal : BattlePresentationType.Trigger;
                 string key = position + ":" + step.sourceCardId + ":" + step.title + ":" + type + ":" + step.modifierTags;
-                if (!shownModifiers.Add(key)) continue;
-                modifierStacks.TryGetValue(position, out int visibleStack);
-                modifierStacks[position] = visibleStack + 1;
+                Transform recipient = modifier ? ResolveModifierRecipient(step, sequence, card, owner) : owner;
+                Vector3 effectPosition = recipient != null ? recipient.position : position;
+                if (!shownModifiers.Add(key + ":" + effectPosition)) continue;
+                if (recipient != owner && owner != null && shownSourceStatuses.Add(key))
+                {
+                    Sprite status = step.icon != null ? step.icon : card?.skillImage;
+                    if (status != null)
+                    {
+                        modifierStacks.TryGetValue(position, out int sourceStack);
+                        modifierStacks[position] = sourceStack + 1;
+                        GetResolutionPanel(VisibleModifierCount++).ShowSourceAt(step, status, sourceStack, owner, position);
+                    }
+                }
+                modifierStacks.TryGetValue(effectPosition, out int visibleStack);
+                modifierStacks[effectPosition] = visibleStack + 1;
                 var panel = GetResolutionPanel(VisibleModifierCount++);
-                if (modifier) panel.ShowModifier(step, sequence, null, visibleStack, owner, true);
+                if (modifier) panel.ShowModifier(step, sequence, null, visibleStack, recipient, true);
                 else panel.ShowSourceAt(step, BattleFeedback.GetStyle(sequence.presentationOnly ? BattlePresentationType.Neutral : BattlePresentationStyle.Resolve(sequence))?.icon, visibleStack, owner, position);
                 var style = BattleFeedback.GetStyle(type);
-                BattleFeedback.PlayType(type, position, playedModifierSounds.Add((int)type));
-                if (style?.effectPrefab != null) duration = Mathf.Max(duration, style.effectLifetime);
+                BattleFeedback.PlayType(type, effectPosition, playedModifierSounds.Add((int)type));
+                if (style?.effectPrefab != null) duration = Mathf.Max(duration, style.PlaybackLifetime);
 
             }
         }
@@ -448,6 +461,16 @@ public class DamageCalculationVisualizer : MonoBehaviour
         round++;
         } while (hasNext);
         CurrentModifierPhase = DamageModifierPhase.None;
+    }
+
+    // A piece supplying an attack modifier shows its status. The attacking piece gets the arrow.
+    internal static Transform ResolveModifierRecipient(DamageCalculationStep step, DamageCalculationSequence sequence,
+        CardDefinition card, Transform source)
+    {
+        if (step.iconPiece != null && source == step.iconPiece.transform && sequence.attacker != null &&
+            card?.cardType != CardType.Field && !DamageModifierFeedback.IsTargetPresentation(step, sequence))
+            return sequence.attacker.transform;
+        return source;
     }
 
     // Source cues never borrow the victim position. Target modifiers (including Black Market)

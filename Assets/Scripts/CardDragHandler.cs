@@ -21,6 +21,7 @@ public class CardDragHandler : MonoBehaviour,
     private bool isDragging;
     private CardGlowGraphic playableGlow;
     private CardTargetFeedback targetFeedback;
+    private GameObject clickSurface;
     private PointerEventData lastPointer;
     private bool dragWhiteTurn;
     private Coroutine returnRoutine;
@@ -30,7 +31,7 @@ public class CardDragHandler : MonoBehaviour,
     private static int consumedFrame = -1;
     public static bool BlocksBoardInput => selected != null || dragging != null || consumedFrame == Time.frameCount;
     private HandCardToggle handToggle;
-    private bool wasExpanded, collapsedForDrag, hovered;
+    private bool collapsedForDrag, hovered;
     private float hoverAt;
     private int selectedFrame;
     public bool IsSelected => selected == this;
@@ -41,19 +42,19 @@ public class CardDragHandler : MonoBehaviour,
     public void OnPointerClick(PointerEventData data)
     {
         if (data.button != PointerEventData.InputButton.Left || data.dragging || isDragging || returnRoutine != null || handManager == null) return;
-        if (selected == this) { CancelSelection(); return; }
-        selected?.CancelSelection();
-        HandCardPreview.Show(this, true);
-        string reason = handManager.GetCardUnavailableReason(cardDefinition);
-        if (reason != null) { GameFlowUI.Show(reason); return; }
+        if (BlocksBoardInput || !handManager.TryBeginCardDrag()) return;
         selected = this; selectedFrame = Time.frameCount; consumedFrame = Time.frameCount;
-        handToggle = GetComponentInParent<HandCardToggle>();
-        wasExpanded = handToggle != null && handToggle.IsExpanded;
-        handToggle?.Expand();
-        dragWhiteTurn = handManager.IsWhiteCardTurn;
-        targetFeedback = CardTargetFeedback.Create(handManager, cardDefinition, GetComponentInChildren<TMPro.TMP_Text>(true)?.font);
+        PickUp(data);
         targetFeedback.ClickMode = true;
-        GameFlowUI.Show("已選取「" + cardDefinition.cardName + "」：點擊亮起的目標，右鍵 / Esc 取消");
+        // 第二次點擊只負責放牌，避免同時按到下方的抽牌、結束回合或關鍵字。
+        clickSurface = new GameObject("Place held card", typeof(RectTransform), typeof(UnityEngine.UI.Image));
+        var surface = (RectTransform)clickSurface.transform;
+        surface.SetParent(handManager.CardGameUiRoot, false);
+        surface.anchorMin = Vector2.zero;
+        surface.anchorMax = Vector2.one;
+        surface.offsetMin = surface.offsetMax = Vector2.zero;
+        clickSurface.GetComponent<UnityEngine.UI.Image>().color = Color.clear;
+        targetFeedback.ClickSurface = clickSurface;
         data.Use();
     }
 
@@ -63,13 +64,27 @@ public class CardDragHandler : MonoBehaviour,
         selected = null; consumedFrame = Time.frameCount;
         hovered = false;
         ClearTargetFeedback();
-        if (wasExpanded) handToggle?.Expand(); else handToggle?.Collapse();
+        RestoreToHand();
         HandCardPreview.Hide(this);
+    }
+
+    internal static void ReleaseBeforeHandRebuild(CardHandManager manager)
+    {
+        if (selected != null && selected.handManager == manager) selected.CancelSelection();
+        if (dragging != null && dragging.handManager == manager)
+        {
+            var card = dragging;
+            dragging = null;
+            consumedFrame = Time.frameCount;
+            card.isDragging = false;
+            card.ClearTargetFeedback();
+            card.RestoreToHand();
+        }
     }
 
     private void Update()
     {
-        if (hovered && !isDragging && selected == null && Time.unscaledTime >= hoverAt && !CardKeywordPopup.IsOpen)
+        if (hovered && !BlocksBoardInput && returnRoutine == null && Time.unscaledTime >= hoverAt && !CardKeywordPopup.IsOpen)
             HandCardPreview.Show(this, false);
         if (selected != this || Mouse.current == null) return;
         if (CardKeywordPopup.IsOpen) return;
@@ -77,21 +92,12 @@ public class CardDragHandler : MonoBehaviour,
             Mouse.current.rightButton.wasPressedThisFrame || (Keyboard.current != null && Keyboard.current.escapeKey.wasPressedThisFrame))
         { CancelSelection(); return; }
         var pointer = new PointerEventData(EventSystem.current) { position = Mouse.current.position.ReadValue() };
+        FollowPointer(pointer);
         targetFeedback?.ShowAt(pointer);
-        if (Time.frameCount == selectedFrame || !Mouse.current.leftButton.wasPressedThisFrame) return;
-        var hits = new System.Collections.Generic.List<RaycastResult>();
-        EventSystem.current?.RaycastAll(pointer, hits);
-        if (hits.Count > 0) return; // Card switching, keywords and buttons own their own gestures.
+        if (Time.frameCount == selectedFrame || !Mouse.current.leftButton.wasReleasedThisFrame) return;
         consumedFrame = Time.frameCount;
-        string rejection = GetDropRejection(pointer);
-        if (rejection != null) { GameFlowUI.Show(rejection); CancelSelection(); return; }
-        bool accepted = cardDefinition.cardType == CardType.Field ? TryDropFieldCard(pointer) : handManager.TryApplyCardToPiece(cardDefinition, pointer.position);
-        if (accepted)
-        {
-            selected = null; ClearTargetFeedback(); HandCardPreview.Hide(this); handToggle?.Collapse();
-            handManager.PlayUsingCardAnimation(cardDefinition, gameObject);
-        }
-        else { GameFlowUI.Show("出牌未成功，已取消選取"); CancelSelection(); }
+        selected = null;
+        ResolveDrop(pointer);
     }
 
     /// <summary>
@@ -127,11 +133,17 @@ public class CardDragHandler : MonoBehaviour,
             return;
         }
 
-        if (isDragging || returnRoutine != null || eventData.button != PointerEventData.InputButton.Left ||
+        if (BlocksBoardInput || returnRoutine != null || eventData.button != PointerEventData.InputButton.Left ||
             !handManager.TryBeginCardDrag()) return;
-        selected?.CancelSelection();
-        HandCardPreview.Hide(this);
+        eventData.eligibleForClick = false;
         isDragging = true; dragging = this; consumedFrame = Time.frameCount;
+        PickUp(eventData);
+    }
+
+    private void PickUp(PointerEventData eventData)
+    {
+        hovered = false;
+        HandCardPreview.CloseCurrent();
         GetComponent<CardUnavailableHint>()?.Dismiss();
         dragWhiteTurn = handManager.IsWhiteCardTurn;
 
@@ -143,14 +155,13 @@ public class CardDragHandler : MonoBehaviour,
         originalAlpha = canvasGroup != null ? canvasGroup.alpha : 1f;
 
         handToggle = transform.GetComponentInParent<HandCardToggle>();
-        wasExpanded = handToggle != null && handToggle.IsExpanded;
         collapsedForDrag = false;
 
         transform.SetParent(handManager.CardGameUiRoot, true);
         transform.SetAsLastSibling();
 
         rectTransform.pivot = new Vector2(0f, 1f);
-        rectTransform.position = eventData.position;
+        FollowPointer(eventData);
         transform.localScale = originalScale * 0.5f;
 
         if (canvasGroup != null)
@@ -172,11 +183,19 @@ public class CardDragHandler : MonoBehaviour,
     {
         if (isDragging && rectTransform != null)
         {
-            rectTransform.position = eventData.position;
+            FollowPointer(eventData);
             lastPointer = eventData;
             if (!collapsedForDrag && handToggle != null && !handToggle.ContainsPointer(eventData.position))
             { handToggle.Collapse(); collapsedForDrag = true; }
         }
+    }
+
+    private void FollowPointer(PointerEventData pointer)
+    {
+        var canvas = handManager.CardGameUiRoot.GetComponentInParent<Canvas>().rootCanvas;
+        var camera = canvas.renderMode == RenderMode.ScreenSpaceOverlay ? null : canvas.worldCamera;
+        if (RectTransformUtility.ScreenPointToWorldPointInRectangle((RectTransform)rectTransform.parent,
+            pointer.position, camera, out var position)) rectTransform.position = position;
     }
 
     /// <summary>
@@ -187,12 +206,12 @@ public class CardDragHandler : MonoBehaviour,
         // Unity 仍可能對被拒絕的拖曳送出後續事件，不能因此移動或使用卡片。
         if (!isDragging) return;
         isDragging = false; dragging = null; consumedFrame = Time.frameCount;
-        ClearTargetFeedback();
+        ResolveDrop(eventData);
+    }
 
-        if (canvasGroup != null)
-        {
-            canvasGroup.blocksRaycasts = true;
-        }
+    private void ResolveDrop(PointerEventData eventData)
+    {
+        ClearTargetFeedback();
 
         if (handManager == null || dragWhiteTurn != handManager.IsWhiteCardTurn || !handManager.TryBeginCardDrag())
         {
@@ -366,13 +385,20 @@ public class CardDragHandler : MonoBehaviour,
             RestoreToHand();
         }
         if (playableGlow != null)
-            playableGlow.enabled = !isDragging && returnRoutine == null && handManager.HasPlayableCardTarget(cardDefinition);
+            playableGlow.enabled = (selected == null || selected == this) && (dragging == null || dragging == this)
+                && returnRoutine == null && handManager.HasPlayableCardTarget(cardDefinition);
         if (isDragging && targetFeedback != null && lastPointer != null) targetFeedback.ShowAt(lastPointer);
     }
 
     /// <summary>在出牌、取消或物件停用時立即清除世界目標與 UI 提示。</summary>
     private void ClearTargetFeedback()
     {
+        if (clickSurface != null)
+        {
+            clickSurface.SetActive(false);
+            Destroy(clickSurface);
+            clickSurface = null;
+        }
         if (targetFeedback != null)
         {
             targetFeedback.ClearVisuals();
@@ -400,7 +426,8 @@ public class CardDragHandler : MonoBehaviour,
     /// </summary>
     private bool IsOverRecycleCard(PointerEventData eventData)
     {
-        if (handManager == null || handManager.RecycleCardRoot == null)
+        if (handManager == null || handManager.RecycleCardRoot == null ||
+            !handManager.RecycleCardRoot.gameObject.activeInHierarchy)
         {
             return false;
         }
@@ -423,7 +450,6 @@ public class CardDragHandler : MonoBehaviour,
             return;
         }
 
-        if (wasExpanded) handToggle?.Expand(); else handToggle?.Collapse();
         transform.SetParent(originalParent, false);
         transform.SetSiblingIndex(originalSiblingIndex);
         rectTransform.pivot = originalPivot;

@@ -25,6 +25,28 @@ public static class HandInteractionRegression
         try
         {
             var hand = scene.GetRootGameObjects().SelectMany(o => o.GetComponentsInChildren<CardHandManager>(true)).First();
+            var row = (RectTransform)typeof(CardHandManager).GetField("handRoot", flags).GetValue(hand);
+            var toggle = row.GetComponentInParent<HandCardToggle>(true);
+            var button = toggle.GetComponentInChildren<Button>(true);
+            var tab = (RectTransform)button.transform;
+            Check(row.GetComponent<HorizontalLayoutGroup>() != null && tab.parent == row.parent && row.gameObject.activeSelf,
+                "Collapsed hand starts with its card row active and the tab outside the layout");
+            if (!(bool)typeof(HandCardToggle).GetField("isInitialized", flags).GetValue(toggle))
+                typeof(HandCardToggle).GetMethod("Awake", flags).Invoke(toggle, null);
+            var panel = (RectTransform)toggle.transform;
+            float TabBase() => tab.localPosition.y + tab.rect.yMin;
+            float closedTop = TabBase();
+            Check(tab.anchorMax == Vector2.one && Mathf.Abs(closedTop - panel.rect.yMax) < .1f,
+                "Visible tab is anchored to the collapsed panel's top right");
+            button.onClick.Invoke();
+            Check(toggle.IsExpanded && row.gameObject.activeSelf, "Pressing the tab expands the panel with cards active");
+            typeof(HandCardToggle).GetField("normalizedTime", flags).SetValue(toggle, 1f);
+            typeof(HandCardToggle).GetMethod("EvaluateAnimation", flags).Invoke(toggle, null);
+            Check(TabBase() > closedTop && Mathf.Abs(TabBase() - panel.rect.yMax) < .1f,
+                "Tab moves with the top edge of the expanded panel");
+            button.onClick.Invoke();
+            Check(!toggle.IsExpanded && row.gameObject.activeSelf && button.gameObject.activeSelf,
+                "Collapsing keeps both the card row and the tab active");
             var prefab = (GameObject)typeof(CardHandManager).GetField("cardPrefab", flags).GetValue(hand);
             source = UnityEngine.Object.Instantiate(prefab);
             source.SetActive(true);

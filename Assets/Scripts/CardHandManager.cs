@@ -1056,6 +1056,7 @@ public class CardHandManager : MonoBehaviour
             return;
         }
 
+        CardDragHandler.ReleaseBeforeHandRebuild(this);
         ClearChildren(handRoot);
 
         if (!TryGetVisibleHandSide(isWhiteTurn, out bool visibleWhiteHand))
@@ -2371,7 +2372,7 @@ public class CardHandManager : MonoBehaviour
         {
             Transform handCard =
                 FindChildRecursive(cardGameUiRoot, "HandCard");
-            handRoot = handCard as RectTransform;
+            handRoot = (handCard?.Find("Cards") ?? handCard) as RectTransform;
         }
 
         if (drawButton == null)
