@@ -9,12 +9,18 @@ public sealed class PrivateCardState
     public bool recipientWhite;
     public string handIds;
     public int opponentHandCount;
+    public int recycleDrawChances;
+    public bool regularDrawAvailable;
 
     /// <summary>建立指定玩家可見的卡牌資料。</summary>
-    public static string Encode(bool white, string hand, int opponentCount)
+    public static string Encode(bool white, string hand, int opponentCount,
+        int recycleDrawChances = 0, bool regularDrawAvailable = false)
     {
         return JsonUtility.ToJson(new PrivateCardState
-        { recipientWhite = white, handIds = hand, opponentHandCount = opponentCount });
+        {
+            recipientWhite = white, handIds = hand, opponentHandCount = opponentCount,
+            recycleDrawChances = recycleDrawChances, regularDrawAvailable = regularDrawAvailable
+        });
     }
 
     /// <summary>拒絕舊版完整手牌協定、無效版本及非法張數。</summary>
@@ -25,6 +31,6 @@ public sealed class PrivateCardState
         try { state = JsonUtility.FromJson<PrivateCardState>(json); }
         catch (ArgumentException) { return false; }
         return state != null && state.version == 1 && state.handIds != null &&
-            state.opponentHandCount >= 0 && state.opponentHandCount <= 2048;
+            state.opponentHandCount >= 0 && state.opponentHandCount <= 2048 && state.recycleDrawChances >= 0;
     }
 }

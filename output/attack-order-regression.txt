@@ -1,0 +1,6 @@
+Unified damage panel regression
+PASS: Ordered cue 1 on White Queen(Clone) (UnityEngine.Transform)
+PASS: Ordered cue 2 on White Pawn(Clone) (UnityEngine.Transform)
+PASS: Ordered cue 3 on Black Knight(Clone) (UnityEngine.Transform)
+PASS: Ordered cue 4 on Black Pawn(Clone) (UnityEngine.Transform)
+PASS: Hit and damage settlement occur once after both sides finish

@@ -21,9 +21,10 @@ public static class CoreRulesRegression
             Check(findings.Exists(value => value.Contains("缺少卡面")), "Authoring detects missing art", results);
             foreach (bool white in new[] { true, false })
             {
-                string json = PrivateCardState.Encode(white, "J01,E02", 4);
+                string json = PrivateCardState.Encode(white, "J01,E02", 4, 2, true);
                 Check(PrivateCardState.TryDecode(json, out PrivateCardState state) &&
-                    state.recipientWhite == white && state.handIds == "J01,E02" && state.opponentHandCount == 4,
+                    state.recipientWhite == white && state.handIds == "J01,E02" && state.opponentHandCount == 4 &&
+                    state.recycleDrawChances == 2 && state.regularDrawAvailable,
                     "Private hand round trip for " + white, results);
                 Check(!json.Contains("deck") && !json.Contains("opponentHandIds"), "No deck order or opponent IDs", results);
             }
@@ -42,6 +43,18 @@ public static class CoreRulesRegression
     /// <summary>執行無 Unity 執行階段依賴的測試，亦可由命令列驗證程式呼叫。</summary>
     public static void RunManagedChecks(Action<bool, string> check)
     {
+        var draws = new TurnDrawChances(true);
+        draws.OnRecycle();
+        draws.OnRecycle();
+        draws.OnSuccessfulDraw();
+        check(draws.FromRecycling == 2 && !draws.RegularAvailable, "Two recycled cards stack on top of the regular draw");
+        draws.OnSuccessfulDraw();
+        check(draws.FromRecycling == 1 && draws.CanDraw, "One bonus draw consumes one recycled chance");
+        draws.OnSuccessfulDraw();
+        check(!draws.CanDraw, "All three draw chances have been spent");
+        draws.OnRecycle();
+        draws = default;
+        check(!draws.CanDraw && draws.FromRecycling == 0, "Unspent bonus expires with the turn");
         CardKeywordRegression.RunManagedChecks(check);
         DamageModifierFeedbackSetup.ManagedChecks(check);
         check(!new PieceDefinition().HasMoveRules, "Empty serialized move definition preserves standard movement");

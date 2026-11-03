@@ -12,7 +12,10 @@ using Object = UnityEngine.Object;
 public static class DamagePanelRegression
 {
     private const string Key = "ChessRPG.DamagePanelRegression";
-    private const string Output = "output/damage-panel-regression.txt";
+    private static string Output => SessionState.GetBool(Key + "OrderOnly", false)
+        ? "output/attack-order-regression.txt" : "output/damage-panel-regression.txt";
+    private static Transform[] expectedOwners;
+    private static int observedCues;
     private const BindingFlags Private = BindingFlags.NonPublic | BindingFlags.Instance;
     private static int stage, applied, captured, blackBefore, expectedDamage;
     private static bool sawPending, sawParallel, sawIncrease, sawDecrease;
@@ -35,7 +38,16 @@ public static class DamagePanelRegression
     [MenuItem("Tools/Chess/Run Damage Panel Regression")]
     public static void Run()
     {
+        StartRegression(false);
+    }
+
+    [MenuItem("Tools/Chess/Verify Attack Presentation Order")]
+    public static void RunOrder() => StartRegression(true);
+
+    private static void StartRegression(bool orderOnly)
+    {
         if (EditorApplication.isPlayingOrWillChangePlaymode || Photon.Pun.PhotonNetwork.IsConnected) return;
+        SessionState.SetBool(Key + "OrderOnly", orderOnly);
         SessionState.SetString(Key + "Scene", AssetDatabase.GetAssetPath(EditorSceneManager.playModeStartScene));
         SessionState.SetBool(Key, true); stage = 0;
         Directory.CreateDirectory("output"); File.WriteAllText(Output, "Unified damage panel regression\n");
@@ -49,6 +61,7 @@ public static class DamagePanelRegression
         if (!SessionState.GetBool(Key, false) || !EditorApplication.isPlaying) return;
         try
         {
+            if (SessionState.GetBool(Key + "OrderOnly", false)) { CheckAttackOrder(); return; }
             if (stage == 0)
             {
                 logic = Object.FindFirstObjectByType<LogicManager>();
@@ -83,7 +96,7 @@ public static class DamagePanelRegression
                     "Fireball with volcano and kingdom retains final damage 5 and two modifier phases");
                 expectedDamage = sequence.finalDamage; sawIncrease = sawDecrease = false;
                 logic.PlayDamageCalculation(sequence, () => captured++, () => { applied++; battle.DamagePlayer(false, sequence.finalDamage, false); });
-                Check(captured == 1 && applied == 0, "Attack visual starts before sources without applying HP");
+                Check(captured == 0 && applied == 0, "Sources precede the hit visual and HP settlement");
                 stage = 1;
             }
             else if (stage == 1)
@@ -94,11 +107,11 @@ public static class DamagePanelRegression
                     CheckSilent(logic.blackHealth == blackBefore, "Health changed before sources completed");
                     if (visualizer.CurrentModifierPhase == DamageModifierPhase.Increase)
                     {
-                        CheckSilent(!sawDecrease && visualizer.VisibleModifierCount == 1 && visualizer.DisplayedFinalDamage == "最終傷害:5", "Increase starts with base damage 5"); sawIncrease = true;
+                        CheckSilent(!sawDecrease && visualizer.VisibleModifierCount == 1 && visualizer.DisplayedFinalDamage == "", "Attack phase precedes defense and hides the damage total"); sawIncrease = true;
                     }
                     if (visualizer.CurrentModifierPhase == DamageModifierPhase.Decrease)
                     {
-                        CheckSilent(sawIncrease && visualizer.VisibleModifierCount == 1 && visualizer.DisplayedFinalDamage == "最終傷害:6", "Volcano updates fixed damage to 6 before kingdom reduction"); sawDecrease = true;
+                        CheckSilent(sawIncrease && visualizer.VisibleModifierCount == 1 && visualizer.DisplayedFinalDamage == "", "Defense phase hides the damage total until its effects finish"); sawDecrease = true;
                         var panels = Object.FindObjectsByType<DamageResolutionPanel>(FindObjectsSortMode.None);
                         CheckSilent(panels.All(p => p.DisplayedTotal == "" && p.GetComponentsInChildren<TMPro.TMP_Text>().Length == 0), "Source popups must show icons only");
                     }
@@ -109,7 +122,7 @@ public static class DamagePanelRegression
                 {
                     Check(applied == 1 && captured == 1 && sawPending && sawIncrease && sawDecrease, "Single sequence applies once after increase then simultaneous reductions");
                     Check(logic.blackHealth == blackBefore - expectedDamage && !logic.IsDamageCalculationBusy, "Damage applies final amount and releases operation lock");
-                    Check(panel == null && visualizer.DisplayedFinalDamage == "最終傷害:5", "Kingdom completes fixed damage progression 5 -> 6 -> 5");
+                    Check(panel == null && visualizer.DisplayedFinalDamage == "最終傷害:5", "Final damage appears after kingdom defense");
                     stage = 2;
                 }
             }
@@ -160,7 +173,7 @@ public static class DamagePanelRegression
             }
             else if (stage == 6 && EditorApplication.timeSinceStartup > cancelDeadline)
             {
-                Check(captured == 1 && applied == 0, "Initial effect starts only after card animation releases");
+                Check(applied == 0, "HP remains pending after card animation releases");
                 health = (Transform)typeof(DamageCalculationVisualizer).GetField("blackHealthTarget", Private).GetValue(visualizer);
                 healthOrigin = health.localPosition;
                 typeof(DamageCalculationVisualizer).GetMethod("StartHealthShake", Private).Invoke(visualizer, new object[] { health });
@@ -414,7 +427,7 @@ public static class DamagePanelRegression
             Check(capture.finalDamage == 5 + battle.GetEffectiveValue(target), "Moving Mary retains own 5 + berserker 1 - paladin 1; value remains unreduced");
             Check(capture.steps.Any(s => s.sourceCardId == "E07") && capture.steps.Any(s => s.sourceCardId == "J09"), "Berserker and Mary preserve distinct source identities");
             var routine = (System.Collections.IEnumerator)typeof(DamageCalculationVisualizer).GetMethod("PlayModifierPhase", Private)
-                .Invoke(visualizer, new object[] { new[] { capture }, DamageModifierPhase.Increase });
+                .Invoke(visualizer, new object[] { new[] { capture }, DamageCuePhase.AttackEffects });
             Check(routine.MoveNext() && visualizer.VisibleModifierCount == 1, "First modifier on same piece shown alone");
             Check(routine.MoveNext() && visualizer.VisibleModifierCount == 1, "Second modifier on same piece shown in next wave");
             Check(!routine.MoveNext() && visualizer.VisibleModifierCount == 0, "Both modifier waves complete and clean up");
@@ -434,6 +447,49 @@ public static class DamagePanelRegression
             worldPosition = logic.boardMap[0, 1].transform.position, countingIcon = healing ? DamageCountingIcon.Heal : DamageCountingIcon.Attack });
         return sequence;
     }
+    private static void CheckAttackOrder()
+    {
+        if (stage == 0)
+        {
+            logic = Object.FindFirstObjectByType<LogicManager>();
+            visualizer = Object.FindFirstObjectByType<DamageCalculationVisualizer>();
+            if (visualizer == null || logic == null || logic.boardMap[0, 1] == null || logic.IsOperationLocked) return;
+            var pawn = logic.boardMap[0, 1];
+            var target = logic.boardMap[0, 6];
+            var mary = logic.boardMap[3, 0];
+            var paladin = logic.boardMap[1, 7];
+            expectedOwners = new[] { mary.transform, pawn.transform, paladin.transform, target.transform };
+            var hit = new DamageCalculationSequence { attacker = pawn, target = target, isCapture = true,
+                finalDamage = 5, resultStartWorldPosition = target.transform.position };
+            hit.steps.Add(new DamageCalculationStep { modifierPhase = DamageModifierPhase.Increase, sourceCardId = "J09",
+                iconPiece = mary, hasContribution = true, contribution = 5, side = DamageStepSide.Attack });
+            hit.steps.Add(new DamageCalculationStep { modifierPhase = DamageModifierPhase.Decrease, sourceCardId = "J06",
+                iconPiece = paladin, hasContribution = true, contribution = -1, side = DamageStepSide.Defense });
+            applied = captured = observedCues = 0;
+            deadline = EditorApplication.timeSinceStartup + 30;
+            visualizer.Play(hit, () => captured++, () => applied++);
+            stage = 1;
+            return;
+        }
+        if (stage != 1) return;
+        CheckSilent(EditorApplication.timeSinceStartup < deadline, "Timed out waiting for ordered attack");
+        var panels = Object.FindObjectsByType<DamageResolutionPanel>(FindObjectsSortMode.None);
+        if (panels.Length > 0)
+        {
+            CheckSilent(panels.Length == 1 && captured == 0 && applied == 0 && visualizer.DisplayedFinalDamage == "",
+                "Only the current modifier cue may appear before settlement");
+            var anchor = panels[0].AttachedPiece;
+            if (observedCues > 0 && anchor == expectedOwners[observedCues - 1]) return;
+            Check(observedCues < 4 && anchor == expectedOwners[observedCues], "Ordered cue " + (observedCues + 1) + " on " + anchor);
+            observedCues++;
+        }
+        if (applied == 0) return;
+        Check(observedCues == 4 && applied == 1 && captured == 1 && visualizer.DisplayedFinalDamage == "最終傷害:5",
+            "Hit and damage settlement occur once after both sides finish");
+        stage = 5;
+        EditorApplication.isPlaying = false;
+    }
+
     /// <summary>記錄通過的檢查，失敗時中止測試。</summary>
     private static void Check(bool condition, string message) { CheckSilent(condition, message); File.AppendAllText(Output, "PASS: " + message + "\n"); }
     /// <summary>檢查逐幀不變條件，避免每幀輸出重複訊息。</summary>

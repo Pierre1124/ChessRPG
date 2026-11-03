@@ -8,6 +8,27 @@ using UnityEngine.UI;
 using UnityEditor;
 #endif
 
+public struct TurnDrawChances
+{
+    public bool RegularAvailable { get; private set; }
+    public int FromRecycling { get; private set; }
+    public bool CanDraw => RegularAvailable || FromRecycling > 0;
+
+    public TurnDrawChances(bool regularAvailable, int fromRecycling = 0)
+    {
+        RegularAvailable = regularAvailable;
+        FromRecycling = fromRecycling;
+    }
+
+    public void OnRecycle() => FromRecycling++;
+    public void ForfeitRegularDraw() => RegularAvailable = false;
+    public void OnSuccessfulDraw()
+    {
+        if (RegularAvailable) RegularAvailable = false;
+        else if (FromRecycling > 0) FromRecycling--;
+    }
+}
+
 public sealed class CardRecycleEvent
 {
     public CardDefinition card;
@@ -113,7 +134,8 @@ public class CardHandManager : MonoBehaviour
     private LogicManager logicManager;
     private MultiplayerGameController multiplayerGameController;
     private bool isInitialized;
-    private bool canDrawThisTurn;
+    private TurnDrawChances drawChances;
+    public int RecycleDrawChances => drawChances.FromRecycling;
     private bool preserveOpeningCard;
     private float waitingTextNextUpdateTime;
     private int waitingTextDotCount = 1;
@@ -135,7 +157,7 @@ public class CardHandManager : MonoBehaviour
 
     public bool CanDrawThisTurn
     {
-        get { return !IsRpgDisabled && canDrawThisTurn; }
+        get { return !IsRpgDisabled && drawChances.CanDraw; }
     }
 
     private bool rpgDisabled;
@@ -153,7 +175,7 @@ public class CardHandManager : MonoBehaviour
         rpgDisabled = true;
         StopAllCoroutines();
         ReleasePendingEventLock();
-        canDrawThisTurn = false;
+        EndDrawTurn();
         remoteOpponentHandCount = -1;
         whiteDeck.Clear();
         blackDeck.Clear();
@@ -452,7 +474,7 @@ public class CardHandManager : MonoBehaviour
 
         DrawCards(true, openingHandSize);
         DrawCards(false, openingHandSize);
-        canDrawThisTurn = true;
+        drawChances = new TurnDrawChances(true);
         Refresh(isWhiteTurn);
         RefreshHealth();
     }
@@ -509,7 +531,7 @@ public class CardHandManager : MonoBehaviour
         }
 
         ReleasePendingCards(isWhiteTurn);
-        canDrawThisTurn = true;
+        drawChances = new TurnDrawChances(true);
         Refresh(isWhiteTurn);
     }
 
@@ -518,16 +540,22 @@ public class CardHandManager : MonoBehaviour
     /// </summary>
     public void DisableDrawForCurrentTurn()
     {
-        if (!canDrawThisTurn)
+        if (!drawChances.RegularAvailable)
         {
             return;
         }
 
-        canDrawThisTurn = false;
+        drawChances.ForfeitRegularDraw();
         if (logicManager != null)
         {
             Refresh(logicManager.isWhiteTurn);
         }
+    }
+
+    internal void EndDrawTurn()
+    {
+        drawChances = default;
+        if (drawButton != null) drawButton.interactable = false;
     }
 
     /// <summary>
@@ -594,7 +622,7 @@ public class CardHandManager : MonoBehaviour
     {
         if (
             logicManager == null ||
-            !canDrawThisTurn ||
+            !CanDrawThisTurn ||
             IsGameplayLocked()
         )
         {
@@ -633,7 +661,7 @@ public class CardHandManager : MonoBehaviour
     {
         if (
             logicManager == null ||
-            !canDrawThisTurn ||
+            !CanDrawThisTurn ||
             IsGameplayLocked() ||
             logicManager.isWhiteTurn != isWhitePlayer
         )
@@ -642,18 +670,9 @@ public class CardHandManager : MonoBehaviour
         }
 
         int drawnCount = DrawCards(logicManager.isWhiteTurn, cardsDrawnEachTurn);
-        if (drawnCount > 0)
-        {
-            CardsDrawn?.Invoke(
-                new CardDrawEvent(
-                    logicManager.isWhiteTurn,
-                    drawnCount,
-                    Time.frameCount
-                )
-            );
-        }
-
-        canDrawThisTurn = false;
+        if (drawnCount == 0) return false;
+        drawChances.OnSuccessfulDraw();
+        CardsDrawn?.Invoke(new CardDrawEvent(logicManager.isWhiteTurn, drawnCount, Time.frameCount));
         Refresh(logicManager.isWhiteTurn);
         return true;
     }
@@ -727,7 +746,7 @@ public class CardHandManager : MonoBehaviour
             return false;
         }
 
-        canDrawThisTurn = true;
+        drawChances.OnRecycle();
         CardRecycleEvent recycleEvent = new CardRecycleEvent(
             card,
             isWhitePlayer,
@@ -737,7 +756,7 @@ public class CardHandManager : MonoBehaviour
         Debug.Log(
             $"[CardDebug][RecycleCard] Player=" +
             $"{(isWhitePlayer ? "White" : "Black")} | " +
-            $"Card={card.id} {card.cardName} | DrawReset=True"
+            $"Card={card.id} {card.cardName} | RecycleDrawChances={RecycleDrawChances}"
         );
 
         BattleFeedback.Play(CommonBattleSound.Recycle);
@@ -806,7 +825,7 @@ public class CardHandManager : MonoBehaviour
         if (drawButton != null)
         {
             drawButton.interactable =
-                canDrawThisTurn &&
+                CanDrawThisTurn &&
                 !IsGameplayLocked() &&
                 CanLocalPlayerUseCurrentTurnControls();
         }
@@ -820,7 +839,7 @@ public class CardHandManager : MonoBehaviour
         if (IsRpgDisabled) return string.Empty;
         return PrivateCardState.Encode(recipientWhite,
             SerializeCardList(recipientWhite ? whiteHand : blackHand),
-            recipientWhite ? blackHand.Count : whiteHand.Count);
+            recipientWhite ? blackHand.Count : whiteHand.Count, RecycleDrawChances, drawChances.RegularAvailable);
     }
 
     /// <summary>
@@ -853,7 +872,7 @@ public class CardHandManager : MonoBehaviour
             int oldCount = (state.recipientWhite ? whiteHand : blackHand).Count + remoteOpponentHandCount;
             int newCount = receivedHand.Count + state.opponentHandCount;
             if (newCount > oldCount) BattleFeedback.Play(CommonBattleSound.Draw);
-            else if (newCount < oldCount && remoteCanDrawThisTurn && !canDrawThisTurn)
+            else if (newCount < oldCount && state.recycleDrawChances > RecycleDrawChances)
                 BattleFeedback.Play(CommonBattleSound.Recycle);
         }
         whiteDeck.Clear();
@@ -862,12 +881,13 @@ public class CardHandManager : MonoBehaviour
         blackHand.Clear();
         (state.recipientWhite ? whiteHand : blackHand).AddRange(receivedHand);
         remoteOpponentHandCount = state.opponentHandCount;
-        canDrawThisTurn = remoteCanDrawThisTurn;
+        bool regularAvailable = state.recycleDrawChances > 0 ? state.regularDrawAvailable : remoteCanDrawThisTurn;
+        drawChances = new TurnDrawChances(regularAvailable, state.recycleDrawChances);
         Refresh(currentWhiteTurn);
 
         Debug.Log(
             $"[NetworkGame][CardStateSync] Turn={(currentWhiteTurn ? "White" : "Black")} | " +
-            $"CanDraw={canDrawThisTurn} | " +
+            $"CanDraw={CanDrawThisTurn} | RecycleDrawChances={RecycleDrawChances} | " +
             $"WhiteHand={whiteHand.Count} | BlackHand={blackHand.Count}"
         );
     }

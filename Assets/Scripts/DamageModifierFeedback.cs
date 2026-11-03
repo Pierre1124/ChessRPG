@@ -1,5 +1,7 @@
 ﻿using UnityEngine;
 
+public enum DamageCuePhase { AttackSources, AttackEffects, DefenseSources, DefenseEffects }
+
 /// <summary>依來源、攻守角色與箭頭方向呈現修正，不改變傷害計算。</summary>
 [CreateAssetMenu(menuName = "Chess RPG/Damage Modifier Feedback")]
 public sealed class DamageModifierFeedback : ScriptableObject
@@ -39,12 +41,14 @@ public sealed class DamageModifierFeedback : ScriptableObject
         var style = BattleFeedback.GetStyle(type);
         return style != null && style.effectPrefab != null ? style.PlaybackLifetime : 0f;
     }
-    public static int Stage(DamageCalculationStep step)
+    public static bool BelongsToPhase(DamageCalculationStep step, DamageCalculationSequence sequence, DamageCuePhase phase)
     {
-        if (step.modifierPhase == DamageModifierPhase.Activation) return 0;
-        if (step.modifierPhase == DamageModifierPhase.None) return -1;
-        if (IsDefense(step)) return step.contribution > 0 ? 4 : 2;
-        return step.contribution < 0 ? 3 : 1;
+        if (step == null || step.modifierPhase == DamageModifierPhase.None) return false;
+        if (IsDefense(step) != (phase == DamageCuePhase.DefenseSources || phase == DamageCuePhase.DefenseEffects)) return false;
+        if (phase == DamageCuePhase.AttackEffects || phase == DamageCuePhase.DefenseEffects)
+            return Direction(step, sequence.isHealing) != 0;
+        return !sequence.presentationOnly || step.modifierPhase == DamageModifierPhase.Activation ||
+            !sequence.steps.Exists(other => other != null && other.modifierPhase == DamageModifierPhase.Activation && other.sourceCardId == step.sourceCardId);
     }
 }
 

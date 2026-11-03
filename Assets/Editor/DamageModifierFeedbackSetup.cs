@@ -59,7 +59,8 @@ public static class DamageModifierFeedbackSetup
         check(!BattleFeedback.ShouldShowStatusIdle(idleStatus), "Expired status hides idle");
         check(DamageModifierFeedback.SymbolType(new DamageCalculationStep()) == BattlePresentationType.Neutral, "Unrestricted source uses physical icon regardless of hit element");
         check(DamageModifierFeedback.SymbolType(new DamageCalculationStep { modifierTags = DamageTag.Fire }) == BattlePresentationType.Fire, "Fire-restricted source uses fire icon");
-        check(DamageModifierFeedback.Stage(new DamageCalculationStep { modifierPhase = DamageModifierPhase.Activation }) == 0, "Skill activation precedes modifiers");
+        var sample = new DamageCalculationSequence();
+        check(DamageModifierFeedback.BelongsToPhase(new DamageCalculationStep { modifierPhase = DamageModifierPhase.Activation }, sample, DamageCuePhase.AttackSources), "Skill activation belongs to source cues");
         foreach (var phase in new[] { DamageModifierPhase.Increase, DamageModifierPhase.Decrease })
         {
             var step = new DamageCalculationStep { modifierPhase = phase, hasContribution = true, contribution = 2 };
@@ -76,7 +77,11 @@ public static class DamageModifierFeedbackSetup
             {
                 var step = new DamageCalculationStep { side = defense ? DamageStepSide.Defense : DamageStepSide.Attack, contribution = sign };
                 step.modifierPhase = sign > 0 ? DamageModifierPhase.Increase : DamageModifierPhase.Decrease;
-                check(DamageModifierFeedback.Stage(step) == (defense ? sign > 0 ? 4 : 2 : sign > 0 ? 1 : 3), "Presentation order: buff, defense, weakness, vulnerability");
+                step.hasContribution = true;
+                var phases = Enum.GetValues(typeof(DamageCuePhase)).Cast<DamageCuePhase>()
+                    .Where(p => DamageModifierFeedback.BelongsToPhase(step, sample, p));
+                check(phases.SequenceEqual(defense ? new[] { DamageCuePhase.DefenseSources, DamageCuePhase.DefenseEffects } :
+                    new[] { DamageCuePhase.AttackSources, DamageCuePhase.AttackEffects }), "Buff and debuff show source then effect on their own side");
                 check(DamageModifierFeedback.PresentationType(step) == ((defense ? sign < 0 : sign > 0) ? BattlePresentationType.ModifierUp : BattlePresentationType.ModifierDown), "Shared audio follows arrow direction");
                 check(DamageModifierFeedback.PointsUp(step) == (defense ? sign < 0 : sign > 0), "Arrow direction for defense=" + defense + " contribution=" + sign);
             }
@@ -123,7 +128,7 @@ public static class DamageModifierFeedbackSetup
                             var resolveRecipient = typeof(DamageCalculationVisualizer).GetMethod("ResolveModifierRecipient",
                                 System.Reflection.BindingFlags.Static | System.Reflection.BindingFlags.NonPublic);
                             Check(statusOwner == mary.transform && bonus.icon != null && bonus.contribution > 0 &&
-                                (Transform)resolveRecipient.Invoke(null, new object[] { bonus, sequence, maryCard, statusOwner }) == mage.transform,
+                                (Transform)resolveRecipient.Invoke(null, new object[] { bonus, sequence, statusOwner }) == mage.transform,
                                 "J09 status belongs to Bloody Mary; the capturing pawn receives the increase effect");
                             foreach (string statusCardId in new[] { "E05", "E09" })
                             {

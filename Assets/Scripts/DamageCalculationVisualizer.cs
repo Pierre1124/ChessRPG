@@ -100,7 +100,7 @@ public class DamageCalculationVisualizer : MonoBehaviour
     [SerializeField] private TMP_Text damageResultFlyText;
     [SerializeField] private TMP_FontAsset resolutionFont;
     [SerializeField] private TMP_Text finalDamageText;
-    public string DisplayedFinalDamage => finalDamageText != null ? finalDamageText.text : "";
+    public string DisplayedFinalDamage => finalDamageText != null && finalDamageText.gameObject.activeSelf ? finalDamageText.text : "";
 
     [Header("Source presentation") ]
     [SerializeField] private Transform cardEffectSourceAnchor;
@@ -328,15 +328,19 @@ public class DamageCalculationVisualizer : MonoBehaviour
         // 出牌展示與傷害佇列可同時啟動；先等既有出牌動畫完成再播來源階段。
         CardHandManager hand = FindFirstObjectByType<CardHandManager>();
         while (hand != null && hand.isActiveAndEnabled && hand.IsUsingCardAnimationPlaying) yield return null;
-        UpdateFinalDamageText(sequences, DamageModifierPhase.None);
+        if (finalDamageText != null) finalDamageText.gameObject.SetActive(false);
+        yield return PlayModifierPhase(sequences, DamageCuePhase.AttackSources);
+        yield return PlayModifierPhase(sequences, DamageCuePhase.AttackEffects);
+        yield return PlayModifierPhase(sequences, DamageCuePhase.DefenseSources);
+        yield return PlayModifierPhase(sequences, DamageCuePhase.DefenseEffects);
         InvokeAll(onCaptureVisuals);
-        float initialDuration = 0f;
-        foreach (var sequence in sequences) if (sequence != null && sequence.isCapture) initialDuration = captureDelay;
-        if (initialDuration > 0) yield return new WaitForSecondsRealtime(initialDuration);
-        var presented = new HashSet<DamageCalculationStep>();
-        for (int stage = 0; stage <= 4; stage++)
-            yield return PlayModifierPhase(sequences, stage, presented);
-        UpdateFinalDamageText(sequences, DamageModifierPhase.Decrease);
+        foreach (var sequence in sequences)
+        {
+            if (sequence == null || !sequence.isCapture) continue;
+            if (captureDelay > 0f) yield return new WaitForSecondsRealtime(captureDelay);
+            break;
+        }
+        UpdateFinalDamageText(sequences);
         var flyingSequences = new List<DamageCalculationSequence>();
         var flyingViews = new List<DamageResultFlyView>();
         for (int i = 0; i < sequences.Count; i++)
@@ -367,9 +371,8 @@ public class DamageCalculationVisualizer : MonoBehaviour
         onComplete?.Invoke();
     }
 
-    /// <summary>依已演完的階段更新固定文字；批次逐目標列出，傷害與治療不互相抵銷。</summary>
-    private void UpdateFinalDamageText(IReadOnlyList<DamageCalculationSequence> sequences, DamageModifierPhase completed,
-        HashSet<DamageCalculationStep> played = null)
+    /// <summary>雙方演出完成後才揭示各目標的最終數值。</summary>
+    private void UpdateFinalDamageText(IReadOnlyList<DamageCalculationSequence> sequences)
     {
         if (finalDamageText == null) return;
         var lines = new List<string>();
@@ -377,13 +380,6 @@ public class DamageCalculationVisualizer : MonoBehaviour
         {
             if (sequence == null || sequence.presentationOnly) continue;
             long value = sequence.finalDamage;
-            foreach (var step in sequence.steps)
-            {
-                if (step == null || !step.hasContribution || (played != null && played.Contains(step))) continue;
-                if ((step.modifierPhase == DamageModifierPhase.Increase && completed == DamageModifierPhase.None) ||
-                    (step.modifierPhase == DamageModifierPhase.Decrease && completed != DamageModifierPhase.Decrease))
-                    value -= step.contribution;
-            }
             string label = sequence.isHealing ? "最終回復:" : "最終傷害:";
             string target = sequences.Count > 1 ? (sequence.damagedWhitePlayer ? "白方" : "黑方") +
                 (sequence.target != null ? sequence.target.GetCoordinates().ToString() : "") + " " : "";
@@ -393,94 +389,83 @@ public class DamageCalculationVisualizer : MonoBehaviour
         finalDamageText.gameObject.SetActive(lines.Count > 0);
     }
 
-    /// <summary>同一棋子的效果逐輪播放，不同棋子同輪並行，保留每次效果的圖示。</summary>
-    private IEnumerator PlayModifierPhase(IReadOnlyList<DamageCalculationSequence> sequences, int stage, HashSet<DamageCalculationStep> played)
+    private IEnumerator PlayModifierPhase(IReadOnlyList<DamageCalculationSequence> sequences, DamageCuePhase phase)
     {
-        var phase = stage == 0 ? DamageModifierPhase.Activation : stage == 1 || stage == 4 ? DamageModifierPhase.Increase : DamageModifierPhase.Decrease;
-        CurrentModifierPhase = phase;
+        bool effects = phase == DamageCuePhase.AttackEffects || phase == DamageCuePhase.DefenseEffects;
         int round = 0;
         bool hasNext;
         do
         {
-        hasNext = false;
-        bool playedThisRound = false;
-        float duration = Mathf.Max(0.05f, stepDuration);
-        var playedModifierSounds = new HashSet<int>();
-        var shownModifiers = new HashSet<string>();
-        var shownSourceStatuses = new HashSet<string>();
-        var modifierStacks = new Dictionary<Vector3, int>();
-        foreach (var sequence in sequences)
-        {
-            if (sequence == null) continue;
-            // 多目標各自保有播放進度，不因共用來源棋子互相等待。
-            var positions = new Dictionary<Vector3, int>();
-            foreach (var step in sequence.steps)
+            hasNext = false;
+            var slots = new Dictionary<Transform, int>();
+            var shown = new HashSet<(Transform, string, string, BattlePresentationType, DamageTag)>();
+            var sounds = new HashSet<BattlePresentationType>();
+            float duration = 0f;
+            foreach (var sequence in sequences)
             {
-                if (step == null || DamageModifierFeedback.Stage(step) != stage) continue;
-                bool modifier = DamageModifierFeedback.Direction(step, sequence.isHealing) != 0;
-                CardDefinition card = string.IsNullOrEmpty(step.sourceCardId) ? null : imageDatabase.GetCard(step.sourceCardId);
-                Transform owner = ResolvePresentationAnchor(step, sequence, card);
-                Vector3 position = owner != null ? owner.position : Vector3.zero;
-                positions.TryGetValue(position, out int stack);
-                positions[position] = stack + 1;
-                if (stack > round) hasNext = true;
-                if (stack != round) continue;
-                played.Add(step);
-                playedThisRound = true;
-                var type = modifier ? DamageModifierFeedback.PresentationType(step) :
-                    step.countingIcon == DamageCountingIcon.AntiHeal ? BattlePresentationType.AntiHeal : BattlePresentationType.Trigger;
-                string key = position + ":" + step.sourceCardId + ":" + step.title + ":" + type + ":" + step.modifierTags;
-                Transform recipient = modifier ? ResolveModifierRecipient(step, sequence, card, owner) : owner;
-                Vector3 effectPosition = recipient != null ? recipient.position : position;
-                if (!shownModifiers.Add(key + ":" + effectPosition)) continue;
-                if (recipient != owner && owner != null && shownSourceStatuses.Add(key))
+                if (sequence == null) continue;
+                var occurrences = new Dictionary<Transform, int>();
+                foreach (var step in sequence.steps)
                 {
-                    Sprite status = step.icon != null ? step.icon : card?.skillImage;
-                    if (status != null)
+                    if (!DamageModifierFeedback.BelongsToPhase(step, sequence, phase)) continue;
+                    var card = string.IsNullOrEmpty(step.sourceCardId) ? null : imageDatabase.GetCard(step.sourceCardId);
+                    Transform owner = ResolvePresentationAnchor(step, sequence, card);
+                    Transform anchor = effects ? ResolveModifierRecipient(step, sequence, owner) : owner;
+                    if (anchor == null) continue;
+                    occurrences.TryGetValue(anchor, out int index);
+                    occurrences[anchor] = index + 1;
+                    if (index > round) hasNext = true;
+                    if (index != round) continue;
+                    var type = effects ? DamageModifierFeedback.PresentationType(step) :
+                        step.countingIcon == DamageCountingIcon.AntiHeal ? BattlePresentationType.AntiHeal : BattlePresentationType.Trigger;
+                    if (!shown.Add((anchor, step.sourceCardId, step.title, type, step.modifierTags))) continue;
+                    CurrentModifierPhase = step.modifierPhase;
+                    slots.TryGetValue(anchor, out int stack);
+                    slots[anchor] = stack + 1;
+                    var panel = GetResolutionPanel(VisibleModifierCount++);
+                    if (effects)
+                        panel.ShowModifier(step, sequence, null, stack, anchor, true);
+                    else
                     {
-                        modifierStacks.TryGetValue(position, out int sourceStack);
-                        modifierStacks[position] = sourceStack + 1;
-                        GetResolutionPanel(VisibleModifierCount++).ShowSourceAt(step, status, sourceStack, owner, position);
+                        var icon = step.icon != null ? step.icon : card?.skillImage;
+                        if (icon == null) icon = DamageModifierFeedback.StyleSymbol(step) ?? ResolveIcon(step, sequence);
+                        panel.ShowSourceAt(step, icon, stack, anchor, anchor.position);
+                    }
+                    duration = Mathf.Max(duration, stepDuration, .05f);
+                    if (effects || step.modifierPhase == DamageModifierPhase.Activation)
+                    {
+                        BattleFeedback.PlayType(type, anchor.position, sounds.Add(type));
+                        var style = BattleFeedback.GetStyle(type);
+                        if (style?.effectPrefab != null) duration = Mathf.Max(duration, style.PlaybackLifetime);
                     }
                 }
-                modifierStacks.TryGetValue(effectPosition, out int visibleStack);
-                modifierStacks[effectPosition] = visibleStack + 1;
-                var panel = GetResolutionPanel(VisibleModifierCount++);
-                if (modifier) panel.ShowModifier(step, sequence, null, visibleStack, recipient, true);
-                else panel.ShowSourceAt(step, BattleFeedback.GetStyle(sequence.presentationOnly ? BattlePresentationType.Neutral : BattlePresentationStyle.Resolve(sequence))?.icon, visibleStack, owner, position);
-                var style = BattleFeedback.GetStyle(type);
-                BattleFeedback.PlayType(type, effectPosition, playedModifierSounds.Add((int)type));
-                if (style?.effectPrefab != null) duration = Mathf.Max(duration, style.PlaybackLifetime);
-
             }
-        }
-        if (playedThisRound) yield return new WaitForSecondsRealtime(duration);
-        if (phase != DamageModifierPhase.Activation)
-            UpdateFinalDamageText(sequences, DamageModifierPhase.None, played);
-        HideResolutionPanels(); VisibleModifierCount = 0;
-        round++;
+            if (duration > 0f) yield return new WaitForSecondsRealtime(duration);
+            HideResolutionPanels();
+            VisibleModifierCount = 0;
+            round++;
         } while (hasNext);
         CurrentModifierPhase = DamageModifierPhase.None;
     }
 
     // A piece supplying an attack modifier shows its status. The attacking piece gets the arrow.
     internal static Transform ResolveModifierRecipient(DamageCalculationStep step, DamageCalculationSequence sequence,
-        CardDefinition card, Transform source)
+        Transform source)
     {
-        if (step.iconPiece != null && source == step.iconPiece.transform && sequence.attacker != null &&
-            card?.cardType != CardType.Field && !DamageModifierFeedback.IsTargetPresentation(step, sequence))
-            return sequence.attacker.transform;
+        if (DamageModifierFeedback.IsTargetPresentation(step, sequence))
+            return sequence.target != null ? sequence.target.transform : source;
+        if (sequence.attacker != null) return sequence.attacker.transform;
         return source;
     }
 
-    // Source cues never borrow the victim position. Target modifiers (including Black Market)
-    // are explicitly anchored to their recipient; card-only sources use the field area.
+    // A source icon follows the provider of the buff, including defensive auras on allies.
     internal Transform ResolvePresentationAnchor(DamageCalculationStep step, DamageCalculationSequence sequence, CardDefinition card)
     {
-        if (DamageModifierFeedback.IsTargetPresentation(step, sequence)) return sequence.target != null ? sequence.target.transform : null;
+        if (sequence.presentationOnly && DamageModifierFeedback.IsTargetPresentation(step, sequence))
+            return sequence.target != null ? sequence.target.transform : null;
         if (card == null || card.cardType != CardType.Field)
         {
-            Piece source = step.iconPiece != null ? step.iconPiece : sequence.attacker;
+            Piece source = step.iconPiece != null ? step.iconPiece : DamageModifierFeedback.IsDefense(step) ? sequence.target : sequence.attacker;
             if (source != null) return source.transform;
         }
         FieldCardPlace first = null;

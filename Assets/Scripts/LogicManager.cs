@@ -356,6 +356,7 @@ public class LogicManager : MonoBehaviour
         isTurnFlowPlaying = true;
         try
         {
+            if (cardHandManager != null) cardHandManager.EndDrawTurn();
             yield return PlayPhaseChange("回合結束");
             if (Time.timeScale == 0f)
             {

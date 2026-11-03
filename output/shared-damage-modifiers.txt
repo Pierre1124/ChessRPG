@@ -7,7 +7,7 @@ PASS: Recharged status restores idle
 PASS: Expired status hides idle
 PASS: Unrestricted source uses physical icon regardless of hit element
 PASS: Fire-restricted source uses fire icon
-PASS: Skill activation precedes modifiers
+PASS: Skill activation belongs to source cues
 PASS: Positive damage modifier plays up in Increase
 PASS: Negative damage modifier plays down in Increase
 PASS: Zero modifier stays silent in Increase
@@ -16,16 +16,16 @@ PASS: Positive damage modifier plays up in Decrease
 PASS: Negative damage modifier plays down in Decrease
 PASS: Zero modifier stays silent in Decrease
 PASS: Healing does not play damage modifier sound
-PASS: Presentation order: buff, defense, weakness, vulnerability
+PASS: Buff and debuff show source then effect on their own side
 PASS: Shared audio follows arrow direction
 PASS: Arrow direction for defense=False contribution=-1
-PASS: Presentation order: buff, defense, weakness, vulnerability
+PASS: Buff and debuff show source then effect on their own side
 PASS: Shared audio follows arrow direction
 PASS: Arrow direction for defense=False contribution=1
-PASS: Presentation order: buff, defense, weakness, vulnerability
+PASS: Buff and debuff show source then effect on their own side
 PASS: Shared audio follows arrow direction
 PASS: Arrow direction for defense=True contribution=-1
-PASS: Presentation order: buff, defense, weakness, vulnerability
+PASS: Buff and debuff show source then effect on their own side
 PASS: Shared audio follows arrow direction
 PASS: Arrow direction for defense=True contribution=1
 PASS: Base damage activation is not a damage increase
