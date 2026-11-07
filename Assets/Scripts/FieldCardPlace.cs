@@ -78,14 +78,16 @@ public class FieldCardPlace : MonoBehaviour
     /// <summary>
     /// 回應場地欄位點擊並顯示資訊。
     /// </summary>
-    private void OnMouseDown()
+    private void Update()
     {
-        if (InputManager.IsPointerOverUiStatic())
+        if (!GameplayPointer.Released || GameplayPointer.Canceled || CardDragHandler.BlocksBoardInput ||
+            ControlBindings.SuppressGameplay || CardKeywordPopup.IsOpen || InputManager.IsPointerOverUiStatic())
         {
             return;
         }
 
-        ShowInfo(Input.mousePosition);
+        if (Camera.main != null && Physics.Raycast(Camera.main.ScreenPointToRay(GameplayPointer.Position), out RaycastHit hit) &&
+            hit.transform.GetComponentInParent<FieldCardPlace>() == this) ShowInfo(GameplayPointer.Position);
     }
 
     /// <summary>

@@ -93,6 +93,7 @@ public class SettingsUI : MonoBehaviour
     /// <summary>暫時套用顯示選擇，玩家確認後才保存。</summary>
     public void ApplyDisplayChanges()
     {
+        if (MobilePrototype.Enabled) return;
         if (displayPending || availableResolutions == null || availableResolutions.Length == 0) return;
         previousWidth = Screen.width; previousHeight = Screen.height; previousMode = Screen.fullScreenMode;
         pendingIndex = resolutionDropdown.value; pendingWindowed = windowedToggle.isOn;

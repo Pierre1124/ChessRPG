@@ -21,6 +21,30 @@ public class CameraController : MonoBehaviour
     private float currentPitch;
 
     private bool isDragging = false;
+    private bool portraitView;
+    private float landscapeFov;
+
+    private void LateUpdate()
+    {
+        var camera = GetComponent<Camera>();
+        if (camera == null || boardTransform == null) return;
+        if (MobilePortraitLayout.IsPortrait)
+        {
+            if (!portraitView) { landscapeFov = camera.fieldOfView; portraitView = true; }
+            // Fit the board width while leaving room below for cards and touch controls.
+            const float distance = 14f;
+            camera.fieldOfView = 2f * Mathf.Atan(5.2f / (distance * camera.aspect)) * Mathf.Rad2Deg;
+            Quaternion rotation = Quaternion.Euler(75f, currentYaw, 0);
+            Vector3 center = boardTransform.position + new Vector3(3.5f, 0, 3.5f);
+            center -= rotation * Vector3.up * 1.7f;
+            transform.SetPositionAndRotation(center + rotation * new Vector3(0, 0, -distance), rotation);
+        }
+        else if (portraitView)
+        {
+            portraitView = false; camera.fieldOfView = landscapeFov;
+            if (Mathf.Abs(Mathf.DeltaAngle(currentYaw,180)) < 90) BlackPerspective(); else WhitePerspective();
+        }
+    }
 
     /// <summary>
     /// 啟動初始視角設定協程。
@@ -58,7 +82,7 @@ public class CameraController : MonoBehaviour
     void Update()
     {
         if (ControlBindings.SuppressGameplay || InputManager.IsPointerOverUiStatic()) return;
-        HandleRotation();
+        if (!MobilePrototype.Enabled) HandleRotation();
 
         // 空白鍵回到本地玩家所屬視角
         if (ControlBindings.Read(GameControl.ResetCamera))

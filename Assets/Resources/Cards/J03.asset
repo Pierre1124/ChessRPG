@@ -49,7 +49,7 @@ MonoBehaviour:
     effects: []
     statusesToApply:
     - triggerEffectPrefab: {fileID: 0}
-      idleEffectPrefab: {fileID: 0}
+      idleEffectPrefab: {fileID: 7997562633142514085, guid: 8b1f7464d865eec4eaf82997831d9921, type: 3}
       triggerSound: {fileID: 0}
       triggerEffectLifetime: 2
       effectOffset: {x: 0, y: 0, z: 0}

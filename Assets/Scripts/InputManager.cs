@@ -1,4 +1,4 @@
-﻿using System.Collections.Generic;
+using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.EventSystems;
 using UnityEngine.InputSystem;
@@ -27,7 +27,7 @@ public class InputManager : MonoBehaviour
     /// </summary>
     public static bool IsPointerOverUiStatic()
     {
-        if (EventSystem.current == null || Mouse.current == null)
+        if (EventSystem.current == null || !GameplayPointer.Available)
         {
             return false;
         }
@@ -35,7 +35,7 @@ public class InputManager : MonoBehaviour
         PointerEventData eventData =
             new PointerEventData(EventSystem.current)
             {
-                position = Mouse.current.position.ReadValue()
+                position = GameplayPointer.Position
             };
         List<RaycastResult> results = new List<RaycastResult>();
         EventSystem.current.RaycastAll(eventData, results);
@@ -70,17 +70,18 @@ public class InputManager : MonoBehaviour
     /// </summary>
     private void Update()
     {
+        if (GameplayPointer.Canceled) { CancelPointerGesture(); return; }
         if (CardDragHandler.BlocksBoardInput) { isHoldingMouse = false; heldPiece = null; ClearSelection(); return; }
         if (CardKeywordPopup.IsOpen) { isHoldingMouse = false; heldPiece = null; heldTokenInfo = null; return; }
         if (ControlBindings.SuppressGameplay) { isHoldingMouse = false; heldPiece = null; return; }
         if (Keyboard.current != null && Keyboard.current.escapeKey.wasPressedThisFrame)
         { cardInfoUI?.Hide(); ClearSelection(); }
         if (Mouse.current != null && ControlBindings.Read(GameControl.InspectPiece) &&
-            !IsPointerOverUi(Mouse.current.position.ReadValue()))
+            !IsPointerOverUi(GameplayPointer.Position))
         {
             isHoldingMouse = false;
             ClearSelection();
-            ShowInspection(Mouse.current.position.ReadValue());
+            ShowInspection(GameplayPointer.Position);
             return;
         }
         if (
@@ -95,28 +96,27 @@ public class InputManager : MonoBehaviour
             return;
         }
 
-        if (Mouse.current == null)
+        if (!GameplayPointer.Available)
         {
             return;
         }
 
-        Vector2 mousePosition = Mouse.current.position.ReadValue();
+        Vector2 mousePosition = GameplayPointer.Position;
 
-        if (Mouse.current.leftButton.wasPressedThisFrame)
+        if (GameplayPointer.Pressed)
         {
             BeginHold(mousePosition);
-            return;
         }
 
         if (
             isHoldingMouse &&
-            ControlBindings.LongPressEnabled &&
-            Mouse.current.leftButton.isPressed &&
+            (GameplayPointer.IsTouch || ControlBindings.LongPressEnabled) &&
+            GameplayPointer.Held &&
             !didShowPieceInfo &&
             (logicManager == null || !logicManager.IsClassicChess) &&
             (heldPiece != null || heldTokenInfo != null) &&
-            Vector2.Distance(holdStartScreenPosition, mousePosition) <= 12f &&
-            Time.unscaledTime - holdStartedAt >= pieceInfoHoldSeconds
+            Vector2.Distance(holdStartScreenPosition, mousePosition) <= GameplayPointer.TapSlop &&
+            Time.unscaledTime - holdStartedAt >= (GameplayPointer.IsTouch ? 0.55f : pieceInfoHoldSeconds)
         )
         {
             didShowPieceInfo = true;
@@ -124,7 +124,7 @@ public class InputManager : MonoBehaviour
             return;
         }
 
-        if (Mouse.current.leftButton.wasReleasedThisFrame)
+        if (GameplayPointer.Released)
         {
             EndHold(mousePosition);
         }
@@ -135,6 +135,7 @@ public class InputManager : MonoBehaviour
     /// </summary>
     private void BeginHold(Vector2 screenPosition)
     {
+        if (IsPointerOverUi(screenPosition)) { isHoldingMouse = false; return; }
         isHoldingMouse = true;
         didShowPieceInfo = false;
         holdStartedAt = Time.unscaledTime;
@@ -144,6 +145,14 @@ public class InputManager : MonoBehaviour
             : GetPieceAtScreenPosition(screenPosition);
         heldTokenInfo = heldPiece == null && !IsPointerOverUi(screenPosition) ? GetTokenInfoAtScreenPosition(screenPosition) : null;
     }
+
+    public void CancelPointerGesture()
+    {
+        isHoldingMouse = false; heldPiece = null; heldTokenInfo = null; ClearSelection();
+    }
+
+    private void OnApplicationPause(bool paused) { if (paused) CancelPointerGesture(); }
+    private void OnApplicationFocus(bool focused) { if (!focused) CancelPointerGesture(); }
 
     private void ShowInspection(Vector2 position)
     {
@@ -178,7 +187,7 @@ public class InputManager : MonoBehaviour
             Vector2.Distance(
                 holdStartScreenPosition,
                 screenPosition
-            ) <= 12f;
+            ) <= GameplayPointer.TapSlop;
 
         isHoldingMouse = false;
         heldPiece = null;

@@ -64,6 +64,7 @@ public static class DisplaySettingsController
     /// </summary>
     public static void ApplySavedSettings()
     {
+        if (Application.isMobilePlatform) return;
         Resolution[] resolutions = BuildResolutionOptions();
         int index = GetSavedResolutionIndex(resolutions);
 
@@ -80,7 +81,7 @@ public static class DisplaySettingsController
         bool save
     )
     {
-        if (resolutions == null || resolutions.Length == 0)
+        if (Application.isMobilePlatform || resolutions == null || resolutions.Length == 0)
         {
             return;
         }

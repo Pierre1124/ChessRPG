@@ -1,4 +1,4 @@
-﻿using System.Collections.Generic;
+using System.Collections.Generic;
 using TMPro;
 using UnityEngine;
 using UnityEngine.EventSystems;
@@ -100,6 +100,7 @@ public sealed class CardTargetFeedback : MonoBehaviour
             hovered != null ? "此目標不符合卡牌條件" : targets.Count == 0 ? "目前沒有可使用目標，可拖至回收區" :
             card.cardType == CardType.Field ? "拖至亮起的場地欄位" : "拖至有光圈的棋子";
         if (ClickMode) hint.text = overRecycle ? "點擊以回收" : validHover ? "點擊以使用 · 右鍵 / Esc 取消" : hovered != null ? "此目標不符合卡牌條件" : "點擊亮起的目標 · 右鍵 / Esc 取消";
+        if (MobilePrototype.Enabled && ClickMode) hint.text = overRecycle ? "放開以回收" : validHover ? "放開以使用" : "點選亮起的目標 · 可按取消出牌";
         hint.color = overRecycle || validHover ? FocusColor : Color.white;
         hintPanel.gameObject.SetActive(true);
         RectTransform parent = (RectTransform)hintPanel.parent;

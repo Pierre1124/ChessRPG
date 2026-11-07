@@ -488,7 +488,7 @@ public class OperateLogUI : MonoBehaviour
         PointerEventData pointerData =
             new PointerEventData(EventSystem.current)
             {
-                position = Input.mousePosition
+                position = GameplayPointer.Position
             };
 
         uiRaycastResults.Clear();

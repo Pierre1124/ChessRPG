@@ -1,0 +1,46 @@
+Mobile touch Play Mode checks
+PASS: Regression starts at the shipped startup scene
+PASS: Startup scene contains no legacy UI input module
+PASS: Startup UI uses Input System
+PASS: Main menu initialized
+PASS: Startup runs at portrait phone resolution
+Tap EditDeck at (540.00, 1180.20); screen 1080x2340; hits: Text,EditDeck,MainMenu,Background
+UI EditDeck down (540.00, 1180.20) 167772180
+Touch held=True, position=(540.00, 1180.20), frame=118
+UI EditDeck up (540.00, 1180.20) 167772180
+UI EditDeck click (540.00, 1180.20) 167772180
+PASS: Finger tap opens deck editor from main menu
+Tap CloseDeck at (727.00, 402.00); screen 1080x2340; hits: Text,CloseDeck,PanelBody,DeckEditorPanel,Background
+UI CloseDeck down (727.00, 402.00) 167772181
+Touch held=True, position=(727.00, 402.00), frame=135
+UI CloseDeck up (727.00, 402.00) 167772181
+UI CloseDeck click (727.00, 402.00) 167772181
+PASS: Finger tap closes deck editor
+Tap StartGame at (540.00, 1416.20); screen 1080x2340; hits: Text,StartGame,MainMenu,Background
+UI StartGame down (540.00, 1416.20) 167772182
+Touch held=True, position=(540.00, 1416.20), frame=148
+UI StartGame up (540.00, 1416.20) 167772182
+UI StartGame click (540.00, 1416.20) 167772182
+PASS: Touch start button loads playable game scene with new UI input
+PASS: Game scene initializes and accepts input
+PASS: Mobile shell created
+PASS: Safe-area adapters created
+PASS: Touchscreen drives the shared pointer
+PASS: Finger tap selects a real pawn
+PASS: Finger tap moves pawn and advances turn
+PASS: Second finger cancels gesture
+PASS: Canceled gesture never selects or moves a piece
+PASS: Long press inspects without selecting a move
+PASS: Active hand toggle exists
+PASS: Active hand contains a card
+PASS: Long press opens card preview without picking it up
+PASS: Touch tap picks up a hand card
+PASS: Cancel returns card and releases board input
+PASS: Card can be selected again after cancel
+PASS: Second touch recycles the card exactly once
+PASS: Board input released after card resolution
+PASS: Rotation restores landscape layout
+PASS: Landscape camera field of view restored
+PASS: Board remains touchable after rotation
+PASS: Rotating back supports 9:16 portrait
+PASS: all mobile touch checks completed

@@ -18,6 +18,12 @@ MonoBehaviour:
     useDataActions: 0
     playActions: []
     healthCost: 0
+    friendlyDamageBonus: 0
+    damageBonusUsesCaptureStacks: 0
+    blocksHealing: 0
+    requiresNoBoardCaptures: 0
+    lastWillDamage: 0
+    lastWillDamageTags: 0
     minimumTargetHealth: -1
     maximumTargetHealth: -1
     ruleNotes: 
@@ -33,13 +39,20 @@ MonoBehaviour:
     skillEffectPrefab: {fileID: 0}
     skillSound: {fileID: 0}
     description: "\u56DE\u5408\u958B\u59CB\u6642,\u6211\u65B9\u6062\u5FA91\u9EDEHP,\u8056\u8077\u8005\u79FB\u52D5\u5F8C\u53EF\u91CD\u88FD\u8A72\u6548\u679C"
+    shortDescription: 
     tags:
     - "\u8F49\u8077"
     - "\u6062\u5FA9"
     conditions: []
     effects: []
     statusesToApply:
-    - statusName: "\u8056\u8077\u8005"
+    - triggerEffectPrefab: {fileID: 0}
+      idleEffectPrefab: {fileID: 327170490743359616, guid: 9524a463305949043a2af282d422a343, type: 3}
+      triggerSound: {fileID: 0}
+      triggerEffectLifetime: 2
+      effectOffset: {x: 0, y: 0, z: 0}
+      triggerSoundVolume: 1
+      statusName: "\u8056\u8077\u8005"
       sourceCardId: J08
       kind: 0
       icon: {fileID: 21300000, guid: 0551e46be7822a04c9ba2728154dc1cb, type: 3}

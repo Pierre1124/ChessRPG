@@ -1,4 +1,4 @@
-﻿using UnityEngine;
+using UnityEngine;
 using UnityEngine.EventSystems;
 using UnityEngine.InputSystem;
 
@@ -6,7 +6,7 @@ using UnityEngine.InputSystem;
 public class CardDragHandler : MonoBehaviour,
     IBeginDragHandler,
     IDragHandler,
-    IEndDragHandler, IPointerClickHandler, IPointerEnterHandler, IPointerExitHandler
+    IEndDragHandler, IPointerClickHandler, IPointerEnterHandler, IPointerExitHandler, IPointerDownHandler, IPointerUpHandler
 {
     private CardHandManager handManager;
     private CardDefinition cardDefinition;
@@ -29,18 +29,41 @@ public class CardDragHandler : MonoBehaviour,
 
     private static CardDragHandler selected, dragging;
     private static int consumedFrame = -1;
-    public static bool BlocksBoardInput => selected != null || dragging != null || consumedFrame == Time.frameCount;
+    public static bool BlocksBoardInput => selected != null || dragging != null || consumedFrame == Time.frameCount || (MobilePrototype.Enabled && HandCardPreview.IsOpen);
     private HandCardToggle handToggle;
     private bool collapsedForDrag, hovered;
     private float hoverAt;
     private int selectedFrame;
+    private bool touchHolding, touchInspected;
+    private float touchStarted;
+    private Vector2 touchOrigin;
     public bool IsSelected => selected == this;
     public void DismissHover() { hovered = false; }
 
-    public void OnPointerEnter(PointerEventData data) { hovered = true; hoverAt = Time.unscaledTime + .25f; }
+    public void OnPointerEnter(PointerEventData data) { if (MobilePrototype.Enabled || GameplayPointer.IsTouch) return; hovered = true; hoverAt = Time.unscaledTime + .25f; }
     public void OnPointerExit(PointerEventData data) { hovered = false; HandCardPreview.ReleaseHover(this); }
+    public void OnPointerDown(PointerEventData data)
+    {
+        if (!GameplayPointer.IsTouch && !MobilePrototype.Enabled) return;
+        touchHolding = true; touchInspected = false;
+        touchStarted = Time.unscaledTime; touchOrigin = data.position;
+    }
+    public void OnPointerUp(PointerEventData data) { touchHolding = false; }
+
+    public static void CancelActiveInteraction()
+    {
+        if (selected != null) selected.CancelSelection();
+        if (dragging != null)
+        {
+            var card = dragging; dragging = null; card.isDragging = false;
+            card.ClearTargetFeedback(); card.RestoreToHand();
+        }
+        consumedFrame = Time.frameCount;
+    }
+
     public void OnPointerClick(PointerEventData data)
     {
+        if (touchInspected) { touchInspected = false; data.Use(); return; }
         if (data.button != PointerEventData.InputButton.Left || data.dragging || isDragging || returnRoutine != null || handManager == null) return;
         if (BlocksBoardInput || !handManager.TryBeginCardDrag()) return;
         selected = this; selectedFrame = Time.frameCount; consumedFrame = Time.frameCount;
@@ -84,17 +107,28 @@ public class CardDragHandler : MonoBehaviour,
 
     private void Update()
     {
+        if (GameplayPointer.Canceled) { touchHolding = false; CancelActiveInteraction(); return; }
+        if (touchHolding && !isDragging && !BlocksBoardInput && GameplayPointer.Held &&
+            Vector2.Distance(touchOrigin, GameplayPointer.Position) <= GameplayPointer.TapSlop &&
+            Time.unscaledTime - touchStarted >= 0.55f)
+        {
+            touchHolding = false; touchInspected = true;
+            GetComponent<CardUnavailableHint>()?.Dismiss();
+            HandCardPreview.Show(this, true);
+            consumedFrame = Time.frameCount;
+        }
         if (hovered && !BlocksBoardInput && returnRoutine == null && Time.unscaledTime >= hoverAt && !CardKeywordPopup.IsOpen)
             HandCardPreview.Show(this, false);
-        if (selected != this || Mouse.current == null) return;
+        if (selected != this || !GameplayPointer.Available) return;
         if (CardKeywordPopup.IsOpen) return;
         if (dragWhiteTurn != handManager.IsWhiteCardTurn || !handManager.CanPreviewCard(cardDefinition) ||
-            Mouse.current.rightButton.wasPressedThisFrame || (Keyboard.current != null && Keyboard.current.escapeKey.wasPressedThisFrame))
+            GameplayPointer.CancelPressed)
         { CancelSelection(); return; }
-        var pointer = new PointerEventData(EventSystem.current) { position = Mouse.current.position.ReadValue() };
+        var pointer = new PointerEventData(EventSystem.current) { position = GameplayPointer.Position };
         FollowPointer(pointer);
         targetFeedback?.ShowAt(pointer);
-        if (Time.frameCount == selectedFrame || !Mouse.current.leftButton.wasReleasedThisFrame) return;
+        if (Time.frameCount == selectedFrame || !GameplayPointer.Released) return;
+        if (MobilePrototype.IsOverControls(pointer.position)) return;
         consumedFrame = Time.frameCount;
         selected = null;
         ResolveDrop(pointer);
@@ -133,9 +167,10 @@ public class CardDragHandler : MonoBehaviour,
             return;
         }
 
-        if (BlocksBoardInput || returnRoutine != null || eventData.button != PointerEventData.InputButton.Left ||
+        if (touchInspected || GameplayPointer.Canceled || BlocksBoardInput || returnRoutine != null || eventData.button != PointerEventData.InputButton.Left ||
             !handManager.TryBeginCardDrag()) return;
         eventData.eligibleForClick = false;
+        touchHolding = false;
         isDragging = true; dragging = this; consumedFrame = Time.frameCount;
         PickUp(eventData);
     }
@@ -205,6 +240,7 @@ public class CardDragHandler : MonoBehaviour,
     {
         // Unity 仍可能對被拒絕的拖曳送出後續事件，不能因此移動或使用卡片。
         if (!isDragging) return;
+        if (GameplayPointer.Canceled) { CancelActiveInteraction(); return; }
         isDragging = false; dragging = null; consumedFrame = Time.frameCount;
         ResolveDrop(eventData);
     }
@@ -409,6 +445,9 @@ public class CardDragHandler : MonoBehaviour,
     }
 
     /// <summary>手牌重繪、切換模式或離開場景時不保留拖曳視覺物件。</summary>
+    private void OnApplicationPause(bool paused) { if (paused) { touchHolding = false; CancelActiveInteraction(); } }
+    private void OnApplicationFocus(bool focused) { if (!focused) { touchHolding = false; CancelActiveInteraction(); } }
+
     private void OnDisable()
     {
         if (selected == this) CancelSelection();

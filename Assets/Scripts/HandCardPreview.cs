@@ -13,8 +13,9 @@ public sealed class HandCardPreview : MonoBehaviour, IPointerClickHandler
     private bool pinned;
     private float hideAt = float.PositiveInfinity;
 
-    public static bool ContainsPointer() => current != null && Mouse.current != null &&
-        RectTransformUtility.RectangleContainsScreenPoint(current.cardRect, Mouse.current.position.ReadValue(), null);
+    public static bool IsOpen => current != null;
+    public static bool ContainsPointer() => current != null && GameplayPointer.Available &&
+        RectTransformUtility.RectangleContainsScreenPoint(current.cardRect, GameplayPointer.Position, null);
 
     public static void Show(CardDragHandler source, bool pin)
     {
@@ -40,6 +41,14 @@ public sealed class HandCardPreview : MonoBehaviour, IPointerClickHandler
         foreach (var group in clone.GetComponentsInChildren<CanvasGroup>(true))
         { group.alpha = 1; group.blocksRaycasts = true; group.interactable = true; }
         current.cardRect = clone.GetComponent<RectTransform>();
+        if (MobilePrototype.Enabled)
+        {
+            var backdrop = new GameObject("Close card preview", typeof(RectTransform), typeof(Image), typeof(Button));
+            var rect = (RectTransform)backdrop.transform; rect.SetParent(root.transform, false); rect.SetAsFirstSibling();
+            rect.anchorMin = Vector2.zero; rect.anchorMax = Vector2.one; rect.offsetMin = rect.offsetMax = Vector2.zero;
+            backdrop.GetComponent<Image>().color = new Color(0, 0, 0, .72f);
+            backdrop.GetComponent<Button>().onClick.AddListener(CloseCurrent);
+        }
         current.cardRect.anchorMin = current.cardRect.anchorMax = new Vector2(0, .5f);
         current.cardRect.pivot = new Vector2(0, .5f);
         Canvas.ForceUpdateCanvases(); current.Fit();
@@ -48,6 +57,13 @@ public sealed class HandCardPreview : MonoBehaviour, IPointerClickHandler
     private void Fit()
     {
         var root = (RectTransform)transform;
+        if (MobilePrototype.Enabled)
+        {
+            cardRect.anchorMin = cardRect.anchorMax = cardRect.pivot = new Vector2(.5f, .5f);
+            cardRect.localScale = Vector3.one * Mathf.Min(root.rect.width * .85f / Mathf.Max(1, cardRect.rect.width), root.rect.height * .88f / Mathf.Max(1, cardRect.rect.height));
+            cardRect.anchoredPosition = Vector2.zero;
+            return;
+        }
         float scale = Mathf.Min(Mathf.Min(480, root.rect.width * .28f) / Mathf.Max(1, cardRect.rect.width), root.rect.height * .76f / Mathf.Max(1, cardRect.rect.height));
         cardRect.localScale = Vector3.one * scale;
         cardRect.anchoredPosition = new Vector2(20, 0);
@@ -66,7 +82,7 @@ public sealed class HandCardPreview : MonoBehaviour, IPointerClickHandler
         var old = current; current = null; source?.DismissHover(); old.gameObject.SetActive(false); Dispose(old.gameObject);
     }
     private static void Dispose(GameObject value) { if (Application.isPlaying) Destroy(value); else DestroyImmediate(value); }
-    public void OnPointerClick(PointerEventData data) { if (data.button == PointerEventData.InputButton.Left) pinned = true; }
+    public void OnPointerClick(PointerEventData data) { if (MobilePrototype.Enabled) { CloseCurrent(); CardDragHandler.CancelActiveInteraction(); } else if (data.button == PointerEventData.InputButton.Left) pinned = true; }
     private void Update()
     {
         if (owner == null || !owner.isActiveAndEnabled) { if (current == this) current = null; Destroy(gameObject); return; }

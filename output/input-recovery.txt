@@ -1,0 +1,4 @@
+InputSettings restored: True
+Update mode: ProcessEventsInDynamicUpdate
+No scenes saved or reloaded.
+Observation after recovery: 0 new assertions in editor log.

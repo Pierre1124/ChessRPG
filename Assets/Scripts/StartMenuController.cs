@@ -265,6 +265,17 @@ public class StartMenuController : MonoBehaviour
     /// </summary>
     private void BindDisplaySettings()
     {
+        if (MobilePrototype.Enabled)
+        {
+            if (resolutionDropdown != null)
+            {
+                resolutionDropdown.gameObject.SetActive(false);
+                var heading = resolutionDropdown.transform.parent.Find("SettingsLabel");
+                if (heading != null) heading.gameObject.SetActive(false);
+            }
+            if (windowedToggle != null) windowedToggle.gameObject.SetActive(false);
+            return;
+        }
         availableResolutions =
             DisplaySettingsController.PopulateResolutionDropdown(
                 resolutionDropdown

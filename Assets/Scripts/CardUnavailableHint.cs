@@ -25,6 +25,7 @@ public sealed class CardUnavailableHint : MonoBehaviour, IPointerEnterHandler, I
     /// <summary>開始短暫停留計時，避免快速移動滑鼠時閃出提示。</summary>
     public void OnPointerEnter(PointerEventData eventData)
     {
+        if (MobilePrototype.Enabled || GameplayPointer.IsTouch) return;
         pointer = eventData;
         showAt = Time.unscaledTime + 0.35f;
         refreshAt = 0f;

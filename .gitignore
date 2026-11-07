@@ -29,3 +29,8 @@ Thumbs.db
 !Tools/Verification/Verify.csproj
 Tools/Verification/bin/
 Tools/Verification/obj/
+
+# Local build artifacts and generated working files
+/tmp/
+/output/android/
+*.apk

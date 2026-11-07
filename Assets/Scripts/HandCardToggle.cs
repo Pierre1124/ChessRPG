@@ -1,4 +1,4 @@
-﻿using System.Collections;
+using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.EventSystems;
@@ -19,6 +19,9 @@ public class HandCardToggle : MonoBehaviour
     private bool isInitialized;
     private float normalizedTime;
     private Coroutine animationRoutine;
+    private bool mobileLayoutReady;
+    private HorizontalLayoutGroup mobileCards;
+    private float landscapeSpacing;
 
     public bool IsExpanded
     {
@@ -48,14 +51,14 @@ public class HandCardToggle : MonoBehaviour
         if (CardDragHandler.BlocksBoardInput || HandCardPreview.ContainsPointer()) return;
         if (
             !isExpanded ||
-            Mouse.current == null ||
-            !Mouse.current.leftButton.wasPressedThisFrame
+            !GameplayPointer.Available ||
+            !GameplayPointer.Pressed
         )
         {
             return;
         }
 
-        Vector2 pointerPosition = Mouse.current.position.ReadValue();
+        Vector2 pointerPosition = GameplayPointer.Position;
         if (!IsPointerInsideHandCard(pointerPosition))
         {
             Collapse();
@@ -211,5 +214,43 @@ public class HandCardToggle : MonoBehaviour
         animator.speed = 0f;
         animator.Play(StateName, 0, normalizedTime);
         animator.Update(0f);
+        ApplyPortraitLayout();
+    }
+
+    public void RefreshMobileLayout()
+    {
+        if (!mobileLayoutReady)
+        {
+            mobileCards = GetComponentInChildren<HorizontalLayoutGroup>(true);
+            if (mobileCards != null) landscapeSpacing = mobileCards.spacing;
+        }
+        mobileLayoutReady = true;
+        if (!MobilePortraitLayout.IsPortrait && mobileCards != null) mobileCards.spacing = landscapeSpacing;
+        if (animator != null) animator.Rebind();
+        EvaluateAnimation();
+    }
+    private void LateUpdate() => ApplyPortraitLayout();
+
+    private void ApplyPortraitLayout()
+    {
+        if (!mobileLayoutReady || !MobilePortraitLayout.IsPortrait) return;
+        var rect = (RectTransform)transform;
+        rect.anchorMin = new Vector2(.04f, 0); rect.anchorMax = new Vector2(.96f, 0);
+        rect.pivot = new Vector2(.5f, 0);
+        rect.sizeDelta = new Vector2(0, 400);
+        rect.anchoredPosition = new Vector2(0, Mathf.Lerp(-220, 110, normalizedTime));
+        if (mobileCards != null)
+        {
+            int count = mobileCards.transform.childCount;
+            float width = count > 0 ? ((RectTransform)mobileCards.transform.GetChild(0)).rect.width : 288;
+            mobileCards.spacing = count > 1 ? Mathf.Min(12, (rect.rect.width - count * width) / (count - 1)) : 0;
+        }
+        if (toggleButton != null)
+        {
+            var button = (RectTransform)toggleButton.transform;
+            button.anchorMin = button.anchorMax = Vector2.one;
+            button.pivot = Vector2.one; button.sizeDelta = new Vector2(220, 68);
+            button.anchoredPosition = Vector2.zero;
+        }
     }
 }

@@ -154,7 +154,11 @@ public sealed class SettingsPanelView : MonoBehaviour
         }
         BindNamed("重新開始", owner.ShowRestartConfirmation); BindNamed("返回主選單", owner.ReturnToStartMenu);
         BindNamed("完成並返回", owner.goBack);
-        RefreshBindings(); RefreshGlow(); SelectPage(0); HideConfirmation();
+        RefreshBindings(); RefreshGlow(); SelectPage(MobilePrototype.Enabled ? 1 : 0); HideConfirmation();
+        if (MobilePrototype.Enabled)
+        {
+            tabs[0].gameObject.SetActive(false); tabs[2].gameObject.SetActive(false);
+        }
     }
 
     /// <summary>依保留的物件名稱連接一般操作按鈕。</summary>
