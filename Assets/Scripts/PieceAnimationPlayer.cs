@@ -65,7 +65,14 @@ public class PieceAnimationPlayer : MonoBehaviour
             visualRoot.localPosition = moveStartLocalOffset;
         }
 
-        PlayTrigger(moveTrigger);
+        // Enter the movement layer directly: blending from Idle's value of 1
+        // would briefly put the visual at its destination before moving back.
+        if (animator != null && animator.HasState(0, Animator.StringToHash("Move")))
+        {
+            animator.ResetTrigger(moveTrigger);
+            animator.Play("Move", 0, 0f);
+        }
+        else PlayTrigger(moveTrigger);
     }
 
     /// <summary>

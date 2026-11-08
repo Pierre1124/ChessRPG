@@ -316,6 +316,7 @@ public static class ChessPieceAnimationSetup
         EnsureReturnTransition(move, idle, 0.02f);
         EnsureReturnTransition(capture, idle, 0.02f);
 
+        PieceAnimationLayers.Configure(controller);
         EditorUtility.SetDirty(controller);
         return controller;
     }
