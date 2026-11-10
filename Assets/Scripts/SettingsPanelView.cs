@@ -191,6 +191,7 @@ public sealed class SettingsPanelView : MonoBehaviour
         RectTransform parent = content.parent as RectTransform;
         float scale = Mathf.Min(parent.rect.width / 1040f, parent.rect.height / 800f);
         content.localScale = Vector3.one * Mathf.Max(0.1f, scale);
+          MobilePanelBounds.Fit(content);
     }
 
     /// <summary>建立一般設定、光暈選項、預覽與對局操作。</summary>

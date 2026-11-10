@@ -9,7 +9,7 @@ using UnityEngine;
 
 public static class MobilePrototypeBuild
 {
-    public const string ApkPath = "output/android/ChessRPG-MobilePrototype-v3.apk";
+    public const string ApkPath = "output/android/ChessRPG-MobilePrototype-v5.apk";
     private const string PreviewKey = "ChessRPG.MobilePrototypePreview";
 
     [MenuItem("Tools/Chess/Mobile/Toggle Mobile Preview")]
@@ -52,7 +52,7 @@ public static class MobilePrototypeBuild
         try
         {
             PlayerSettings.SetApplicationIdentifier(target, "com.chessrpg.mobileprototype");
-            PlayerSettings.Android.bundleVersionCode = 3;
+            PlayerSettings.Android.bundleVersionCode = 5;
             PlayerSettings.SetScriptingBackend(target, ScriptingImplementation.IL2CPP);
             PlayerSettings.Android.targetArchitectures = AndroidArchitecture.ARM64;
             PlayerSettings.Android.useCustomKeystore = false;

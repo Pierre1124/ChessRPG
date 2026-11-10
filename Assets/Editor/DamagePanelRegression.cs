@@ -44,6 +44,90 @@ public static class DamagePanelRegression
     [MenuItem("Tools/Chess/Verify Attack Presentation Order")]
     public static void RunOrder() => StartRegression(true);
 
+    [MenuItem("Tools/Chess/Verify Final Damage Summary")]
+    public static void VerifyFinalDamageSummary()
+    {
+        GameObject root = null;
+        try
+        {
+            root = new GameObject(
+                "FinalDamageSummaryRegression",
+                typeof(RectTransform),
+                typeof(DamageCalculationVisualizer)
+            );
+            root.hideFlags = HideFlags.HideAndDontSave;
+            DamageCalculationVisualizer testVisualizer =
+                root.GetComponent<DamageCalculationVisualizer>();
+            var labelObject = new GameObject(
+                "FinalDMG",
+                typeof(RectTransform),
+                typeof(TMPro.TextMeshProUGUI)
+            );
+            labelObject.hideFlags = HideFlags.HideAndDontSave;
+            labelObject.transform.SetParent(root.transform, false);
+            var label = labelObject.GetComponent<TMPro.TMP_Text>();
+            typeof(DamageCalculationVisualizer).GetField("finalDamageText", Private)
+                .SetValue(testVisualizer, label);
+            MethodInfo update = typeof(DamageCalculationVisualizer)
+                .GetMethod("UpdateFinalDamageText", Private);
+
+            update.Invoke(testVisualizer, new object[]
+            {
+                new[]
+                {
+                    new DamageCalculationSequence { finalDamage = 2 },
+                    new DamageCalculationSequence { finalDamage = 3 },
+                    new DamageCalculationSequence { finalDamage = 99, presentationOnly = true },
+                    new DamageCalculationSequence { finalDamage = 7, isHealing = true }
+                }
+            });
+            if (testVisualizer.DisplayedFinalDamage != "最終傷害:5")
+                throw new InvalidOperationException(
+                    "Multi-target damage summary must be a single total without target details."
+                );
+
+            update.Invoke(testVisualizer, new object[]
+            {
+                new[]
+                {
+                    new DamageCalculationSequence { finalDamage = 2, damagedWhitePlayer = true },
+                    new DamageCalculationSequence { finalDamage = 3, damagedWhitePlayer = true },
+                    new DamageCalculationSequence { finalDamage = 4, damagedWhitePlayer = false },
+                    new DamageCalculationSequence
+                    {
+                        finalDamage = 99,
+                        damagedWhitePlayer = false,
+                        presentationOnly = true
+                    }
+                }
+            });
+            if (testVisualizer.DisplayedFinalDamage !=
+                "白方 最終傷害:5\n黑方 最終傷害:4")
+                throw new InvalidOperationException(
+                    "Simultaneous damage must show one summed final damage per side."
+                );
+
+            update.Invoke(testVisualizer, new object[]
+            {
+                new[]
+                {
+                    new DamageCalculationSequence { finalDamage = 2, isHealing = true },
+                    new DamageCalculationSequence { finalDamage = 3, isHealing = true }
+                }
+            });
+            if (testVisualizer.DisplayedFinalDamage != "最終回復:5")
+                throw new InvalidOperationException(
+                    "Healing-only summary must be a single total."
+                );
+
+            Debug.Log("Final damage summary regression passed.");
+        }
+        finally
+        {
+            if (root != null) Object.DestroyImmediate(root);
+        }
+    }
+
     private static void StartRegression(bool orderOnly)
     {
         if (EditorApplication.isPlayingOrWillChangePlaymode || Photon.Pun.PhotonNetwork.IsConnected) return;
@@ -155,6 +239,15 @@ public static class DamagePanelRegression
                     Check(applied == 3 && captured == 3, "Mixed batch including zero result invokes every callback exactly once");
                     Check(logic.blackHealth == blackBefore - 2 && logic.whiteHealth == 84 && !logic.IsDamageCalculationBusy,
                         "Damage and healing retain separate results and release queue lock");
+                    var multiTarget = new[]
+                    {
+                        new DamageCalculationSequence { target = logic.boardMap[0, 6], finalDamage = 2 },
+                        new DamageCalculationSequence { target = logic.boardMap[1, 6], finalDamage = 3 }
+                    };
+                    typeof(DamageCalculationVisualizer).GetMethod("UpdateFinalDamageText", Private)
+                        .Invoke(visualizer, new object[] { multiTarget });
+                    Check(visualizer.DisplayedFinalDamage == "最終傷害:5",
+                        "Multi-target stage shows one summed final damage without target coordinates");
                     applied = captured = 0;
                     hand = Object.FindFirstObjectByType<CardHandManager>();
                     typeof(CardHandManager).GetField("isUsingCardAnimationPlaying", Private).SetValue(hand, true);

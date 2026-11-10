@@ -45,7 +45,10 @@ public class StatusInfoTooltip : MonoBehaviour
         );
 
         PlaceBesideMouse(screenPosition);
+        MobilePanelBounds.Fit(panel);
     }
+
+    private void LateUpdate() => MobilePanelBounds.Fit(panel);
 
     /// <summary>
     /// 停用狀態提示物件。

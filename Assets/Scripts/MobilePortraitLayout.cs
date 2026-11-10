@@ -14,6 +14,7 @@ public sealed class MobilePortraitLayout : MonoBehaviour
     private Canvas[] canvases;
     private bool portrait;
     private Vector2 size;
+    private Rect safeArea;
 
     public static void Install()
     {
@@ -27,7 +28,10 @@ public sealed class MobilePortraitLayout : MonoBehaviour
     }
     private void LateUpdate()
     {
-        if (portrait != IsPortrait || size != new Vector2(Screen.width, Screen.height)) Refresh();
+        if (portrait != IsPortrait || size != new Vector2(Screen.width, Screen.height) || safeArea != Screen.safeArea) Refresh();
+        MobilePanelBounds.Fit(Find("CardGameUI/CardInfro"));
+        MobilePanelBounds.Fit(Find("PromotionUI/Panel"));
+        MobilePanelBounds.Fit(Find("Canvas/DeckEditorPanel/PanelBody"));
     }
     private void Refresh()
     {
@@ -36,7 +40,7 @@ public sealed class MobilePortraitLayout : MonoBehaviour
         HandCardPreview.CloseCurrent();
         foreach (var undo in restore) undo();
         restore.Clear(); saved.Clear();
-        portrait = IsPortrait; size = new Vector2(Screen.width, Screen.height);
+        portrait = IsPortrait; size = new Vector2(Screen.width, Screen.height); safeArea = Screen.safeArea;
         if (portrait)
         {
             foreach (var canvas in canvases)
@@ -138,12 +142,6 @@ public sealed class MobilePortraitLayout : MonoBehaviour
         var info = Find("CardGameUI/CardInfro"); if (info != null) info.localScale = Vector3.one * 1.7f;
         Place("DMGSystem/FinalDMG", new Vector2(.5f,1), new Vector2(.5f,1), new Vector2(0,-210), new Vector2(650,80));
         Place("PromotionUI/Panel", new Vector2(.5f,.5f), new Vector2(.5f,.5f), Vector2.zero, new Vector2(1000,1100));
-        foreach (var field in FindObjectsByType<FieldCardPlace>(FindObjectsSortMode.None))
-        {
-            var target = field.transform; Vector3 position = target.position;
-            restore.Add(() => { if (target != null) target.position = position; });
-            target.position = new Vector3(field.name.EndsWith("2") ? 5.6f : 1.4f, position.y, -2.1f);
-        }
     }
     private void Health(string name, Vector2 anchor, Vector2 pivot)
     {

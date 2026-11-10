@@ -371,22 +371,57 @@ public class DamageCalculationVisualizer : MonoBehaviour
         onComplete?.Invoke();
     }
 
-    /// <summary>雙方演出完成後才揭示各目標的最終數值。</summary>
+    /// <summary>雙方演出完成後，依受傷陣營揭示本批次傷害合計。</summary>
     private void UpdateFinalDamageText(IReadOnlyList<DamageCalculationSequence> sequences)
     {
         if (finalDamageText == null) return;
-        var lines = new List<string>();
+
+        long whiteDamage = 0L;
+        long blackDamage = 0L;
+        long totalHealing = 0L;
+        bool hasDamage = false;
+        bool hasHealing = false;
         foreach (var sequence in sequences)
         {
             if (sequence == null || sequence.presentationOnly) continue;
-            long value = sequence.finalDamage;
-            string label = sequence.isHealing ? "最終回復:" : "最終傷害:";
-            string target = sequences.Count > 1 ? (sequence.damagedWhitePlayer ? "白方" : "黑方") +
-                (sequence.target != null ? sequence.target.GetCoordinates().ToString() : "") + " " : "";
-            lines.Add(target + label + Math.Max(0L, value));
+
+            long value = Math.Max(0L, sequence.finalDamage);
+            if (sequence.isHealing)
+            {
+                hasHealing = true;
+                totalHealing += value;
+            }
+            else
+            {
+                hasDamage = true;
+                if (sequence.damagedWhitePlayer) whiteDamage += value;
+                else blackDamage += value;
+            }
         }
-        finalDamageText.text = string.Join("\n", lines);
-        finalDamageText.gameObject.SetActive(lines.Count > 0);
+
+        if (!hasDamage && !hasHealing)
+        {
+            finalDamageText.gameObject.SetActive(false);
+            return;
+        }
+
+        bool healingOnly = !hasDamage && hasHealing;
+        if (healingOnly)
+        {
+            finalDamageText.text = $"最終回復:{totalHealing}";
+        }
+        else if (whiteDamage > 0L && blackDamage > 0L)
+        {
+            finalDamageText.text =
+                $"白方 最終傷害:{whiteDamage}\n黑方 最終傷害:{blackDamage}";
+        }
+        else
+        {
+            finalDamageText.text = $"最終傷害:{whiteDamage + blackDamage}";
+        }
+        finalDamageText.color = healingOnly ? healColor : damageColor;
+        finalDamageText.gameObject.SetActive(true);
+        finalDamageText.GetComponent<UiScalePulse>()?.Play();
     }
 
     private IEnumerator PlayModifierPhase(IReadOnlyList<DamageCalculationSequence> sequences, DamageCuePhase phase)
@@ -438,6 +473,9 @@ public class DamageCalculationVisualizer : MonoBehaviour
                         var style = BattleFeedback.GetStyle(type);
                         if (style?.effectPrefab != null) duration = Mathf.Max(duration, style.PlaybackLifetime);
                     }
+                    // Source indication is separate from the recipient's generic effect.
+                    if (!effects && FieldEffectFeedback.Applies(card))
+                        FieldEffectFeedback.Play(card, anchor.position, duration, false);
                 }
             }
             if (duration > 0f) yield return new WaitForSecondsRealtime(duration);

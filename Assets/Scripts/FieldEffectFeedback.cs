@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using UnityEngine;
 
 /// <summary>場地效果的光暈只屬於來源卡片，目標僅播放一次性特效。</summary>
+[DefaultExecutionOrder(2100)]
 public sealed class FieldEffectFeedback : MonoBehaviour
 {
     public RectTransform glowRoot;
@@ -79,7 +80,7 @@ public sealed class FieldEffectFeedback : MonoBehaviour
         if (effect != null) Destroy(effect);
     }
 
-    private void Update()
+    private void LateUpdate()
     {
         if (Time.unscaledTime >= deadline) { Destroy(gameObject); return; }
         if (source != null && source.ActiveCard?.id == cardId) PlaceGlow();

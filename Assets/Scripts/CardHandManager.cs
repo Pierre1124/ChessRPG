@@ -155,6 +155,15 @@ public class CardHandManager : MonoBehaviour
         get { return recycleCardRoot; }
     }
 
+    /// <summary>編輯器模式直接把指定卡片加入任一方手牌，不消耗牌庫。</summary>
+    public bool AddCardToHandForEditor(CardDefinition card, bool isWhitePlayer)
+    {
+        if (card == null || IsRpgDisabled) return false;
+        (isWhitePlayer ? whiteHand : blackHand).Add(card);
+        if (logicManager != null) Refresh(logicManager.isWhiteTurn);
+        return true;
+    }
+
     public bool CanDrawThisTurn
     {
         get { return !IsRpgDisabled && drawChances.CanDraw; }
@@ -814,9 +823,11 @@ public class CardHandManager : MonoBehaviour
 
         if (turnText != null)
         {
-            turnText.text = isWhiteTurn
-                ? "\u767D\u65B9\u56DE\u5408"
-                : "\u9ED1\u65B9\u56DE\u5408";
+            if (!GameFlowUI.SetTurnIndicator(isWhiteTurn))
+            {
+                turnText.text = isWhiteTurn ? "白方回合" : "黑方回合";
+                turnText.color = isWhiteTurn ? Color.white : Color.black;
+            }
         }
 
         RenderHand(isWhiteTurn);

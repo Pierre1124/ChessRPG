@@ -10,6 +10,7 @@ public class GameFlowUI : MonoBehaviour
     [Header("Scene References")]
     [SerializeField] private GameObject alarmTemplate;
     [SerializeField] private GameObject phaseChangeRoot;
+    [SerializeField] private TMP_Text turnText;
 
     [Header("Alarm")]
     [SerializeField, Min(0.1f)] private float alarmLifetimeSeconds = 3f;
@@ -20,9 +21,11 @@ public class GameFlowUI : MonoBehaviour
 
     [Header("Phase Change")]
     [SerializeField, Min(0f)] private float fallbackPhaseSeconds = 1f;
-    [SerializeField] private string animatorTriggerName = "Play";
 
     private static GameFlowUI instance;
+    private bool currentWhiteTurn = true;
+    private bool hasTurnSide;
+    private bool isTurnTransitionActive;
 
     private readonly List<RectTransform> activeOneShotAlarms =
         new List<RectTransform>();
@@ -161,6 +164,29 @@ public class GameFlowUI : MonoBehaviour
         ResolveInstance()?.SetPersistentAlarm(key, message, visible);
     }
 
+    /// <summary>更新合併後的回合提示；只有文字或陣營真的改變時才播放放大動畫。</summary>
+    public static bool SetTurnIndicator(bool isWhiteTurn)
+    {
+        GameFlowUI ui = ResolveInstance();
+        if (ui == null || ui.turnText == null) return false;
+
+        bool changedSide = !ui.hasTurnSide || ui.currentWhiteTurn != isWhiteTurn;
+        ui.currentWhiteTurn = isWhiteTurn;
+        ui.hasTurnSide = true;
+
+        // 手牌與網路狀態會在陣營切換時先刷新。轉場期間只更新顏色，
+        // 不要搶先插入「黑方回合／白方回合」或重播一次動畫。
+        if (ui.isTurnTransitionActive)
+        {
+            ui.ApplyTurnStyle(isWhiteTurn);
+            return true;
+        }
+
+        bool changed = changedSide || ui.turnText.text != TurnLabel(isWhiteTurn);
+        ui.SetTurnText(TurnLabel(isWhiteTurn), isWhiteTurn, changed);
+        return true;
+    }
+
     /// <summary>
     /// 啟動回合階段提示的演出。
     /// </summary>
@@ -182,7 +208,7 @@ public class GameFlowUI : MonoBehaviour
     public static bool IsPhaseReady()
     {
         GameFlowUI ui = ResolveInstance();
-        return ui != null && ui.phaseChangeRoot != null;
+        return ui != null && ui.turnText != null;
     }
 
     /// <summary>
@@ -258,6 +284,18 @@ public class GameFlowUI : MonoBehaviour
             {
                 phaseChangeRoot = phase.gameObject;
             }
+        }
+
+        if (turnText == null)
+        {
+            Transform turn = FindChildRecursive(transform, "TurnText");
+            if (turn == null)
+            {
+                GameObject cardGameUi = GameObject.Find("CardGameUI");
+                if (cardGameUi != null) turn = FindChildRecursive(cardGameUi.transform, "TurnText");
+            }
+
+            if (turn != null) turnText = turn.GetComponent<TMP_Text>();
         }
     }
 
@@ -437,83 +475,51 @@ public class GameFlowUI : MonoBehaviour
     /// </summary>
     private IEnumerator PlayPhaseRoutine(string message, Action onComplete)
     {
-        if (phaseChangeRoot == null)
+        if (turnText == null)
         {
             onComplete?.Invoke();
             yield break;
         }
 
-        SetText(phaseChangeRoot, message);
-        phaseChangeRoot.SetActive(true);
+        if (message == "回合結束") isTurnTransitionActive = true;
 
-        float duration = PlayPhaseAnimation();
-        if (duration > 0f)
+        bool returnsToTurnLabel = message == "操作階段";
+        string displayedMessage = returnsToTurnLabel
+            ? TurnLabel(currentWhiteTurn)
+            : message;
+        SetTurnText(displayedMessage, currentWhiteTurn, true);
+        if (returnsToTurnLabel) isTurnTransitionActive = false;
+
+        if (fallbackPhaseSeconds > 0f)
         {
-            yield return new WaitForSecondsRealtime(duration);
+            yield return new WaitForSecondsRealtime(fallbackPhaseSeconds);
         }
 
-        phaseChangeRoot.SetActive(false);
         onComplete?.Invoke();
     }
 
-    /// <summary>
-    /// 從指定狀態播放階段提示動畫。
-    /// </summary>
-    private float PlayPhaseAnimation()
+    private void SetTurnText(string message, bool isWhiteTurn, bool animate)
     {
-        Animation legacyAnimation = phaseChangeRoot.GetComponent<Animation>();
-        if (legacyAnimation != null)
-        {
-            AnimationClip clip = legacyAnimation.clip;
-            if (clip != null)
-            {
-                legacyAnimation.Stop();
-                legacyAnimation.Play(clip.name);
-                return clip.length;
-            }
-        }
-
-        Animator animator = phaseChangeRoot.GetComponent<Animator>();
-        if (animator != null)
-        {
-            animator.Rebind();
-            animator.Update(0f);
-
-            foreach (AnimatorControllerParameter parameter in animator.parameters)
-            {
-                if (
-                    parameter.type == AnimatorControllerParameterType.Trigger &&
-                    parameter.name == animatorTriggerName
-                )
-                {
-                    animator.SetTrigger(animatorTriggerName);
-                    animator.Update(0f);
-                    return GetCurrentAnimatorStateDuration(animator);
-                }
-            }
-
-            AnimatorStateInfo currentState =
-                animator.GetCurrentAnimatorStateInfo(0);
-            animator.Play(currentState.fullPathHash, 0, 0f);
-            animator.Update(0f);
-            return GetCurrentAnimatorStateDuration(animator);
-        }
-
-        return fallbackPhaseSeconds;
+        if (turnText == null) return;
+        turnText.text = message;
+        turnText.fontStyle |= FontStyles.Bold;
+        ApplyTurnStyle(isWhiteTurn);
+        if (animate) turnText.GetComponent<UiScalePulse>()?.Play();
     }
 
-    /// <summary>
-    /// 取得目前 Animator 狀態的播放時間。
-    /// </summary>
-    private float GetCurrentAnimatorStateDuration(Animator animator)
+    private void ApplyTurnStyle(bool isWhiteTurn)
     {
-        AnimatorStateInfo stateInfo = animator.GetCurrentAnimatorStateInfo(0);
-        if (stateInfo.length > 0f)
-        {
-            return stateInfo.length;
-        }
+        if (turnText == null) return;
+        turnText.color = isWhiteTurn ? Color.white : Color.black;
+        turnText.outlineColor = isWhiteTurn
+            ? new Color32(0, 0, 0, 235)
+            : new Color32(255, 255, 255, 235);
+        turnText.outlineWidth = 0.16f;
+    }
 
-        return fallbackPhaseSeconds;
+    private static string TurnLabel(bool isWhiteTurn)
+    {
+        return isWhiteTurn ? "白方回合" : "黑方回合";
     }
 
     /// <summary>

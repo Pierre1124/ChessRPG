@@ -13,6 +13,13 @@ public sealed class CardKeywordPopup : MonoBehaviour
     private static CardKeywordPopup current;
     private LogicManager logic;
     public static bool IsOpen => current != null;
+    private RectTransform mobilePanel;
+    private void LateUpdate()
+    {
+        if (!MobilePrototype.Enabled) return;
+        if (mobilePanel == null) mobilePanel = transform.Find("Panel") as RectTransform;
+        if (mobilePanel != null) { mobilePanel.localScale = Vector3.one; MobilePanelBounds.Fit(mobilePanel); }
+    }
 
     public static void Show(CardKeywordEntry entry)
     {

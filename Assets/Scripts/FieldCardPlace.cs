@@ -9,6 +9,8 @@ public class FieldCardPlace : MonoBehaviour
 
     private CardDefinition activeCard;
     private Material runtimeMaterial;
+    private Vector3 authoredLocalPosition;
+    private float mobileFusionProgress = -1;
 
     public CardDefinition ActiveCard
     {
@@ -20,9 +22,31 @@ public class FieldCardPlace : MonoBehaviour
     /// </summary>
     private void Awake()
     {
+        authoredLocalPosition = transform.localPosition;
         ResolveReferences();
         EnsureRuntimeMaterial();
         RefreshVisual();
+    }
+
+    public void SetMobileFusionProgress(float progress) => mobileFusionProgress = progress;
+
+    private void LateUpdate()
+    {
+        if (!MobilePrototype.Enabled) return;
+        bool portrait = MobilePortraitLayout.IsPortrait;
+        Vector3 start = portrait
+            ? new Vector3(name.EndsWith("2") ? 5.6f : 1.4f, authoredLocalPosition.y, -2.1f)
+            : authoredLocalPosition;
+        Vector3 center = portrait ? new Vector3(3.5f, start.y, -2.1f) : new Vector3(9, start.y, 3.5f);
+        bool fused = activeCard != null && FieldCardRules.IsAdvancedField(activeCard.id);
+        Vector3 position = fused ? center : start;
+        if (mobileFusionProgress >= 0)
+        {
+            float t = Mathf.Clamp01(mobileFusionProgress);
+            position = Vector3.Lerp(start, center, Mathf.Clamp01(t * 4));
+            position.y += Mathf.Sin(Mathf.Clamp01((t - .25f) / .75f) * Mathf.PI) * 2;
+        }
+        transform.localPosition = position;
     }
 
     /// <summary>

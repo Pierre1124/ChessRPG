@@ -3431,7 +3431,7 @@ public class LogicManager : MonoBehaviour
         {
             AnimationClip clip = animation.GetClip(fieldFusionAnimationName);
             duration = clip.length;
-            animation.Play(fieldFusionAnimationName);
+            if (!MobilePrototype.Enabled) animation.Play(fieldFusionAnimationName);
             Debug.Log(
                 $"[CardDebug][FieldFusionAnimation] Clip=" +
                 $"{fieldFusionAnimationName} | Duration={duration}"
@@ -3445,7 +3445,18 @@ public class LogicManager : MonoBehaviour
             );
         }
 
-        if (duration > 0f)
+        if (MobilePrototype.Enabled && duration > 0f)
+        {
+            float elapsed = 0;
+            while (elapsed < duration)
+            {
+                foreach (var place in fieldCardPlaces)
+                    if (place != null) place.SetMobileFusionProgress(elapsed / duration);
+                elapsed += Time.deltaTime;
+                yield return null;
+            }
+        }
+        else if (duration > 0f)
         {
             yield return new WaitForSeconds(duration);
         }
@@ -3455,6 +3466,7 @@ public class LogicManager : MonoBehaviour
             if (place != null)
             {
                 place.SetCard(fused);
+                place.SetMobileFusionProgress(-1);
             }
         }
 

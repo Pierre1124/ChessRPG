@@ -60,7 +60,7 @@ public static class MobilePrototypeRegression
         if (state == PlayModeStateChange.ExitingPlayMode) CleanupInput();
         if (state == PlayModeStateChange.EnteredPlayMode)
         {
-            routine = Checks(); deadline = EditorApplication.timeSinceStartup + 120;
+            routine = Checks(); deadline = EditorApplication.timeSinceStartup + 180;
             var runner = new GameObject("Mobile regression runner");
             Object.DontDestroyOnLoad(runner);
             runner.AddComponent<MobileRegressionRunner>();
@@ -263,11 +263,110 @@ public static class MobilePrototypeRegression
         SetResolution(1080,1920);
         wait = Wait(1f); while (wait.MoveNext()) yield return null;
         Check(MobilePortraitLayout.IsPortrait, "Rotating back supports 9:16 portrait");
+        var overflowChecks = CheckMobileOverflow(logic);
+        while (overflowChecks.MoveNext()) yield return null;
         ScreenCapture.CaptureScreenshot("output/mobile-portrait-16x9.png");
         wait = Wait(.5f); while (wait.MoveNext()) yield return null;
+        var feedbackChecks = CheckFieldFeedback();
+        while (feedbackChecks.MoveNext()) yield return null;
     }
 
     private static Type GameViewType => typeof(Editor).Assembly.GetType("UnityEditor.GameView");
+    private static IEnumerator CheckFieldFeedback()
+    {
+        foreach (string mode in new[] { "mobile-portrait", "mobile-landscape", "desktop" })
+        {
+            if (mode == "desktop")
+            {
+                EditorPrefs.SetBool("ChessRPG.MobilePrototypePreview", false);
+                var mobile = Object.FindFirstObjectByType<MobilePrototype>();
+                if (mobile != null) Object.Destroy(mobile.gameObject);
+                var pause = Wait(.2f); while (pause.MoveNext()) yield return null;
+                SceneManager.LoadScene("ChessScene");
+            }
+            SetResolution(mode == "mobile-portrait" ? 1080 : 1920, mode == "mobile-portrait" ? 2340 : 1080);
+            var wait = Wait(2f); while (wait.MoveNext()) yield return null;
+            var logic = Object.FindFirstObjectByType<LogicManager>();
+            var card = Object.FindFirstObjectByType<ChessCard>().GetCard("F02");
+            var places = logic.GetFieldPlaces();
+            foreach (var place in places) place.SetCard(card);
+            var visualizer = Object.FindFirstObjectByType<DamageCalculationVisualizer>();
+            var flags = BindingFlags.Instance | BindingFlags.NonPublic;
+            typeof(DamageCalculationVisualizer).GetField("stepDuration", flags).SetValue(visualizer, 1.5f);
+            var boardCamera = Object.FindFirstObjectByType<CameraController>();
+            foreach (bool black in new[] { false, true })
+            {
+                if (black) boardCamera.BlackPerspective(); else boardCamera.WhitePerspective();
+                wait = Wait(.3f); while (wait.MoveNext()) yield return null;
+                var sequence = new DamageCalculationSequence { attacker = logic.boardMap[0,1], target = logic.boardMap[0,6], presentationOnly = true };
+                sequence.steps.Add(new DamageCalculationStep { sourceCardId = card.id, title = card.cardName, modifierPhase = DamageModifierPhase.Activation });
+                var phase = (IEnumerator)typeof(DamageCalculationVisualizer).GetMethod("PlayModifierPhase", flags).Invoke(visualizer, new object[] { new[] { sequence }, DamageCuePhase.AttackSources });
+                visualizer.StartCoroutine(phase);
+                wait = Wait(.4f); while (wait.MoveNext()) yield return null;
+                var glows = Object.FindObjectsByType<FieldEffectFeedback>(FindObjectsSortMode.None);
+                string label = mode + (black ? " black" : " white");
+                Check(glows.Length > 0 && glows.All(glow => glow.glowRoot.gameObject.activeInHierarchy && glow.glowRoot.GetComponentInChildren<CardGlowGraphic>().canvasRenderer.GetMesh().vertexCount > 0), label + ": actual activation creates visible source glow");
+                var panel = Object.FindObjectsByType<DamageResolutionPanel>(FindObjectsSortMode.None).First(p => p.AttachedPiece != null && p.AttachedPiece.GetComponent<FieldCardPlace>() != null);
+                var corners = new Vector3[4]; ((RectTransform)panel.transform).GetWorldCorners(corners);
+                Vector3 normal = Vector3.Cross(corners[1]-corners[0], corners[3]-corners[0]).normalized;
+                Check(Mathf.Abs(Vector3.Dot(normal, Camera.main.transform.forward)) > .999f && Mathf.Abs(Vector3.Dot((corners[1]-corners[0]).normalized, (corners[3]-corners[0]).normalized)) < .001f, label + ": field icon faces camera without shear");
+                ScreenCapture.CaptureScreenshot("output/field-feedback-" + mode + (black ? "-black" : "-white") + ".png");
+                wait = Wait(1.8f); while (wait.MoveNext()) yield return null;
+                Check(Object.FindObjectsByType<FieldEffectFeedback>(FindObjectsSortMode.None).Length == 0, label + ": glow expires after activation");
+            }
+        }
+    }
+    private static IEnumerator CheckMobileOverflow(LogicManager logic)
+    {
+        var log = Object.FindFirstObjectByType<OperateLogUI>();
+        var flags = BindingFlags.Instance | BindingFlags.NonPublic;
+        var button = (Button)typeof(OperateLogUI).GetField("operateLogButton", flags).GetValue(log);
+        var panel = (GameObject)typeof(OperateLogUI).GetField("logListRoot", flags).GetValue(log);
+        foreach (var resolution in new[] { new Vector2Int(1080,1920), new Vector2Int(1080,2340), new Vector2Int(2340,1080) })
+        {
+            SetResolution(resolution.x, resolution.y);
+            var wait = Wait(.7f); while (wait.MoveNext()) yield return null;
+            var tap = TapButton(button, 40); while (tap.MoveNext()) yield return null;
+            wait = Wait(.8f); while (wait.MoveNext()) yield return null;
+            var canvas = panel.GetComponentInParent<Canvas>();
+            Rect bounds = MobilePanelBounds.ScreenBounds((RectTransform)panel.transform, canvas.renderMode == RenderMode.ScreenSpaceOverlay ? null : canvas.worldCamera);
+            Rect safe = Screen.safeArea;
+            Check(bounds.width > 100 && bounds.height > 100 && bounds.xMin >= safe.xMin-1 && bounds.xMax <= safe.xMax+1 && bounds.yMin >= safe.yMin-1 && bounds.yMax <= safe.yMax+1, "Expanded move log fits safe area at " + resolution);
+            ScreenCapture.CaptureScreenshot($"output/mobile-log-{resolution.x}x{resolution.y}.png");
+            tap = TapButton(button, 41); while (tap.MoveNext()) yield return null;
+            wait = Wait(.5f); while (wait.MoveNext()) yield return null;
+        }
+        SetResolution(1080,1920);
+        var settle = Wait(.7f); while (settle.MoveNext()) yield return null;
+        var places = logic.GetFieldPlaces();
+        var card = Object.FindFirstObjectByType<ChessCard>().GetCard("F01");
+        Check(logic.TryPlayFieldCard(card, places[0]) && logic.TryPlayFieldCard(card, places[1]), "Two field cards trigger real fusion");
+        float until = Time.unscaledTime + 2.5f;
+        while (Time.unscaledTime < until) { AssertFieldsVisible(places); yield return null; }
+        Check(places.All(place => place.ActiveCard != null && place.ActiveCard.id == "F02"), "Field fusion finishes with F02");
+        AssertFieldsVisible(places);
+        ScreenCapture.CaptureScreenshot("output/mobile-field-fusion.png");
+        settle = Wait(.3f); while (settle.MoveNext()) yield return null;
+        SetResolution(2340,1080);
+        settle = Wait(.7f); while (settle.MoveNext()) yield return null;
+        SetResolution(1080,2340);
+        settle = Wait(.7f); while (settle.MoveNext()) yield return null;
+        AssertFieldsVisible(places);
+        Check(true, "Fused field remains on screen during animation and after rotation");
+    }
+    private static void AssertFieldsVisible(System.Collections.Generic.IReadOnlyList<FieldCardPlace> places)
+    {
+        foreach (var place in places)
+        {
+            Bounds bounds = place.GetComponent<Collider>().bounds;
+            for (int i=0;i<8;i++)
+            {
+                Vector3 corner = bounds.center + Vector3.Scale(bounds.extents,new Vector3((i&1)==0?-1:1,(i&2)==0?-1:1,(i&4)==0?-1:1));
+                Vector3 p = Camera.main.WorldToScreenPoint(corner);
+                if (p.z <= 0 || !Screen.safeArea.Contains(p)) throw new Exception("Field outside safe area: " + place.name + " at " + p);
+            }
+        }
+    }
     private static void SetResolution(int width, int height)
     {
         var assembly = typeof(Editor).Assembly;

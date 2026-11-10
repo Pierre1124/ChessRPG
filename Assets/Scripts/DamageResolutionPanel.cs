@@ -3,6 +3,7 @@ using UnityEngine;
 using UnityEngine.UI;
 
 /// <summary>在計算目標頭上逐步顯示來源與累計，只呈現數字，不修改血量。</summary>
+[DefaultExecutionOrder(2000)]
 public sealed class DamageResolutionPanel : MonoBehaviour
 {
     [SerializeField] private RectTransform bubble;
@@ -58,6 +59,7 @@ public sealed class DamageResolutionPanel : MonoBehaviour
         total.text = "0"; icon.enabled = false;
         total.color = value.isHealing ? new Color(0.4f, 1f, 0.65f) : new Color(1f, 0.78f, 0.38f);
         gameObject.SetActive(true); changedAt = Time.unscaledTime;
+        PlayPulse();
         LateUpdate();
     }
 
@@ -74,6 +76,7 @@ public sealed class DamageResolutionPanel : MonoBehaviour
         if (background != null) background.enabled = false;
         icon.sprite = sprite; icon.enabled = sprite != null;
         gameObject.SetActive(true); changedAt = Time.unscaledTime;
+        PlayPulse();
         LateUpdate();
     }
 
@@ -122,6 +125,7 @@ public sealed class DamageResolutionPanel : MonoBehaviour
         total.text = known ? (PresentedSteps == 0 ? running.ToString() : previous + " " + change + " = " + running) : change;
         icon.sprite = sprite; icon.enabled = sprite != null;
         PresentedSteps++; changedAt = Time.unscaledTime;
+        PlayPulse();
     }
 
     /// <summary>顯示正式結果，等待所有目標計算完才由外部結算。</summary>
@@ -129,6 +133,12 @@ public sealed class DamageResolutionPanel : MonoBehaviour
     {
         source.text = sequence.isHealing ? "回復生命" : "最終傷害";
         total.text = sequence.finalDamage.ToString(); icon.enabled = false;
+        PlayPulse();
+    }
+
+    private void PlayPulse()
+    {
+        if (bubble != null) bubble.GetComponent<UiScalePulse>()?.Play();
     }
 
     /// <summary>隱藏此目標的演出並保留物件供下次重用。</summary>
@@ -144,7 +154,9 @@ public sealed class DamageResolutionPanel : MonoBehaviour
     {
         if (poolParent == null) poolParent = transform.parent;
         attachedPiece = owner;
-        transform.SetParent(owner, false);
+        // A rotated, non-uniformly scaled field mesh shears a child billboard even
+        // when its world rotation is correct. Track its anchor without inheriting its matrix.
+        transform.SetParent(owner != null && owner.GetComponent<FieldCardPlace>() != null ? null : owner, false);
         Canvas canvas = GetComponent<Canvas>();
         canvas.renderMode = RenderMode.WorldSpace;
         canvas.worldCamera = Camera.main;

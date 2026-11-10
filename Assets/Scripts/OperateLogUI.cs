@@ -592,6 +592,11 @@ public class OperateLogUI : MonoBehaviour
     /// </summary>
     private void EvaluateToggleAnimation()
     {
+        if (MobilePrototype.Enabled)
+        {
+            ApplyMobileLogLayout();
+            return;
+        }
         if (logListAnimation != null && logListAnimation.clip != null)
         {
             AnimationClip clip = logListAnimation.clip;
@@ -626,6 +631,31 @@ public class OperateLogUI : MonoBehaviour
         }
 
         logListAnimator.Update(0f);
+    }
+
+    private void LateUpdate()
+    {
+        if (MobilePrototype.Enabled) ApplyMobileLogLayout();
+    }
+
+    private void ApplyMobileLogLayout()
+    {
+        if (logListRoot == null) return;
+        // Authored animation contains absolute landscape offsets; keep it out of mobile layout.
+        if (logListAnimator != null) logListAnimator.enabled = false;
+        if (logListAnimation != null) logListAnimation.enabled = false;
+        var rect = (RectTransform)logListRoot.transform;
+        bool portrait = MobilePortraitLayout.IsPortrait;
+        rect.anchorMin = rect.anchorMax = portrait ? new Vector2(1, 0) : new Vector2(0, 0);
+        rect.pivot = portrait ? Vector2.one : new Vector2(0, 1);
+        rect.anchoredPosition = new Vector2(0, -10);
+        rect.localScale = Vector3.one;
+        rect.sizeDelta = (portrait ? new Vector2(700, 700) : new Vector2(500, 600)) * normalizedTime;
+        MobilePanelBounds.Fit(rect);
+        var group = logListRoot.GetComponent<CanvasGroup>();
+        if (group == null) group = logListRoot.AddComponent<CanvasGroup>();
+        group.alpha = normalizedTime;
+        group.interactable = group.blocksRaycasts = isExpanded && normalizedTime > .95f;
     }
 
     /// <summary>

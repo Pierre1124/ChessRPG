@@ -71,6 +71,7 @@ public class StartMenuController : MonoBehaviour
     /// </summary>
     private void Start()
     {
+        EditorModeSession.SetEnabled(false);
         LogicManager.SetNextGameMode(false);
         if (networkSessionLauncher == null)
         {
@@ -86,6 +87,7 @@ public class StartMenuController : MonoBehaviour
 
         BindDisplaySettings();
         RefreshMainDeckSummary();
+        CreateEditorModeButton();
     }
 
     /// <summary>
@@ -102,8 +104,42 @@ public class StartMenuController : MonoBehaviour
     public void StartLocalGame()
     {
         if (startingLocalGame || !PrepareDeckBeforeGame()) return;
+        EditorModeSession.SetEnabled(false);
         startingLocalGame = true;
         StartCoroutine(EnterLocalTestGame());
+    }
+
+    /// <summary>載入本機棋局並啟用卡庫與棋盤配置沙盒。</summary>
+    public void StartEditorMode()
+    {
+        if (startingLocalGame || !PrepareDeckBeforeGame()) return;
+        EditorModeSession.SetEnabled(true);
+        startingLocalGame = true;
+        StartCoroutine(EnterLocalTestGame());
+    }
+
+    /// <summary>複製既有本機開始按鈕，建立不需額外場景綁定的編輯器模式入口。</summary>
+    private void CreateEditorModeButton()
+    {
+        ResolveMenuPanels();
+        if (mainMenuPanel == null || FindChildRecursive(mainMenuPanel.transform, "EditorMode") != null)
+            return;
+
+        Transform source = FindChildRecursive(mainMenuPanel.transform, "StartGame");
+        if (source == null) return;
+
+        GameObject buttonObject = Instantiate(source.gameObject, source.parent);
+        buttonObject.name = "EditorMode";
+        Button button = buttonObject.GetComponent<Button>();
+        if (button != null)
+        {
+            button.onClick.RemoveAllListeners();
+            button.onClick.AddListener(StartEditorMode);
+        }
+
+        TMP_Text label = buttonObject.GetComponentInChildren<TMP_Text>(true);
+        if (label != null) label.text = "編輯器模式";
+        buttonObject.transform.SetSiblingIndex(source.GetSiblingIndex() + 1);
     }
 
     private IEnumerator EnterLocalTestGame()
