@@ -197,6 +197,7 @@ public class NetworkDamageCalculationSequence
     public bool isCapture;
     public int finalDamage;
     public Vector3 resultStartWorldPosition;
+    public bool keepFullPresentationSize;
     public BoardCoordinate attacker = new BoardCoordinate(-1, -1);
     public BoardCoordinate target = new BoardCoordinate(-1, -1);
     public List<NetworkDamageCalculationStep> steps =

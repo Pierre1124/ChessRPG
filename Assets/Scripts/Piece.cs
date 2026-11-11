@@ -6,6 +6,9 @@ using UnityEngine;
 /// </summary>
 public abstract class Piece : MonoBehaviour
 {
+    private void OnEnable() => LogicManager.InvalidateCardTargets();
+    private void OnDisable() => LogicManager.InvalidateCardTargets();
+
     private void LateUpdate()
     {
         foreach (var status in statuses)
@@ -184,6 +187,7 @@ public abstract class Piece : MonoBehaviour
         status.hasSourcePlayer = hasSourcePlayer;
         status.sourcePlayerIsWhite = sourcePlayerIsWhite;
 
+        LogicManager.InvalidateCardTargets();
         statuses.Add(status);
         BattleFeedback.StartStatusIdle(status);
 
@@ -243,6 +247,7 @@ public abstract class Piece : MonoBehaviour
             removed++;
         }
 
+        if (removed > 0) LogicManager.InvalidateCardTargets();
         return removed;
     }
 
@@ -271,6 +276,7 @@ public abstract class Piece : MonoBehaviour
             removed++;
         }
 
+        if (removed > 0) LogicManager.InvalidateCardTargets();
         return removed;
     }
 
@@ -328,6 +334,7 @@ public abstract class Piece : MonoBehaviour
             removed++;
         }
 
+        if (removed > 0) LogicManager.InvalidateCardTargets();
         return removed;
     }
 
@@ -396,6 +403,7 @@ public abstract class Piece : MonoBehaviour
     /// </summary>
     public void ClearRpgState()
     {
+        LogicManager.InvalidateCardTargets();
         cardDefinition = null;
         cardRuntime = null;
         foreach (var status in statuses) BattleFeedback.StopStatusIdle(status);

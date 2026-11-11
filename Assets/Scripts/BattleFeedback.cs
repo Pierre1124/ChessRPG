@@ -16,6 +16,10 @@ public sealed class BattleFeedback : MonoBehaviour
     [Header("類型呈現：圖示、數字、特效與音效")]
     public BattlePresentationStyle[] presentationStyles = new BattlePresentationStyle[0];
     public Transform typeEffectRoot;
+    [Header("傷害呈現的攝影機距離縮放")]
+    [Min(0f)] public float fullSizeDistance = 6f;
+    [Min(0.01f)] public float minimumSizeDistance = 12f;
+    [Range(0.1f, 1f)] public float minimumDistanceScale = 0.55f;
     private static BattleFeedback instance;
     private AudioSource output;
     private bool hasHealth;
@@ -31,19 +35,73 @@ public sealed class BattleFeedback : MonoBehaviour
         return null;
     }
 
+    /// <summary>近距離維持原尺寸，超過設定距離後平滑縮小並保留最低可讀比例。</summary>
+    public static float GetCameraDistanceScale(Vector3 worldPosition)
+    {
+        Camera camera = Camera.main;
+        if (camera == null) return 1f;
+
+        float near = instance != null ? instance.fullSizeDistance : 6f;
+        float far = instance != null ? instance.minimumSizeDistance : 12f;
+        float minimum = instance != null ? instance.minimumDistanceScale : 0.55f;
+        far = Mathf.Max(near + 0.01f, far);
+        float progress = Mathf.InverseLerp(
+            near,
+            far,
+            Vector3.Distance(camera.transform.position, worldPosition)
+        );
+        progress = progress * progress * (3f - 2f * progress);
+        return Mathf.Lerp(1f, Mathf.Clamp(minimum, 0.1f, 1f), progress);
+    }
+
     /// <summary>於演出時播放類型回饋；不在數值試算或網路同步時重複觸發。</summary>
     public static void PlayType(BattlePresentationType type, Vector3 position, bool playSound = true)
+    {
+        PlayTypeInternal(type, position, playSound, true);
+    }
+
+    /// <summary>場地卡的全棋盤演出維持原尺寸，不受攝影機距離影響。</summary>
+    public static void PlayTypeAtFullSize(
+        BattlePresentationType type,
+        Vector3 position,
+        bool playSound = true
+    )
+    {
+        PlayTypeInternal(type, position, playSound, false);
+    }
+
+    private static void PlayTypeInternal(
+        BattlePresentationType type,
+        Vector3 position,
+        bool playSound,
+        bool scaleByCameraDistance
+    )
     {
         var style = GetStyle(type);
         if (style == null) return;
         if (playSound) PlayClip(style.sound, style.soundVolume);
         if (style.effectPrefab == null) return;
-        var effect = CreateTypeEffect(style, position, instance.typeEffectRoot != null ? instance.typeEffectRoot : instance.transform);
+        var effect = CreateTypeEffectInternal(
+            style,
+            position,
+            instance.typeEffectRoot != null ? instance.typeEffectRoot : instance.transform,
+            scaleByCameraDistance
+        );
         instance.typeEffects.Add(effect);
         instance.StartCoroutine(instance.RemoveTypeEffect(effect, style.PlaybackLifetime));
     }
 
     internal static GameObject CreateTypeEffect(BattlePresentationStyle style, Vector3 position, Transform parent)
+    {
+        return CreateTypeEffectInternal(style, position, parent, true);
+    }
+
+    private static GameObject CreateTypeEffectInternal(
+        BattlePresentationStyle style,
+        Vector3 position,
+        Transform parent,
+        bool scaleByCameraDistance
+    )
     {
         // Keep the world anchor outside the animated hierarchy. Imported animation clips
         // may key the prefab root position back to zero on their first update.
@@ -55,7 +113,8 @@ public sealed class BattleFeedback : MonoBehaviour
             Mathf.Abs(parent.lossyScale.x * parent.lossyScale.y * parent.lossyScale.z) < .000001f))
             parent = null;
         effect.transform.SetParent(parent, true);
-        effect.transform.localScale *= style.effectScale;
+        effect.transform.localScale *= style.effectScale *
+            (scaleByCameraDistance ? GetCameraDistanceScale(position) : 1f);
         var visual = Instantiate(style.effectPrefab, effect.transform, false);
         visual.transform.localPosition = Vector3.zero;
         visual.transform.localRotation = style.effectPrefab.transform.rotation;

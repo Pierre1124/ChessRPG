@@ -299,9 +299,7 @@ public class CardDragHandler : MonoBehaviour,
         Component target = cardDefinition.cardType == CardType.Field
             ? (Component)hit.transform.GetComponentInParent<FieldCardPlace>() : hit.transform.GetComponentInParent<Piece>();
         if (target == null) return cardDefinition.cardType == CardType.Field ? "請將場地卡放到場地欄位" : "請將卡牌放到符合條件的棋子";
-        var targets = new System.Collections.Generic.List<Component>();
-        handManager.CollectCardTargets(cardDefinition, targets);
-        if (targets.Contains(target)) return null;
+        if (handManager.CanPreviewCard(cardDefinition) && handManager.GetPreviewTargets(cardDefinition).Contains(target)) return null;
         return handManager.GetCardUnavailableReason(cardDefinition) ?? "此目標不符合這張卡牌的使用條件";
     }
 

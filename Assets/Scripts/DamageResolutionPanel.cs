@@ -24,6 +24,7 @@ public sealed class DamageResolutionPanel : MonoBehaviour
     private bool known;
     private float changedAt;
     private int sourceStack;
+    private bool scaleByCameraDistance = true;
     public string DisplayedTotal => total != null ? total.text : "";
     public int PresentedSteps { get; private set; }
 
@@ -52,6 +53,7 @@ public sealed class DamageResolutionPanel : MonoBehaviour
     public void Begin(DamageCalculationSequence value, int index, int count)
     {
         sourceStack = 0; total.gameObject.SetActive(true);
+        scaleByCameraDistance = value == null || value.UsesCameraDistanceScale;
         sequence = value; running = 0; known = true; PresentedSteps = 0;
         anchor = value.target != null ? value.target.transform.position : value.resultStartWorldPosition;
         AttachToPiece(value.target != null ? value.target.transform : null);
@@ -64,8 +66,16 @@ public sealed class DamageResolutionPanel : MonoBehaviour
     }
 
     /// <summary>在修正來源頭上只顯示圖示，計算數字交由固定 FinalDMG 呈現。</summary>
-    public void ShowSource(DamageCalculationStep step, Sprite sprite, int stack, Piece target = null, Transform sourceOverride = null)
+    public void ShowSource(
+        DamageCalculationStep step,
+        Sprite sprite,
+        int stack,
+        Piece target = null,
+        Transform sourceOverride = null,
+        bool useCameraDistanceScale = true
+    )
     {
+        scaleByCameraDistance = useCameraDistanceScale;
         if (modifierArrow != null) modifierArrow.gameObject.SetActive(false);
         icon.rectTransform.anchoredPosition = Vector2.zero;
         anchor = step.worldPosition; sourceStack = stack; PresentedSteps = 1;
@@ -80,9 +90,23 @@ public sealed class DamageResolutionPanel : MonoBehaviour
         LateUpdate();
     }
 
-    public void ShowSourceAt(DamageCalculationStep step, Sprite sprite, int stack, Transform owner, Vector3 position)
+    public void ShowSourceAt(
+        DamageCalculationStep step,
+        Sprite sprite,
+        int stack,
+        Transform owner,
+        Vector3 position,
+        bool useCameraDistanceScale = true
+    )
     {
-        ShowSource(step, sprite, stack);
+        ShowSource(
+            step,
+            sprite,
+            stack,
+            null,
+            null,
+            useCameraDistanceScale
+        );
         anchor = position;
         AttachToPiece(owner);
         LateUpdate();
@@ -97,11 +121,26 @@ public sealed class DamageResolutionPanel : MonoBehaviour
         modifierArrow.gameObject.SetActive(false);
     }
 
-    public void ShowModifier(DamageCalculationStep step, DamageCalculationSequence value, DamageModifierFeedback settings, int stack, Transform sourceOverride = null, bool resolvedAnchor = false)
+    public void ShowModifier(
+        DamageCalculationStep step,
+        DamageCalculationSequence value,
+        DamageModifierFeedback settings,
+        int stack,
+        Transform sourceOverride = null,
+        bool resolvedAnchor = false,
+        bool useCameraDistanceScale = true
+    )
     {
         Piece recipient = DamageModifierFeedback.Recipient(step, value);
         // Never fall back to the aura/status owner for a modifier on another combatant.
-        ShowSource(step, DamageModifierFeedback.StyleSymbol(step), stack);
+        ShowSource(
+            step,
+            DamageModifierFeedback.StyleSymbol(step),
+            stack,
+            null,
+            null,
+            useCameraDistanceScale
+        );
         Transform owner = resolvedAnchor ? sourceOverride : sourceOverride != null ? sourceOverride : recipient != null ? recipient.transform : null;
         anchor = owner != null ? owner.position : resolvedAnchor ? Vector3.zero : value.resultStartWorldPosition;
         AttachToPiece(owner);
@@ -177,7 +216,14 @@ public sealed class DamageResolutionPanel : MonoBehaviour
         transform.position = anchor + pieceOffset + Vector3.up * (sourceStack * stackSpacing + rise);
         transform.rotation = camera.transform.rotation;
         Vector3 parentScale = transform.parent != null ? transform.parent.lossyScale : Vector3.one;
-        transform.localScale = new Vector3(SafeScale(parentScale.x), SafeScale(parentScale.y), SafeScale(parentScale.z));
+        float distanceScale = scaleByCameraDistance
+            ? BattleFeedback.GetCameraDistanceScale(transform.position)
+            : 1f;
+        transform.localScale = new Vector3(
+            SafeScale(parentScale.x) * distanceScale,
+            SafeScale(parentScale.y) * distanceScale,
+            SafeScale(parentScale.z) * distanceScale
+        );
         bubble.gameObject.SetActive(camera.WorldToScreenPoint(transform.position).z > 0);
     }
 

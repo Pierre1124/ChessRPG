@@ -1,3 +1,4 @@
+#if UNITY_EDITOR
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
@@ -29,7 +30,11 @@ public static class EditorModeSession
 
     private static void AttachToGameScene(Scene scene, LoadSceneMode mode)
     {
-        if (scene.name != "ChessScene") return;
+        if (scene.name != "ChessScene")
+        {
+            SetEnabled(false);
+            return;
+        }
         if (Object.FindFirstObjectByType<EditorModeController>() != null) return;
 
         GameObject host = new GameObject("EditorModeController");
@@ -338,3 +343,4 @@ public sealed class EditorModeController : MonoBehaviour
         logic.UpdateCheckMap();
     }
 }
+#endif

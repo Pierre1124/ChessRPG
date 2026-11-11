@@ -68,6 +68,70 @@ public static class DamagePanelRegression
             var label = labelObject.GetComponent<TMPro.TMP_Text>();
             typeof(DamageCalculationVisualizer).GetField("finalDamageText", Private)
                 .SetValue(testVisualizer, label);
+            var resultObject = new GameObject(
+                "DamageResultFly",
+                typeof(RectTransform),
+                typeof(CanvasGroup)
+            );
+            resultObject.hideFlags = HideFlags.HideAndDontSave;
+            resultObject.transform.SetParent(root.transform, false);
+            var resultTextObject = new GameObject(
+                "DamageText",
+                typeof(RectTransform),
+                typeof(TMPro.TextMeshProUGUI)
+            );
+            resultTextObject.hideFlags = HideFlags.HideAndDontSave;
+            resultTextObject.transform.SetParent(resultObject.transform, false);
+            var resultText = resultTextObject.GetComponent<TMPro.TMP_Text>();
+            typeof(DamageCalculationVisualizer).GetField("damageResultFly", Private)
+                .SetValue(testVisualizer, resultObject.GetComponent<RectTransform>());
+            typeof(DamageCalculationVisualizer).GetField("damageResultFlyText", Private)
+                .SetValue(testVisualizer, resultText);
+            Camera distanceCamera = Camera.main;
+            if (distanceCamera == null)
+            {
+                var cameraObject = new GameObject("Distance scale test camera", typeof(Camera));
+                cameraObject.tag = "MainCamera";
+                cameraObject.transform.SetParent(root.transform, false);
+                distanceCamera = cameraObject.GetComponent<Camera>();
+            }
+            Vector3 nearDamagePosition = distanceCamera.transform.position +
+                distanceCamera.transform.forward * 6f;
+            Vector3 middleDamagePosition = distanceCamera.transform.position +
+                distanceCamera.transform.forward * 9f;
+            Vector3 farDamagePosition = distanceCamera.transform.position +
+                distanceCamera.transform.forward * 12f;
+            float nearDistanceScale = BattleFeedback.GetCameraDistanceScale(nearDamagePosition);
+            float middleDistanceScale = BattleFeedback.GetCameraDistanceScale(middleDamagePosition);
+            float farDistanceScale = BattleFeedback.GetCameraDistanceScale(farDamagePosition);
+            if (!(nearDistanceScale > middleDistanceScale &&
+                middleDistanceScale > farDistanceScale && farDistanceScale >= .1f))
+                throw new InvalidOperationException(
+                    "Damage presentation size must decrease gradually with camera distance."
+                );
+            var fieldSequence = new DamageCalculationSequence
+            {
+                damageContext = new DamageContext
+                {
+                    sourceCard = new CardDefinition { cardType = CardType.Field }
+                }
+            };
+            var pieceSequence = new DamageCalculationSequence
+            {
+                damageContext = new DamageContext
+                {
+                    sourceCard = new CardDefinition { cardType = CardType.JobChange }
+                }
+            };
+            if (fieldSequence.UsesCameraDistanceScale ||
+                !pieceSequence.UsesCameraDistanceScale ||
+                new DamageCalculationSequence
+                {
+                    keepFullPresentationSize = true
+                }.UsesCameraDistanceScale)
+                throw new InvalidOperationException(
+                    "Field card damage must keep its original presentation size."
+                );
             MethodInfo update = typeof(DamageCalculationVisualizer)
                 .GetMethod("UpdateFinalDamageText", Private);
 
@@ -85,26 +149,36 @@ public static class DamagePanelRegression
                 throw new InvalidOperationException(
                     "Multi-target damage summary must be a single total without target details."
                 );
+            Vector3 singleStart = (Vector3)typeof(DamageCalculationVisualizer)
+                .GetMethod("GetFinalDamageFlightStartPosition", Private)
+                .Invoke(testVisualizer, new object[] { 0, 1 });
+            if ((singleStart - label.rectTransform.position).sqrMagnitude > .01f)
+                throw new InvalidOperationException(
+                    "Damage result flight must start at the final damage label."
+                );
 
-            update.Invoke(testVisualizer, new object[]
-            {
-                new[]
+            var twoSideResults = (System.Collections.IList)update.Invoke(
+                testVisualizer,
+                new object[]
                 {
-                    new DamageCalculationSequence { finalDamage = 2, damagedWhitePlayer = true },
-                    new DamageCalculationSequence { finalDamage = 3, damagedWhitePlayer = true },
-                    new DamageCalculationSequence { finalDamage = 4, damagedWhitePlayer = false },
-                    new DamageCalculationSequence
+                    new[]
                     {
-                        finalDamage = 99,
-                        damagedWhitePlayer = false,
-                        presentationOnly = true
+                        new DamageCalculationSequence { finalDamage = 2, damagedWhitePlayer = true },
+                        new DamageCalculationSequence { finalDamage = 3, damagedWhitePlayer = true },
+                        new DamageCalculationSequence { finalDamage = 4, damagedWhitePlayer = false },
+                        new DamageCalculationSequence
+                        {
+                            finalDamage = 99,
+                            damagedWhitePlayer = false,
+                            presentationOnly = true
+                        }
                     }
                 }
-            });
+            );
             if (testVisualizer.DisplayedFinalDamage !=
-                "白方 最終傷害:5\n黑方 最終傷害:4")
+                "最終傷害:5\n最終傷害:4" || twoSideResults.Count != 2)
                 throw new InvalidOperationException(
-                    "Simultaneous damage must show one summed final damage per side."
+                    "Simultaneous damage must create one unlabeled final result per side."
                 );
 
             update.Invoke(testVisualizer, new object[]
@@ -118,6 +192,68 @@ public static class DamagePanelRegression
             if (testVisualizer.DisplayedFinalDamage != "最終回復:5")
                 throw new InvalidOperationException(
                     "Healing-only summary must be a single total."
+                );
+            typeof(DamageCalculationVisualizer)
+                .GetMethod("HideFinalDamageText", Private)
+                .Invoke(testVisualizer, null);
+            if (testVisualizer.DisplayedFinalDamage != "")
+                throw new InvalidOperationException(
+                    "Final damage label must hide after the result flight finishes."
+                );
+
+            MethodInfo getView = typeof(DamageCalculationVisualizer)
+                .GetMethod("GetOrCreateResultFlyView", Private);
+            MethodInfo showTargetResult = typeof(DamageCalculationVisualizer)
+                .GetMethod("ShowDamageResultFly", Private);
+            object firstView = getView.Invoke(testVisualizer, new object[] { 0 });
+            object secondView = getView.Invoke(testVisualizer, new object[] { 1 });
+            object fieldView = getView.Invoke(testVisualizer, new object[] { 2 });
+            showTargetResult.Invoke(testVisualizer, new[]
+            {
+                (object)new DamageCalculationSequence
+                {
+                    finalDamage = 2,
+                    resultStartWorldPosition = nearDamagePosition
+                },
+                firstView
+            });
+            showTargetResult.Invoke(testVisualizer, new[]
+            {
+                (object)new DamageCalculationSequence
+                {
+                    finalDamage = 3,
+                    resultStartWorldPosition = farDamagePosition
+                },
+                secondView
+            });
+            showTargetResult.Invoke(testVisualizer, new[]
+            {
+                (object)new DamageCalculationSequence
+                {
+                    finalDamage = 4,
+                    resultStartWorldPosition = farDamagePosition,
+                    damageContext = new DamageContext
+                    {
+                        sourceCard = new CardDefinition { cardType = CardType.Field }
+                    }
+                },
+                fieldView
+            });
+            FieldInfo viewRoot = firstView.GetType().GetField("root");
+            RectTransform firstRoot = (RectTransform)viewRoot.GetValue(firstView);
+            RectTransform secondRoot = (RectTransform)viewRoot.GetValue(secondView);
+            RectTransform fieldRoot = (RectTransform)viewRoot.GetValue(fieldView);
+            string firstValue = firstRoot.GetComponentInChildren<TMPro.TMP_Text>().text;
+            string secondValue = secondRoot.GetComponentInChildren<TMPro.TMP_Text>().text;
+            string fieldValue = fieldRoot.GetComponentInChildren<TMPro.TMP_Text>().text;
+            if (firstRoot == secondRoot || !firstRoot.gameObject.activeSelf ||
+                !secondRoot.gameObject.activeSelf || firstValue != "2" || secondValue != "3" ||
+                fieldValue != "4" ||
+                secondRoot.localScale.sqrMagnitude >= firstRoot.localScale.sqrMagnitude ||
+                Mathf.Abs(fieldRoot.localScale.sqrMagnitude -
+                    firstRoot.localScale.sqrMagnitude) > .001f)
+                throw new InvalidOperationException(
+                    "Distant piece numbers shrink, while field-card numbers stay full size."
                 );
 
             Debug.Log("Final damage summary regression passed.");
@@ -206,7 +342,7 @@ public static class DamagePanelRegression
                 {
                     Check(applied == 1 && captured == 1 && sawPending && sawIncrease && sawDecrease, "Single sequence applies once after increase then simultaneous reductions");
                     Check(logic.blackHealth == blackBefore - expectedDamage && !logic.IsDamageCalculationBusy, "Damage applies final amount and releases operation lock");
-                    Check(panel == null && visualizer.DisplayedFinalDamage == "最終傷害:5", "Final damage appears after kingdom defense");
+                    Check(panel == null && visualizer.DisplayedFinalDamage == "", "Final damage hides after flying to health");
                     stage = 2;
                 }
             }
@@ -577,8 +713,8 @@ public static class DamagePanelRegression
             observedCues++;
         }
         if (applied == 0) return;
-        Check(observedCues == 4 && applied == 1 && captured == 1 && visualizer.DisplayedFinalDamage == "最終傷害:5",
-            "Hit and damage settlement occur once after both sides finish");
+        Check(observedCues == 4 && applied == 1 && captured == 1 && visualizer.DisplayedFinalDamage == "",
+            "Hit settles once and hides final damage after its flight finishes");
         stage = 5;
         EditorApplication.isPlaying = false;
     }

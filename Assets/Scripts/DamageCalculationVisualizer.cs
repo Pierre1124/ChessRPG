@@ -20,6 +20,11 @@ public class DamageCalculationSequence
     public bool isCapture;
     public int finalDamage;
     public Vector3 resultStartWorldPosition;
+    public bool keepFullPresentationSize;
+    public bool UsesCameraDistanceScale =>
+        !keepFullPresentationSize &&
+        (damageContext?.sourceCard == null ||
+            damageContext.sourceCard.cardType != CardType.Field);
     public readonly List<DamageCalculationStep> steps =
         new List<DamageCalculationStep>();
 }
@@ -328,7 +333,7 @@ public class DamageCalculationVisualizer : MonoBehaviour
         // 出牌展示與傷害佇列可同時啟動；先等既有出牌動畫完成再播來源階段。
         CardHandManager hand = FindFirstObjectByType<CardHandManager>();
         while (hand != null && hand.isActiveAndEnabled && hand.IsUsingCardAnimationPlaying) yield return null;
-        if (finalDamageText != null) finalDamageText.gameObject.SetActive(false);
+        HideFinalDamageText();
         yield return PlayModifierPhase(sequences, DamageCuePhase.AttackSources);
         yield return PlayModifierPhase(sequences, DamageCuePhase.AttackEffects);
         yield return PlayModifierPhase(sequences, DamageCuePhase.DefenseSources);
@@ -340,47 +345,65 @@ public class DamageCalculationVisualizer : MonoBehaviour
             if (captureDelay > 0f) yield return new WaitForSecondsRealtime(captureDelay);
             break;
         }
-        UpdateFinalDamageText(sequences);
-        var flyingSequences = new List<DamageCalculationSequence>();
-        var flyingViews = new List<DamageResultFlyView>();
+        List<FinalResultFlight> flyingResults = UpdateFinalDamageText(sequences);
+        var targetResultViews = new List<DamageResultFlyView>();
         for (int i = 0; i < sequences.Count; i++)
         {
             DamageCalculationSequence sequence = sequences[i];
             if (sequence == null || sequence.presentationOnly) continue;
-            DamageResultFlyView view = GetOrCreateResultFlyView(flyingViews.Count);
+
+            DamageResultFlyView view = GetOrCreateResultFlyView(targetResultViews.Count);
             ShowDamageResultFly(sequence, view);
-            flyingSequences.Add(sequence); flyingViews.Add(view);
+            targetResultViews.Add(view);
         }
-        if (flyingViews.Count > 0)
+
+        var flyingViews = new List<DamageResultFlyView>();
+        for (int i = 0; i < flyingResults.Count; i++)
+        {
+            DamageResultFlyView view = GetOrCreateResultFlyView(
+                targetResultViews.Count + flyingViews.Count
+            );
+            ShowFinalResultFly(
+                flyingResults[i],
+                view,
+                GetFinalDamageFlightStartPosition(i, flyingResults.Count)
+            );
+            flyingViews.Add(view);
+        }
+        if (targetResultViews.Count > 0 || flyingViews.Count > 0)
         {
             yield return new WaitForSecondsRealtime(resultHoldDuration);
             // 歸零仍顯示最終 0，但不飛向血條或產生受傷震動。
             for (int i = flyingViews.Count - 1; i >= 0; i--)
-                if (flyingSequences[i].finalDamage <= 0)
-                { flyingViews[i].root.gameObject.SetActive(false); flyingViews.RemoveAt(i); flyingSequences.RemoveAt(i); }
-            if (flyingViews.Count > 0) yield return FlyBatchToHealthTargets(flyingSequences, flyingViews);
+                if (flyingResults[i].value <= 0L)
+                { flyingViews[i].root.gameObject.SetActive(false); flyingViews.RemoveAt(i); flyingResults.RemoveAt(i); }
+            if (flyingViews.Count > 0) yield return FlyBatchToHealthTargets(flyingResults, flyingViews);
         }
         HideDamageResultFlies();
+        HideFinalDamageText();
         var impacted = new HashSet<Transform>();
-        foreach (var sequence in flyingSequences)
+        foreach (var result in flyingResults)
         {
-            Transform health = sequence.damagedWhitePlayer ? whiteHealthTarget : blackHealthTarget;
-            if (!sequence.isHealing && health != null && impacted.Add(health)) StartHealthShake(health);
+            Transform health = result.damagedWhitePlayer ? whiteHealthTarget : blackHealthTarget;
+            if (!result.isHealing && health != null && impacted.Add(health)) StartHealthShake(health);
         }
         InvokeAll(onDamageApplied);
         onComplete?.Invoke();
     }
 
     /// <summary>雙方演出完成後，依受傷陣營揭示本批次傷害合計。</summary>
-    private void UpdateFinalDamageText(IReadOnlyList<DamageCalculationSequence> sequences)
+    private List<FinalResultFlight> UpdateFinalDamageText(
+        IReadOnlyList<DamageCalculationSequence> sequences
+    )
     {
-        if (finalDamageText == null) return;
-
         long whiteDamage = 0L;
         long blackDamage = 0L;
         long totalHealing = 0L;
         bool hasDamage = false;
         bool hasHealing = false;
+        DamageCalculationSequence whiteDamageSource = null;
+        DamageCalculationSequence blackDamageSource = null;
+        DamageCalculationSequence healingSource = null;
         foreach (var sequence in sequences)
         {
             if (sequence == null || sequence.presentationOnly) continue;
@@ -390,38 +413,75 @@ public class DamageCalculationVisualizer : MonoBehaviour
             {
                 hasHealing = true;
                 totalHealing += value;
+                if (healingSource == null) healingSource = sequence;
             }
             else
             {
                 hasDamage = true;
-                if (sequence.damagedWhitePlayer) whiteDamage += value;
-                else blackDamage += value;
+                if (sequence.damagedWhitePlayer)
+                {
+                    whiteDamage += value;
+                    if (whiteDamageSource == null) whiteDamageSource = sequence;
+                }
+                else
+                {
+                    blackDamage += value;
+                    if (blackDamageSource == null) blackDamageSource = sequence;
+                }
             }
         }
 
+        var results = new List<FinalResultFlight>();
         if (!hasDamage && !hasHealing)
         {
-            finalDamageText.gameObject.SetActive(false);
-            return;
+            HideFinalDamageText();
+            return results;
         }
 
         bool healingOnly = !hasDamage && hasHealing;
         if (healingOnly)
         {
-            finalDamageText.text = $"最終回復:{totalHealing}";
+            results.Add(new FinalResultFlight(
+                healingSource,
+                totalHealing,
+                healingSource != null && healingSource.damagedWhitePlayer,
+                true
+            ));
+            if (finalDamageText != null)
+                finalDamageText.text = $"最終回復:{totalHealing}";
         }
         else if (whiteDamage > 0L && blackDamage > 0L)
         {
-            finalDamageText.text =
-                $"白方 最終傷害:{whiteDamage}\n黑方 最終傷害:{blackDamage}";
+            results.Add(new FinalResultFlight(whiteDamageSource, whiteDamage, true, false));
+            results.Add(new FinalResultFlight(blackDamageSource, blackDamage, false, false));
+            if (finalDamageText != null)
+                finalDamageText.text =
+                    $"最終傷害:{whiteDamage}\n最終傷害:{blackDamage}";
         }
         else
         {
-            finalDamageText.text = $"最終傷害:{whiteDamage + blackDamage}";
+            bool damagedWhitePlayer = whiteDamage > 0L || blackDamageSource == null;
+            DamageCalculationSequence source = damagedWhitePlayer
+                ? whiteDamageSource
+                : blackDamageSource;
+            long totalDamage = whiteDamage + blackDamage;
+            results.Add(new FinalResultFlight(
+                source,
+                totalDamage,
+                damagedWhitePlayer,
+                false
+            ));
+            if (finalDamageText != null)
+                finalDamageText.text = $"最終傷害:{totalDamage}";
         }
-        finalDamageText.color = healingOnly ? healColor : damageColor;
-        finalDamageText.gameObject.SetActive(true);
-        finalDamageText.GetComponent<UiScalePulse>()?.Play();
+
+        if (finalDamageText != null)
+        {
+            finalDamageText.color = healingOnly ? healColor : damageColor;
+            finalDamageText.gameObject.SetActive(true);
+            finalDamageText.GetComponent<UiScalePulse>()?.Play();
+        }
+        return results;
     }
 
     private IEnumerator PlayModifierPhase(IReadOnlyList<DamageCalculationSequence> sequences, DamageCuePhase phase)
@@ -444,6 +504,7 @@ public class DamageCalculationVisualizer : MonoBehaviour
                 {
                     if (!DamageModifierFeedback.BelongsToPhase(step, sequence, phase)) continue;
                     var card = string.IsNullOrEmpty(step.sourceCardId) ? null : imageDatabase.GetCard(step.sourceCardId);
+                    bool scaleByCameraDistance = card == null || card.cardType != CardType.Field;
                     Transform owner = ResolvePresentationAnchor(step, sequence, card);
                     Transform anchor = effects ? ResolveModifierRecipient(step, sequence, owner) : owner;
                     if (anchor == null) continue;
@@ -459,17 +520,35 @@ public class DamageCalculationVisualizer : MonoBehaviour
                     slots[anchor] = stack + 1;
                     var panel = GetResolutionPanel(VisibleModifierCount++);
                     if (effects)
-                        panel.ShowModifier(step, sequence, null, stack, anchor, true);
+                        panel.ShowModifier(
+                            step,
+                            sequence,
+                            null,
+                            stack,
+                            anchor,
+                            true,
+                            scaleByCameraDistance
+                        );
                     else
                     {
                         var icon = step.icon != null ? step.icon : card?.skillImage;
                         if (icon == null) icon = DamageModifierFeedback.StyleSymbol(step) ?? ResolveIcon(step, sequence);
-                        panel.ShowSourceAt(step, icon, stack, anchor, anchor.position);
+                        panel.ShowSourceAt(
+                            step,
+                            icon,
+                            stack,
+                            anchor,
+                            anchor.position,
+                            scaleByCameraDistance
+                        );
                     }
                     duration = Mathf.Max(duration, stepDuration, .05f);
                     if (effects || step.modifierPhase == DamageModifierPhase.Activation)
                     {
-                        BattleFeedback.PlayType(type, anchor.position, sounds.Add(type));
+                        if (scaleByCameraDistance)
+                            BattleFeedback.PlayType(type, anchor.position, sounds.Add(type));
+                        else
+                            BattleFeedback.PlayTypeAtFullSize(type, anchor.position, sounds.Add(type));
                         var style = BattleFeedback.GetStyle(type);
                         if (style?.effectPrefab != null) duration = Mathf.Max(duration, style.PlaybackLifetime);
                     }
@@ -567,7 +646,7 @@ public class DamageCalculationVisualizer : MonoBehaviour
     }
 
     /// <summary>停用時停止演出及隱藏外部 Canvas，避免延遲結算。</summary>
-    private void OnDisable() { StopAllCoroutines(); FieldEffectFeedback.StopAll(); BattleFeedback.StopTypeEffects(); RestoreHealthPositions(); HideDamageCalcSteps(); HideDamageResultFlies(); HideResolutionPanels(); }
+    private void OnDisable() { StopAllCoroutines(); FieldEffectFeedback.StopAll(); BattleFeedback.StopTypeEffects(); RestoreHealthPositions(); HideDamageCalcSteps(); HideDamageResultFlies(); HideFinalDamageText(); HideResolutionPanels(); }
 
     /// <summary>離開場景時回收浮動 UI 及動態中文字型。</summary>
     private void OnDestroy()
@@ -748,35 +827,27 @@ public class DamageCalculationVisualizer : MonoBehaviour
     }
 
     /// <summary>
-    /// 建立或顯示飛向血條的傷害或治療結果。
-    /// </summary>
-    private void ShowDamageResultFly(DamageCalculationSequence sequence)
-    {
-        ShowDamageResultFly(sequence, GetOrCreateResultFlyView(0));
-    }
-
-    /// <summary>
-    /// 建立或顯示飛向血條的傷害或治療結果。
+    /// 在每個原始目標旁保留自己的傷害數字、類型圖示與特效。
     /// </summary>
     private void ShowDamageResultFly(
         DamageCalculationSequence sequence,
         DamageResultFlyView view
     )
     {
-        if (view == null || view.root == null || view.text == null)
+        if (sequence == null || view == null || view.root == null || view.text == null)
         {
             return;
         }
 
-        view.root.position = WorldToCanvasPosition(sequence.resultStartWorldPosition) + (Vector3)resultOffset;
+        view.root.position = WorldToCanvasPosition(sequence.resultStartWorldPosition) +
+            (Vector3)resultOffset;
+        view.root.localScale = view.originalScale *
+            (sequence.UsesCameraDistanceScale
+                ? BattleFeedback.GetCameraDistanceScale(sequence.resultStartWorldPosition)
+                : 1f);
+        if (view.canvasGroup != null) view.canvasGroup.alpha = 1f;
 
-        if (view.canvasGroup != null)
-        {
-            view.canvasGroup.alpha = 1f;
-        }
-
-        view.text.color =
-            sequence.isHealing ? healColor : damageColor;
+        view.text.color = sequence.isHealing ? healColor : damageColor;
         view.text.text = sequence.isHealing
             ? $"+{sequence.finalDamage}"
             : sequence.finalDamage.ToString();
@@ -784,21 +855,79 @@ public class DamageCalculationVisualizer : MonoBehaviour
         var type = BattlePresentationStyle.Resolve(sequence);
         var style = BattleFeedback.GetStyle(type);
         view.text.fontStyle = style != null ? style.fontStyle : view.originalFontStyle;
-        view.text.fontSize = view.originalFontSize * (style != null ? style.numberScale : 1f);
+        view.text.fontSize = view.originalFontSize *
+            (style != null ? style.numberScale : 1f);
         if (style != null) view.text.color = style.numberColor;
         if (view.typeIcon != null)
         {
             view.typeIcon.sprite = style?.icon;
             view.typeIcon.gameObject.SetActive(style?.icon != null);
-            // 緊貼數字左側，不受數字位數影響，也不覆寫使用者的文字字體。
-            view.typeIcon.rectTransform.anchoredPosition = new Vector2(-view.text.preferredWidth * .5f - view.typeIcon.rectTransform.rect.width * .5f - 8f, 0);
+            view.typeIcon.rectTransform.anchoredPosition = new Vector2(
+                -view.text.preferredWidth * .5f -
+                view.typeIcon.rectTransform.rect.width * .5f - 8f,
+                0f
+            );
         }
         view.root.gameObject.SetActive(true);
-        // 類型回饋跟隨圖示；共同扣血／回血音效由血條實際變化觸發。
+
         if (sequence.finalDamage > 0)
         {
-            BattleFeedback.PlayType(type, sequence.resultStartWorldPosition);
+            if (sequence.UsesCameraDistanceScale)
+                BattleFeedback.PlayType(type, sequence.resultStartWorldPosition);
+            else
+                BattleFeedback.PlayTypeAtFullSize(type, sequence.resultStartWorldPosition);
         }
+    }
+
+    /// <summary>
+    /// 從最終結果文字建立不重複類型特效的陣營彙總飛字。
+    /// </summary>
+    private void ShowFinalResultFly(
+        FinalResultFlight result,
+        DamageResultFlyView view,
+        Vector3 startPosition
+    )
+    {
+        if (result == null || view == null || view.root == null || view.text == null)
+        {
+            return;
+        }
+
+        view.root.position = startPosition;
+        view.root.localScale = view.originalScale;
+
+        if (view.canvasGroup != null)
+        {
+            view.canvasGroup.alpha = 1f;
+        }
+
+        view.text.color =
+            result.isHealing ? healColor : damageColor;
+        view.text.text = result.isHealing
+            ? $"+{result.value}"
+            : result.value.ToString();
+        view.text.fontStyle = view.originalFontStyle | FontStyles.Bold;
+        view.text.fontSize = view.originalFontSize;
+        if (view.typeIcon != null)
+        {
+            view.typeIcon.sprite = null;
+            view.typeIcon.gameObject.SetActive(false);
+        }
+        view.root.gameObject.SetActive(true);
+    }
+
+    /// <summary>取得彙總飛字對應的最終結果文字行中心。</summary>
+    private Vector3 GetFinalDamageFlightStartPosition(int index, int count)
+    {
+        if (finalDamageText == null)
+            return root != null ? root.position : new Vector3(Screen.width * .5f, Screen.height * .5f, 0f);
+
+        RectTransform label = finalDamageText.rectTransform;
+        if (count <= 1) return label.position;
+
+        float lineHeight = finalDamageText.fontSize * 1.05f;
+        float localY = ((count - 1) * .5f - index) * lineHeight;
+        return label.TransformPoint(new Vector3(0f, localY, 0f));
     }
 
     /// <summary>
@@ -834,6 +963,12 @@ public class DamageCalculationVisualizer : MonoBehaviour
                 damageResultFlyPool[i].root.gameObject.SetActive(false);
             }
         }
+    }
+
+    /// <summary>完成飛字或中斷演出時隱藏最終結果，等待下一批重新揭示。</summary>
+    private void HideFinalDamageText()
+    {
+        if (finalDamageText != null) finalDamageText.gameObject.SetActive(false);
     }
 
     /// <summary>
@@ -874,7 +1009,7 @@ public class DamageCalculationVisualizer : MonoBehaviour
     /// 將批次結果視圖移向各自的血條目標。
     /// </summary>
     private IEnumerator FlyBatchToHealthTargets(
-        List<DamageCalculationSequence> sequences,
+        List<FinalResultFlight> results,
         List<DamageResultFlyView> views
     )
     {
@@ -883,7 +1018,7 @@ public class DamageCalculationVisualizer : MonoBehaviour
         for (int i = 0; i < views.Count; i++)
         {
             starts.Add(views[i].root.position);
-            ends.Add(GetHealthTargetPosition(sequences[i].damagedWhitePlayer));
+            ends.Add(GetHealthTargetPosition(results[i].damagedWhitePlayer));
         }
 
         float elapsed = 0f;
@@ -944,6 +1079,10 @@ public class DamageCalculationVisualizer : MonoBehaviour
             TMP_Text text = damageResultFlyPool.Count == 0
                 ? damageResultFlyText
                 : FindChildComponent<TMP_Text>(viewRoot, "DamageText");
+            Vector3 originalScale = damageResultFlyPool.Count == 0
+                ? viewRoot.localScale
+                : damageResultFlyPool[0].originalScale;
+            viewRoot.localScale = originalScale;
 
             damageResultFlyPool.Add(new DamageResultFlyView
             {
@@ -952,7 +1091,8 @@ public class DamageCalculationVisualizer : MonoBehaviour
                 text = text,
                 typeIcon = FindChildComponent<Image>(viewRoot, "TypeIcon"),
                 originalFontSize = text != null ? text.fontSize : 36f,
-                originalFontStyle = text != null ? text.fontStyle : FontStyles.Normal
+                originalFontStyle = text != null ? text.fontStyle : FontStyles.Normal,
+                originalScale = originalScale
             });
         }
 
@@ -1149,6 +1289,7 @@ public class DamageCalculationVisualizer : MonoBehaviour
         HideDamageCalcSteps();
 
         HideDamageResultFlies();
+        HideFinalDamageText();
     }
 
     private class DamageResultFlyView
@@ -1159,6 +1300,29 @@ public class DamageCalculationVisualizer : MonoBehaviour
         public Image typeIcon;
         public float originalFontSize;
         public FontStyles originalFontStyle;
+        public Vector3 originalScale;
+    }
+
+    /// <summary>只供結果 UI 使用；不取代原本每個棋子的傷害序列與結算回呼。</summary>
+    private sealed class FinalResultFlight
+    {
+        public readonly DamageCalculationSequence styleSource;
+        public readonly long value;
+        public readonly bool damagedWhitePlayer;
+        public readonly bool isHealing;
+
+        public FinalResultFlight(
+            DamageCalculationSequence styleSource,
+            long value,
+            bool damagedWhitePlayer,
+            bool isHealing
+        )
+        {
+            this.styleSource = styleSource;
+            this.value = value;
+            this.damagedWhitePlayer = damagedWhitePlayer;
+            this.isHealing = isHealing;
+        }
     }
 
     private class DamageStepLayout

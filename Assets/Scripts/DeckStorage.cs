@@ -85,12 +85,13 @@ public static class DeckStorage
             ? LoadCurrentConfig()
             : LoadLegacyConfig();
 
-        if (config == null || config.counts.Count == 0)
+        if (config != null)
         {
-            config = BuildDefaultConfig(availableCards);
+            config = SanitizeConfig(config, availableCards);
+            if (config.counts.Count > 0) return config;
         }
 
-        return SanitizeConfig(config, availableCards);
+        return BuildDefaultConfig(availableCards);
     }
 
     /// <summary>
@@ -445,12 +446,15 @@ public static class DeckStorage
 
         foreach (CardDefinition card in availableCards)
         {
-            if (card != null && !string.IsNullOrEmpty(card.id))
-            {
-                ids.Add(card.id);
-            }
+            if (CanSelectCard(card)) ids.Add(card.id);
         }
 
         return ids;
+    }
+
+    public static bool CanSelectCard(CardDefinition card)
+    {
+        return card != null && !string.IsNullOrEmpty(card.id) &&
+            !FieldCardRules.IsAdvancedField(card.id);
     }
 }

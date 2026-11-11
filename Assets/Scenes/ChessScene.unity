@@ -23356,6 +23356,9 @@ MonoBehaviour:
     sound: {fileID: 0}
     soundVolume: 1
   typeEffectRoot: {fileID: 1905723275}
+  fullSizeDistance: 6
+  minimumSizeDistance: 12
+  minimumDistanceScale: 0.2
 --- !u!82 &1713140601
 AudioSource:
   m_ObjectHideFlags: 0

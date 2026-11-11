@@ -12,6 +12,9 @@ public class FieldCardPlace : MonoBehaviour
     private Vector3 authoredLocalPosition;
     private float mobileFusionProgress = -1;
 
+    private void OnEnable() => LogicManager.InvalidateCardTargets();
+    private void OnDisable() => LogicManager.InvalidateCardTargets();
+
     public CardDefinition ActiveCard
     {
         get { return activeCard; }
@@ -62,6 +65,7 @@ public class FieldCardPlace : MonoBehaviour
     /// </summary>
     public void SetCard(CardDefinition card)
     {
+        if (activeCard != card) LogicManager.InvalidateCardTargets();
         activeCard = card;
         EnsureRuntimeMaterial();
         RefreshVisual();

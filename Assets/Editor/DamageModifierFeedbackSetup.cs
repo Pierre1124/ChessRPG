@@ -185,10 +185,11 @@ public static class DamageModifierFeedbackSetup
                             var arrows = effect.GetComponentsInChildren<Transform>(true).Where(t => t.name.Contains("_Arrow_")).ToArray();
                             if (animator != null && arrows.Length > 0)
                             {
-                                Check(Vector3.Distance(effect.transform.lossyScale, Vector3.one * style.effectScale) < .001f &&
+                                float distanceScale = BattleFeedback.GetCameraDistanceScale(anchorPosition);
+                                Check(Vector3.Distance(effect.transform.lossyScale, Vector3.one * style.effectScale * distanceScale) < .001f &&
                                     Mathf.Approximately(animator.speed, style.effectPlaybackSpeed) &&
                                     Mathf.Approximately(style.PlaybackLifetime * animator.speed, style.effectLifetime),
-                                    style.type + " honors the configured size, speed and playback lifetime");
+                                    style.type + " honors distance-scaled size, speed and playback lifetime");
                                 animator.Rebind(); animator.Update(0); animator.Update(.25f / animator.speed);
                                 var positions = arrows.Select(t => t.position.y).ToArray();
                                 Check(arrows.All(t => t.localScale.sqrMagnitude > .001f), style.type + " spawned arrows become visible");
@@ -201,7 +202,7 @@ public static class DamageModifierFeedbackSetup
                                 animator.Update(.45f / animator.speed);
                                 Check(Vector3.Distance(effect.transform.position, anchorPosition + style.effectOffset) < .01f, style.type + " animation cannot reset world anchor");
                                 Check(arrows.All(t => Mathf.Abs(t.position.x - anchorPosition.x - style.effectOffset.x) < 3f && Mathf.Abs(t.position.z - anchorPosition.z - style.effectOffset.z) < 3f), style.type + " animated arrows remain at requested source instead of board origin");
-                                Check(arrows.Select((t, i) => style.type == BattlePresentationType.ModifierUp ? t.position.y > positions[i] + .1f * style.effectScale : t.position.y < positions[i] - .1f * style.effectScale).All(v => v), style.type + " spawned arrows move vertically in correct direction");
+                                Check(arrows.Select((t, i) => style.type == BattlePresentationType.ModifierUp ? t.position.y > positions[i] + .1f * style.effectScale * distanceScale : t.position.y < positions[i] - .1f * style.effectScale * distanceScale).All(v => v), style.type + " spawned arrows move vertically in correct direction");
                             }
                         }
                         finally { UnityEngine.Object.DestroyImmediate(effect); }

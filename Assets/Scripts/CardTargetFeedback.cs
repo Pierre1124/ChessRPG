@@ -11,7 +11,7 @@ public sealed class CardTargetFeedback : MonoBehaviour
     public GameObject ClickSurface { get; set; }
     private CardHandManager hand;
     private CardDefinition card;
-    private readonly List<Component> targets = new List<Component>();
+    private List<Component> targets;
     private readonly Dictionary<Component, LineRenderer> markers = new Dictionary<Component, LineRenderer>();
     private readonly List<Component> removed = new List<Component>();
     private readonly List<RaycastResult> uiHits = new List<RaycastResult>();
@@ -19,7 +19,6 @@ public sealed class CardTargetFeedback : MonoBehaviour
     private TMP_Text hint;
     private RectTransform hintPanel;
     private CardGlowGraphic recycleGlow;
-    private float refreshAt;
     private MaterialPropertyBlock tintProperties;
     [SerializeField] private Color ValidColor = new Color(0.12f, 0.86f, 0.94f);
     [SerializeField] private Color FocusColor = new Color(1f, 0.76f, 0.25f);
@@ -51,20 +50,21 @@ public sealed class CardTargetFeedback : MonoBehaviour
     public void ShowAt(PointerEventData pointer)
     {
         if (hand == null || !hand.CanPreviewCard(card)) { ClearVisuals(); return; }
-        if (Time.unscaledTime >= refreshAt)
+        var currentTargets = hand.GetPreviewTargets(card);
+        if (targets != currentTargets)
         {
-            hand.CollectCardTargets(card, targets);
+            targets = currentTargets;
             removed.Clear();
             foreach (var entry in markers)
                 if (entry.Key == null || !targets.Contains(entry.Key)) removed.Add(entry.Key);
             foreach (Component target in removed)
             {
+                markers[target].gameObject.SetActive(false);
                 Destroy(markers[target].gameObject);
                 markers.Remove(target);
             }
             foreach (Component target in targets)
                 if (!markers.ContainsKey(target)) AddMarker(target);
-            refreshAt = Time.unscaledTime + 0.15f;
         }
 
         bool overRecycle = hand.RecycleCardRoot != null && hand.RecycleCardRoot.gameObject.activeInHierarchy &&

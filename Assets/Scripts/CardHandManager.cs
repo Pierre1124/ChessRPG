@@ -357,8 +357,7 @@ public class CardHandManager : MonoBehaviour
         string blocked = GetCardInteractionBlockReason();
         if (blocked != null) return blocked;
         if (!CanPreviewCard(card)) return "這張卡牌已不在目前可操作的手牌中";
-        CollectCardTargets(card, previewTargets);
-        if (previewTargets.Count > 0) return null;
+        if (GetPreviewTargets(card).Count > 0) return null;
         if (card.cardType == CardType.Field)
         {
             string fallback = "目前沒有可使用的場地欄位";
@@ -377,7 +376,35 @@ public class CardHandManager : MonoBehaviour
     public void CollectCardTargets(CardDefinition card, List<Component> targets)
     {
         targets.Clear();
-        if (!CanPreviewCard(card)) return;
+        if (CanPreviewCard(card)) targets.AddRange(GetPreviewTargets(card));
+    }
+
+    private readonly Dictionary<CardDefinition, List<Component>> previewCache = new Dictionary<CardDefinition, List<Component>>();
+    private (int revision, int whiteHp, int blackHp, bool whiteTurn, bool fusion) previewState;
+    private static readonly Unity.Profiling.ProfilerMarker targetScan = new Unity.Profiling.ProfilerMarker("ChessRPG.ScanCardTargets");
+
+    // Callers check hand ownership and input locks before querying. Each result stays
+    // unchanged so the drag feedback can detect a new set without comparing every target.
+    internal List<Component> GetPreviewTargets(CardDefinition card)
+    {
+        var state = (LogicManager.CardTargetRevision, logicManager.whiteHealth, logicManager.blackHealth,
+            logicManager.isWhiteTurn, logicManager.IsFieldFusionPlaying);
+        if (previewState != state)
+        {
+            previewCache.Clear();
+            previewState = state;
+        }
+        if (!previewCache.TryGetValue(card, out var targets))
+        {
+            targets = new List<Component>();
+            using (targetScan.Auto()) ScanCardTargets(card, targets);
+            previewCache.Add(card, targets);
+        }
+        return targets;
+    }
+
+    private void ScanCardTargets(CardDefinition card, List<Component> targets)
+    {
         if (card.cardType == CardType.Field)
         {
             foreach (FieldCardPlace place in logicManager.GetFieldPlaces())
@@ -394,27 +421,12 @@ public class CardHandManager : MonoBehaviour
             }
     }
 
-    private readonly Dictionary<CardDefinition, bool> playableCardCache = new Dictionary<CardDefinition, bool>();
-    private readonly List<Component> previewTargets = new List<Component>();
-    private float nextPreviewRefresh;
     public bool IsWhiteCardTurn { get { return logicManager != null && logicManager.isWhiteTurn; } }
 
-    /// <summary>重複手牌共用短期快取；操作鎖與手牌歸屬仍每幀檢查。</summary>
+    /// <summary>重複手牌共用目前盤面的合法目標；操作鎖與手牌歸屬仍每幀檢查。</summary>
     public bool HasPlayableCardTarget(CardDefinition card)
     {
-        if (!CanPreviewCard(card)) return false;
-        if (Time.unscaledTime >= nextPreviewRefresh)
-        {
-            playableCardCache.Clear();
-            nextPreviewRefresh = Time.unscaledTime + 0.15f;
-        }
-        if (!playableCardCache.TryGetValue(card, out bool playable))
-        {
-            CollectCardTargets(card, previewTargets);
-            playable = previewTargets.Count > 0;
-            playableCardCache[card] = playable;
-        }
-        return playable;
+        return CanPreviewCard(card) && GetPreviewTargets(card).Count > 0;
     }
 
     /// <summary>
@@ -804,7 +816,7 @@ public class CardHandManager : MonoBehaviour
     /// </summary>
     public void Refresh(bool isWhiteTurn)
     {
-        playableCardCache.Clear();
+        previewCache.Clear();
         if (IsRpgDisabled) return;
         ResolveCardGameUiReferences();
 

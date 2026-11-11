@@ -220,6 +220,7 @@ public static class ClassicChessRegression
     /// <summary>驗證拒絕拖曳的後續事件不改動 UI，以及拖曳途中鎖定時能還原卡片。</summary>
     private static void VerifyDragGate(LogicManager logic, CardHandManager hand)
     {
+        SimulateNextInputFrame();
         var template = (GameObject)new SerializedObject(hand).FindProperty("cardPrefab").objectReferenceValue;
         var card = Object.Instantiate(template);
         card.name = "DragGateFixture";
@@ -427,6 +428,27 @@ public static class ClassicChessRegression
         drag.OnBeginDrag(pointer);
         CardTargetFeedback feedback = Object.FindFirstObjectByType<CardTargetFeedback>();
         Check(feedback != null && feedback.GetComponentsInChildren<LineRenderer>().Length == 8, "Live drag creates eight legal target rings");
+        var targetList = typeof(CardTargetFeedback).GetField("targets", flags);
+        var startingTargets = targetList.GetValue(feedback);
+        for (int i = 0; i < 20; i++)
+        {
+            pointer.position += Vector2.right;
+            feedback.ShowAt(pointer);
+            hand.HasPlayableCardTarget(job);
+        }
+        Check(ReferenceEquals(startingTargets, targetList.GetValue(feedback)), "Moving pointer reuses the legal target set");
+        var pawn = logic.boardMap[0, 1];
+        pawn.gameObject.SetActive(false);
+        try
+        {
+            feedback.ShowAt(pointer);
+            Check(feedback.GetComponentsInChildren<LineRenderer>().Count(r => r.gameObject.activeInHierarchy) == 7,
+                "An unavailable pawn immediately loses its drag marker");
+        }
+        finally { pawn.gameObject.SetActive(true); }
+        feedback.ShowAt(pointer);
+        Check(((System.Collections.Generic.List<Component>)targetList.GetValue(feedback)).Count == 8,
+            "Restoring a pawn refreshes drag targets without moving the pointer");
         logic.isPromotionActive = true;
         try
         {
@@ -434,6 +456,8 @@ public static class ClassicChessRegression
             Check(feedback.GetComponentsInChildren<LineRenderer>().Length == 0, "Ending drag immediately hides all world markers");
         }
         finally { logic.isPromotionActive = false; }
+        Check(CardDragHandler.BlocksBoardInput, "A completed drag consumes its input frame");
+        SimulateNextInputFrame();
         drag.OnBeginDrag(pointer);
         pointer.position = new Vector2(-10000f, -10000f);
         drag.OnEndDrag(pointer);
@@ -450,6 +474,14 @@ public static class ClassicChessRegression
             Object.FindObjectsByType<CardPlayFeedback>(FindObjectsSortMode.None).Length == feedbackCount + 1,
             "Rejected card play does not create success flash");
         hand.ResetHands(logic.isWhiteTurn);
+    }
+
+    // The regression drives several independent gestures synchronously in one Editor tick.
+    private static void SimulateNextInputFrame()
+    {
+        typeof(CardDragHandler).GetField("consumedFrame",
+            System.Reflection.BindingFlags.Static | System.Reflection.BindingFlags.NonPublic)
+            .SetValue(null, Time.frameCount - 1);
     }
 
     /// <summary>

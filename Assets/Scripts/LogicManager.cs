@@ -8,6 +8,9 @@ using UnityEngine.SceneManagement;
 /// </summary>
 public class LogicManager : MonoBehaviour
 {
+    internal static int CardTargetRevision { get; private set; }
+    internal static void InvalidateCardTargets() => CardTargetRevision++;
+
     public const int MaxHealth = 100;
     private static bool nextGameIsClassicChess;
 
@@ -753,6 +756,7 @@ public class LogicManager : MonoBehaviour
     /// </summary>
     public void RefreshBoardFieldEffects()
     {
+        InvalidateCardTargets();
         ClearBoardFieldVisuals();
         if (IsClassicChess) return;
 
@@ -1721,6 +1725,7 @@ public class LogicManager : MonoBehaviour
                     isCapture = sequence.isCapture,
                     finalDamage = sequence.finalDamage,
                     resultStartWorldPosition = sequence.resultStartWorldPosition,
+                    keepFullPresentationSize = !sequence.UsesCameraDistanceScale,
                     attacker = GetPieceCoordinateOrInvalid(sequence.attacker),
                     target = GetPieceCoordinateOrInvalid(sequence.target)
                 };
@@ -1806,6 +1811,7 @@ public class LogicManager : MonoBehaviour
             isCapture = networkSequence.isCapture,
             finalDamage = networkSequence.finalDamage,
             resultStartWorldPosition = networkSequence.resultStartWorldPosition,
+            keepFullPresentationSize = networkSequence.keepFullPresentationSize,
             attacker = FindPieceAt(networkSequence.attacker),
             target = FindPieceAt(networkSequence.target)
         };
@@ -2286,6 +2292,7 @@ public class LogicManager : MonoBehaviour
     /// </summary>
     public void RegisterPieceCaptured(Piece capturedPiece)
     {
+        InvalidateCardTargets();
         if (capturedPiece == null)
         {
             return;
@@ -2704,6 +2711,7 @@ public class LogicManager : MonoBehaviour
     /// <summary>重新建立雙方棋子的攻擊範圍圖，包含場地阻擋。</summary>
     public void UpdateCheckMap()
     {
+        InvalidateCardTargets();
         ResetCheckMap();
         UpdatePiecesOnBoard();
 
