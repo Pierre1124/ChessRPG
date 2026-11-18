@@ -1,0 +1,62 @@
+Runtime fusion / room lifecycle checks
+PASS: Reset restores original room
+PASS: First card accepted F01
+PASS: Base field keeps original room
+PASS: Second card accepted F01
+PASS: Exactly one themed room F02
+PASS: Room preserves authored transform F02
+PASS: Repeated update reuses room F02
+PASS: Fusion gameplay result F02
+PASS: Reset restores original room
+PASS: First card accepted F03
+PASS: Base field keeps original room
+PASS: Second card accepted F03
+PASS: Exactly one themed room F04
+PASS: Room preserves authored transform F04
+PASS: Repeated update reuses room F04
+PASS: Fusion gameplay result F04
+PASS: Reset restores original room
+PASS: First card accepted F05
+PASS: Base field keeps original room
+PASS: Second card accepted F05
+PASS: Exactly one themed room F06
+PASS: Room preserves authored transform F06
+PASS: Repeated update reuses room F06
+PASS: Fusion gameplay result F06
+PASS: Reset restores original room
+PASS: First card accepted F07
+PASS: Base field keeps original room
+PASS: Second card accepted F07
+PASS: Exactly one themed room F08
+PASS: Room preserves authored transform F08
+PASS: Repeated update reuses room F08
+PASS: Fusion gameplay result F08
+PASS: Reset restores original room
+PASS: First card accepted F09
+PASS: Base field keeps original room
+PASS: Second card accepted F09
+PASS: Exactly one themed room F10
+PASS: Room preserves authored transform F10
+PASS: Repeated update reuses room F10
+PASS: Fusion gameplay result F10
+PASS: Reset restores original room
+PASS: First card accepted F01
+PASS: Base field keeps original room
+PASS: Second card accepted F03
+PASS: Exactly one themed room F11
+PASS: Room preserves authored transform F11
+PASS: Repeated update reuses room F11
+PASS: Fusion gameplay result F11
+PASS: Reset restores original room
+PASS: First card accepted F05
+PASS: Base field keeps original room
+PASS: Second card accepted F07
+PASS: Exactly one themed room F12
+PASS: Room preserves authored transform F12
+PASS: Repeated update reuses room F12
+PASS: F12 locks input while presenting room
+PASS: F12 remains visible before restart
+PASS: Fusion gameplay result F12
+PASS: Direct advanced card shows room
+PASS: Classic mode restores original, removes themed room
+PASS: all runtime room checks

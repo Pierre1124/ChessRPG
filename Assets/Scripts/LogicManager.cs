@@ -54,6 +54,7 @@ public class LogicManager : MonoBehaviour
         deferFullGameRestartUntilUsingCard = false;
         deferredFullGameRestartPending = false;
         activeFieldCards.Clear();
+        ResetFieldRoomAppearance();
         ClearBoardFieldVisuals();
         ResolveFieldCardPlaces();
         foreach (FieldCardPlace place in fieldCardPlaces)
@@ -159,6 +160,8 @@ public class LogicManager : MonoBehaviour
     private readonly List<GameObject> boardFieldVisuals =
         new List<GameObject>();
     private bool isFieldFusionPlaying;
+    private FieldRoomAppearance fieldRoomAppearance;
+    private Coroutine fieldFusionRoutine;
 
     private CardBattleSystem CardBattle
     {
@@ -269,6 +272,10 @@ public class LogicManager : MonoBehaviour
         isTurnPhaseChangePlaying = false;
         isTurnFlowPlaying = false;
         activeFieldCards.Clear();
+        if (fieldFusionRoutine != null) StopCoroutine(fieldFusionRoutine);
+        fieldFusionRoutine = null;
+        isFieldFusionPlaying = false;
+        ResetFieldRoomAppearance();
         ResolveFieldCardPlaces();
         ClearFieldCardPlaces();
         whiteHealth = MaxHealth;
@@ -2417,6 +2424,7 @@ public class LogicManager : MonoBehaviour
 
         activeFieldCards.Add(card);
         bool fused = ResolveFieldFusion();
+        if (!fused) ShowFieldRoomAppearance(card.id);
         Debug.Log(
             $"[CardDebug][FieldPlayed] Card={card.id} {card.cardName} | " +
             $"Place={place.name} | " +
@@ -2426,7 +2434,7 @@ public class LogicManager : MonoBehaviour
         if (!fused && GetActiveFieldCount("F12") > 0)
         {
             Debug.Log("[CardDebug][FieldReset] Field=F12 摰踹蝯?銋 | Reload ChessScene");
-            RequestFullGameRestart();
+            fieldFusionRoutine = StartCoroutine(ShowFinalFieldRoomAndRestart());
         }
 
         return true;
@@ -3415,7 +3423,7 @@ public class LogicManager : MonoBehaviour
 
         activeFieldCards.Clear();
         activeFieldCards.Add(fused);
-        StartCoroutine(PlayFieldFusionRoutine(fused));
+        fieldFusionRoutine = StartCoroutine(PlayFieldFusionRoutine(fused));
         Debug.Log(
             $"[CardDebug][FieldFusion] From={first}+{second} | " +
             $"To={fused.id} {fused.cardName} | ActiveFields=2/2"
@@ -3478,13 +3486,36 @@ public class LogicManager : MonoBehaviour
             }
         }
 
-        isFieldFusionPlaying = false;
-
+        ShowFieldRoomAppearance(fused != null ? fused.id : null);
         if (fused != null && fused.id == "F12")
         {
             Debug.Log("[CardDebug][FieldReset] Field=F12 | Reload ChessScene");
-            RequestFullGameRestart();
+            yield return ShowFinalFieldRoomAndRestart();
         }
+        isFieldFusionPlaying = false;
+        fieldFusionRoutine = null;
+    }
+
+    private void ShowFieldRoomAppearance(string fieldId)
+    {
+        if (!FieldCardRules.IsAdvancedField(fieldId)) { ResetFieldRoomAppearance(); return; }
+        if (fieldRoomAppearance == null)
+            fieldRoomAppearance = GetComponent<FieldRoomAppearance>() ?? gameObject.AddComponent<FieldRoomAppearance>();
+        fieldRoomAppearance.Show(fieldId);
+    }
+
+    private void ResetFieldRoomAppearance()
+    {
+        if (fieldRoomAppearance != null) fieldRoomAppearance.Restore();
+    }
+
+    private IEnumerator ShowFinalFieldRoomAndRestart()
+    {
+        isFieldFusionPlaying = true;
+        yield return new WaitForSecondsRealtime(1.5f);
+        isFieldFusionPlaying = false;
+        fieldFusionRoutine = null;
+        RequestFullGameRestart();
     }
 
     /// <summary>

@@ -1,0 +1,24 @@
+Source: ChessScene/SceneRoot (current loaded hierarchy). Original scene/materials are not saved or modified.
+SOURCE MATERIAL: Assets/Room/textures/pillars/Materials/pilers_Base_Color.mat | Universal Render Pipeline/Lit
+SOURCE MATERIAL: Assets/Room/textures/floor/Materials/marble_1_metallic.mat | Universal Render Pipeline/Lit
+SOURCE MATERIAL: Assets/Room/textures/wall/Materials/brick_uneven_stones_basecolor.mat | Universal Render Pipeline/Lit
+SOURCE MATERIAL: Assets/Room/Materials/the book texture.mat | Universal Render Pipeline/Lit
+SOURCE MATERIAL: Assets/Room/textures/bookcase/Materials/book-case-9.mat | Universal Render Pipeline/Lit
+SOURCE MATERIAL: Assets/Room/Materials/emesive.mat | Universal Render Pipeline/Lit
+SOURCE MATERIAL: Assets/Room/Materials/Cb.mat | Universal Render Pipeline/Lit
+SOURCE MATERIAL: Assets/Room/Materials/door texture 4.mat | Universal Render Pipeline/Lit
+SOURCE MATERIAL: Assets/Room/textures/roofrop/Materials/top_roof_wood_Base_Color.mat | Universal Render Pipeline/Lit
+SOURCE MATERIAL: Assets/Room/Materials/the chandelier.mat | Universal Render Pipeline/Lit
+SOURCE MATERIAL: Assets/Room/textures/window/Materials/border.001_Base_Color.mat | Universal Render Pipeline/Lit
+SOURCE MATERIAL: Assets/Room/textures/window/Materials/iner 1.mat | Universal Render Pipeline/Lit
+SOURCE MATERIAL: Assets/Room/textures/bookcase/Materials/bookcasewood_Base_Color.mat | Universal Render Pipeline/Lit
+SOURCE MATERIAL: Assets/Room/textures/table/Materials/wood the tabel and chaer_Metallic.mat | Universal Render Pipeline/Lit
+SOURCE MATERIAL: Assets/Room/textures/chiar/Materials/wood the tabel and chaer.002_Metallic.mat | Universal Render Pipeline/Lit
+SOURCE MATERIAL: Assets/Room/Materials/the chandelier hand.mat | Universal Render Pipeline/Lit
+PASS F02: 16 independent materials; 74 renderers; no missing scripts/materials. Assets/Room/AdvancedFieldVariants/F02_LavaPlateau/SceneRoot_F02_LavaPlateau.prefab
+PASS F04: 16 independent materials; 74 renderers; no missing scripts/materials. Assets/Room/AdvancedFieldVariants/F04_EternalMarsh/SceneRoot_F04_EternalMarsh.prefab
+PASS F06: 16 independent materials; 74 renderers; no missing scripts/materials. Assets/Room/AdvancedFieldVariants/F06_LightEmpire/SceneRoot_F06_LightEmpire.prefab
+PASS F08: 16 independent materials; 74 renderers; no missing scripts/materials. Assets/Room/AdvancedFieldVariants/F08_DarkEmpire/SceneRoot_F08_DarkEmpire.prefab
+PASS F10: 16 independent materials; 74 renderers; no missing scripts/materials. Assets/Room/AdvancedFieldVariants/F10_GildedSin/SceneRoot_F10_GildedSin.prefab
+PASS F11: 16 independent materials; 74 renderers; no missing scripts/materials. Assets/Room/AdvancedFieldVariants/F11_InfernalMarsh/SceneRoot_F11_InfernalMarsh.prefab
+PASS F12: 16 independent materials; 74 renderers; no missing scripts/materials. Assets/Room/AdvancedFieldVariants/F12_FatesEnd/SceneRoot_F12_FatesEnd.prefab

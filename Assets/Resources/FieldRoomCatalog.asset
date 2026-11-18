@@ -1,0 +1,29 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 95d20152a004b494696c6d11e7106e28, type: 3}
+  m_Name: FieldRoomCatalog
+  m_EditorClassIdentifier: 
+  rooms:
+  - fieldId: F02
+    roomPrefab: {fileID: 2719288011151336418, guid: 4ce1c3ae89557ca4b85dac967050dc97, type: 3}
+  - fieldId: F04
+    roomPrefab: {fileID: 4685722483680180520, guid: 5e2f53eaabbcc9e419341b42f3913922, type: 3}
+  - fieldId: F06
+    roomPrefab: {fileID: 8143989184934879420, guid: f4af161a4e7ef1b47b3641cef1f81f7c, type: 3}
+  - fieldId: F08
+    roomPrefab: {fileID: 8639712019126901674, guid: cc1bf15f824409c459a91f94131c590d, type: 3}
+  - fieldId: F10
+    roomPrefab: {fileID: 8401417894553111234, guid: c52cb67e762e34345acef1eb6c179b96, type: 3}
+  - fieldId: F11
+    roomPrefab: {fileID: 1158590958764720264, guid: fb5e042a553c7fb48b63c6176d801f77, type: 3}
+  - fieldId: F12
+    roomPrefab: {fileID: 3622871769869712417, guid: 77a7504bc8f833849897d79021522705, type: 3}
